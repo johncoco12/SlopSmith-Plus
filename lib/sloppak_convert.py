@@ -31,6 +31,7 @@ import yaml
 
 from patcher import unpack_psarc
 from song import load_song, arrangement_to_wire
+from tones import extract_tones_for_song
 from audio import find_wem_files, _vgmstream_cmd, _ffmpeg_cmd, _ffmpeg_wav_to_ogg
 
 
@@ -188,11 +189,27 @@ def convert_psarc_to_sloppak(
         if not song.arrangements:
             raise RuntimeError("no playable arrangements found in PSARC")
 
+        # Lift tone data (gear definitions + in-song tone changes) out of the
+        # unpacked PSARC once — PSARCs keep tones in the manifest JSON /
+        # arrangement XML, neither of which survives into the sloppak, so
+        # without this the converted sloppak loses all tones. Done in one
+        # pass (not per arrangement) to avoid re-scanning the extracted tree.
+        try:
+            tones_by_arr = extract_tones_for_song(
+                tmp_extract, [a.name for a in song.arrangements]
+            )
+        except Exception as e:
+            log.warning("tone extraction failed: %s", e, exc_info=True)
+            tones_by_arr = {}
+
         used_ids: set[str] = set()
         arr_manifest: list[dict] = []
         first = True
         for arr in song.arrangements:
             aid = _arrangement_id(arr.name, used_ids)
+            # Attach tones to the Arrangement so arrangement_to_wire owns the
+            # serialization (single source of truth for the wire schema).
+            arr.tones = tones_by_arr.get(arr.name)
             wire = arrangement_to_wire(arr)
             if first:
                 wire["beats"] = [

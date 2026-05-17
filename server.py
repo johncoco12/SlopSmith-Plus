@@ -4022,91 +4022,232 @@ async def highway_ws(websocket: WebSocket, filename: str, arrangement: int = -1)
         if lyrics:
             await websocket.send_json({"type": "lyrics", "data": lyrics})
 
-        # Send tone changes (PSARC and loose folders use arrangement XMLs;
-        # sloppak ships tone data inline in its arrangement JSON, no XML).
-        tone_changes = []
+        # Send tone changes. PSARC and loose folders carry tone data in
+        # arrangement XMLs; a sloppak ships it inline in its arrangement JSON
+        # (Arrangement.tones, populated by the converter), so read it straight
+        # off `arr` rather than walking for XML that doesn't exist.
         if is_slop:
-            xml_paths = []
+            # `sloppak_tone_changes` builds the (base, sorted changes) pair
+            # from `Arrangement.tones`, skipping non-string names and
+            # non-finite/non-numeric times — unit-tested in test_tones.py.
+            from tones import sloppak_tone_changes
+            base_name, tone_changes = sloppak_tone_changes(getattr(arr, "tones", None))
+            # Send when there's a base tone OR timed changes — a single-tone
+            # arrangement has a base but no switches, and the highway should
+            # still be able to show the initial tone.
+            if tone_changes or base_name:
+                await websocket.send_json({
+                    "type": "tone_changes",
+                    "base": base_name,
+                    "data": tone_changes,
+                })
         else:
             xml_paths = sorted(_xml_walk("*.xml"))
 
-        # Build tone ID→name map from manifest JSON matching selected arrangement
-        tone_id_map = {}  # {0: "Tone_A_name", 1: "Tone_B_name", ...}
-        arr_name_lower = arr.name.lower() if arr else ""
-        for jf in sorted(_json_walk("*.json")):
-            try:
-                # Prefer manifest matching selected arrangement
-                if arr_name_lower and arr_name_lower not in jf.stem.lower():
-                    continue
-                jdata = json.loads(jf.read_text())
-                for entry in (jdata.get("Entries") or {}).values():
-                    attrs = entry.get("Attributes") or {}
-                    for idx, key in enumerate(["Tone_A", "Tone_B", "Tone_C", "Tone_D"]):
-                        val = attrs.get(key, "")
-                        if val:
-                            tone_id_map[idx] = val
-                    if tone_id_map:
-                        break
-            except Exception:
-                continue
-            if tone_id_map:
-                break
-        # Fallback: try any manifest if arrangement-specific one not found
-        if not tone_id_map:
-            for jf in sorted(_json_walk("*.json")):
+            # Build tone ID→name map from the manifest JSON for the selected
+            # arrangement. Match on the entry's `ArrangementName` field, not a
+            # filename-stem substring — "Lead" is a substring of "Bonus Lead",
+            # so the old substring test could build the map from the wrong
+            # arrangement. Record the matched JSON stem so the XML below can
+            # be paired exactly (RS names the JSON and XML with the same stem).
+            arr_tone_names = {}  # the SELECTED arrangement's own Tone_A..D only
+            matched_stem = None
+            # Strip + lowercase both sides when matching ArrangementName,
+            # mirroring lib/tones.py — a manifest with padded whitespace
+            # must not fall through to an unrelated arrangement.
+            arr_name_lower = arr.name.strip().lower() if arr else ""
+
+            def _manifest_entries(path):
+                """Parsed `Entries` dict for a manifest JSON, or {} if the
+                file isn't a well-formed manifest (non-dict top level /
+                Entries, unparseable JSON)."""
                 try:
-                    jdata = json.loads(jf.read_text())
-                    for entry in (jdata.get("Entries") or {}).values():
-                        attrs = entry.get("Attributes") or {}
-                        for idx, key in enumerate(["Tone_A", "Tone_B", "Tone_C", "Tone_D"]):
-                            val = attrs.get(key, "")
-                            if val:
-                                tone_id_map[idx] = val
-                        if tone_id_map:
-                            break
+                    # JSON is UTF-8; decode strictly so malformed bytes fail
+                    # cleanly (caught below) rather than silently corrupting
+                    # arrangement / tone names.
+                    jdata = json.loads(path.read_text(encoding="utf-8"))
                 except Exception:
-                    continue
-                if tone_id_map:
+                    return {}
+                entries = jdata.get("Entries") if isinstance(jdata, dict) else None
+                return entries if isinstance(entries, dict) else {}
+
+            def _tone_names(attrs):
+                """{idx: name} from an entry's Tone_A..Tone_D — string values
+                only, so a malformed manifest can't emit a non-string name."""
+                m = {}
+                for idx, key in enumerate(("Tone_A", "Tone_B", "Tone_C", "Tone_D")):
+                    val = attrs.get(key)
+                    if isinstance(val, str) and val:
+                        m[idx] = val
+                return m
+
+            for jf in sorted(_json_walk("*.json")):
+                for entry in _manifest_entries(jf).values():
+                    if not isinstance(entry, dict):
+                        continue
+                    attrs = entry.get("Attributes")
+                    if not isinstance(attrs, dict):
+                        continue
+                    ename = attrs.get("ArrangementName")
+                    if not isinstance(ename, str) or ename.strip().lower() != arr_name_lower:
+                        continue
+                    # Only the SELECTED arrangement's own Tone_A..D — never
+                    # borrowed from another manifest. An unrelated map would
+                    # mislabel `N/A` tone-change markers; `Tone {id}` is the
+                    # correct fallback (matching lib/tones.py).
+                    arr_tone_names = _tone_names(attrs)
+                    matched_stem = jf.stem.lower()
+                    break
+                if matched_stem is not None:
                     break
 
-        # Parse XMLs — prefer the one matching selected arrangement, fall back to any
-        # Try arrangement-matching XML first, then fall back to any
-        def _xml_matches_arr(xp):
-            return arr_name_lower and arr_name_lower in xp.stem.lower()
-        sorted_xml = sorted(xml_paths, key=lambda xp: (0 if _xml_matches_arr(xp) else 1, xp.name))
-        for xml_path in sorted_xml:
-            try:
-                root = ET.parse(xml_path).getroot()
-                if root.tag != "song":
-                    continue
-                tones_el = root.find("tones")
-                if tones_el is not None:
-                    for t in tones_el.findall("tone"):
-                        tc_time = t.get("time")
-                        tc_name = t.get("name", "")
-                        tc_id = t.get("id", "")
-                        # Resolve "N/A" or empty names using tone ID map
-                        if (not tc_name or tc_name == "N/A") and tc_id:
-                            tc_name = tone_id_map.get(int(tc_id), f"Tone {tc_id}")
-                        if tc_time and tc_name:
-                            tone_changes.append({
-                                "t": round(float(tc_time), 3),
-                                "name": tc_name,
+            # Parse XMLs. Prefer the XML paired with the matched manifest
+            # (identical stem). When no manifest matched (loose/CDLC), fall
+            # back to a name-token match — but rank by how few *extra* stem
+            # tokens a candidate carries, mirroring lib/tones.py: {"lead"} is
+            # a subset of both `song_lead` and `song_bonus_lead`, so a plain
+            # subset test still ties. A unique fewest-extra match wins; an
+            # exact tie among token candidates is treated as ambiguous —
+            # `_token_ambiguous` then suppresses the rank-2 best-effort
+            # fallback, so no arrangement's tone timeline is guessed at
+            # (matching lib/tones.py, which attaches nothing on a tie).
+            # Shared tokenizer with lib/tones.py so PSARC playback and
+            # PSARC→sloppak conversion select arrangement XMLs identically.
+            from tones import tokens as _name_tokens
+            _arr_tokens = _name_tokens(arr.name) if arr else set()
+            _token_pick = None
+            _token_ambiguous = False
+            if _arr_tokens and matched_stem is None:
+                _cands = []
+                for xp in xml_paths:
+                    stem_tokens = _name_tokens(xp.stem)
+                    if _arr_tokens <= stem_tokens:
+                        _cands.append((len(stem_tokens - _arr_tokens), xp))
+                if _cands:
+                    _best = min(extra for extra, _ in _cands)
+                    _tied = [xp for extra, xp in _cands if extra == _best]
+                    if len(_tied) == 1:
+                        _token_pick = _tied[0]
+                    else:
+                        _token_ambiguous = True
+
+            def _xml_rank(xp):
+                if matched_stem and xp.stem.lower() == matched_stem:
+                    return 0
+                if _token_pick is not None and xp == _token_pick:
+                    return 1
+                return 2
+            sorted_xml = sorted(xml_paths, key=lambda xp: (_xml_rank(xp), xp.name))
+            # When the arrangement was positively identified (manifest stem
+            # pair or a unique token match), tone data must come only from
+            # that XML — a rank-2 fallback XML belongs to another
+            # arrangement. A token tie is likewise suppressed (guessing among
+            # equally-named XMLs would be wrong). Only a genuine no-match
+            # case (loose/CDLC with no usable manifest and no name overlap)
+            # keeps the long-standing rank-2 best-effort source.
+            _suppress_fallback = (
+                matched_stem is not None or _token_pick is not None or _token_ambiguous
+            )
+            sent_tones = False
+            psarc_base = ""  # <tonebase> of the preferred arrangement XML
+            for xml_path in sorted_xml:
+                try:
+                    root = ET.parse(xml_path).getroot()
+                    if root.tag != "song":
+                        continue
+                    if _suppress_fallback and _xml_rank(xml_path) == 2:
+                        # Don't read tones from an unrelated arrangement's XML.
+                        continue
+                    # Capture the base tone from the first XML the loop
+                    # accepts. The skip above already excluded untrusted
+                    # rank-2 XMLs whenever a match was confirmed; in the
+                    # genuine no-match case rank-2 IS the best-effort source,
+                    # so its <tonebase> is equally valid for a base-only song.
+                    if not psarc_base:
+                        _tb = root.find("tonebase")
+                        if _tb is not None and _tb.text:
+                            # Strip whitespace from pretty-printed XML so the
+                            # base name matches the sloppak path, which also
+                            # strips it.
+                            psarc_base = _tb.text.strip()
+                    tones_el = root.find("tones")
+                    if tones_el is not None:
+                        # Accumulate into a per-XML list — if this file
+                        # raises partway through, its partial changes are
+                        # discarded rather than bleeding into the next
+                        # candidate XML.
+                        xml_tone_changes = []
+                        for t in tones_el.findall("tone"):
+                            tc_time = t.get("time")
+                            tc_name = t.get("name", "")
+                            tc_id = t.get("id", "")
+                            # Resolve "N/A" or empty names via the selected
+                            # arrangement's own tone map; `Tone {id}` when it
+                            # has none (never another arrangement's names).
+                            if (not tc_name or tc_name == "N/A") and tc_id:
+                                try:
+                                    tc_name = arr_tone_names.get(int(tc_id), f"Tone {tc_id}")
+                                except (TypeError, ValueError):
+                                    pass
+                            if tc_time and tc_name:
+                                # Skip a single malformed/non-finite marker
+                                # rather than letting it raise — the outer
+                                # `except` would otherwise swallow the whole
+                                # XML and drop every tone change. NaN/inf
+                                # would also produce client-unparseable JSON.
+                                try:
+                                    tc_t = float(tc_time)
+                                except (TypeError, ValueError):
+                                    continue
+                                if not math.isfinite(tc_t):
+                                    continue
+                                xml_tone_changes.append({
+                                    "t": round(tc_t, 3),
+                                    "name": tc_name,
+                                })
+                        if xml_tone_changes:
+                            tonebase = root.find("tonebase")
+                            base_name = tonebase.text.strip() if tonebase is not None and tonebase.text else ""
+                            # If base name not in XML, use the selected
+                            # arrangement's own Tone_A.
+                            if not base_name:
+                                base_name = arr_tone_names.get(0, "")
+                            await websocket.send_json({
+                                "type": "tone_changes",
+                                "base": base_name,
+                                "data": sorted(xml_tone_changes, key=lambda x: x["t"]),
                             })
-                    if tone_changes:
-                        tonebase = root.find("tonebase")
-                        base_name = tonebase.text if tonebase is not None and tonebase.text else ""
-                        # If base name not in XML, use Tone_A from tone_id_map (same arrangement)
-                        if not base_name:
-                            base_name = tone_id_map.get(0, "")
-                        await websocket.send_json({
-                            "type": "tone_changes",
-                            "base": base_name,
-                            "data": sorted(tone_changes, key=lambda x: x["t"]),
-                        })
-                        break
-            except Exception:
-                pass
+                            sent_tones = True
+                            break
+                except (ET.ParseError, OSError) as e:
+                    # Only swallow unreadable/malformed XML — skip to the next
+                    # candidate. A blanket `except` here would also eat a
+                    # `WebSocketDisconnect` from `send_json`; let that bubble
+                    # to the handler's outer disconnect handler.
+                    log.debug(
+                        "highway: skipping unreadable arrangement XML %s: %s",
+                        xml_path.name, e,
+                    )
+                    continue
+            # Base-only fallback: a single-tone arrangement has a <tonebase>
+            # but no <tones> markers — still surface the initial tone so the
+            # highway can show it (parity with the sloppak path above).
+            # `psarc_base` is the <tonebase> of whichever XML the loop
+            # accepted: the confirmed-match XML, or — in the genuine no-match
+            # case — the best-effort rank-2 XML. `arr_tone_names` holds the
+            # selected arrangement's own Tone_A..D. An ambiguous arrangement
+            # (token tie) accepts no XML and has no manifest map, so it
+            # correctly sends nothing rather than a guessed tone.
+            if not sent_tones:
+                base_name = psarc_base
+                if not base_name:
+                    base_name = arr_tone_names.get(0, "")
+                if base_name:
+                    await websocket.send_json({
+                        "type": "tone_changes",
+                        "base": base_name,
+                        "data": [],
+                    })
 
         # Send notes in chunks
         notes = [note_to_wire(n) for n in arr.notes]

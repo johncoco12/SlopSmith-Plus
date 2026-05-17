@@ -127,6 +127,15 @@ class Arrangement:
     # available, disable the slider". Populated from Rocksmith XML when
     # multiple `<level>` tiers exist.
     phrases: list[Phrase] | None = None
+    # Tone data lifted from the source PSARC by the sloppak converter and
+    # carried inline in the arrangement JSON. None for PSARC/loose playback
+    # (the highway reads those tones from the XML directly) and for old
+    # sloppaks predating tone support. Shape:
+    #   {"base": str, "changes": [{"t": float, "name": str}],
+    #    "definitions": [<raw RS tone object>]}
+    # `base`/`changes` drive the highway tone-change markers; `definitions`
+    # feed the Tones plugin gear panel.
+    tones: dict | None = None
 
 
 @dataclass
@@ -384,6 +393,12 @@ def arrangement_to_wire(arr: Arrangement) -> dict:
     # see the flat-merge arrangement.
     if arr.phrases:
         out["phrases"] = [phrase_to_wire(p) for p in arr.phrases]
+    # `tones` is additive — only emitted when the source carried tone data
+    # (sloppaks converted from a PSARC). Absent on PSARC/loose-derived
+    # Arrangements and old sloppaks; readers treat a missing key as
+    # "no tones".
+    if arr.tones:
+        out["tones"] = arr.tones
     return out
 
 
@@ -423,6 +438,12 @@ def arrangement_from_wire(d: dict) -> Arrangement:
             [phrase_from_wire(p) for p in d["phrases"]]
             if d.get("phrases") else None
         ),
+        # `tones` is an opaque block written by the converter. An empty dict
+        # normalizes to None ("no tones") — symmetric with
+        # `arrangement_to_wire`, which only emits the key when `arr.tones` is
+        # truthy, and consistent with how `phrases` treats an empty value.
+        # Absent on older sloppaks.
+        tones=(d["tones"] if isinstance(d.get("tones"), dict) and d["tones"] else None),
     )
 
 

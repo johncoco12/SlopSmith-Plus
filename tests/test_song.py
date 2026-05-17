@@ -334,6 +334,54 @@ def test_phrase_wire_is_json_safe():
     assert json.loads(json.dumps(wire, allow_nan=False)) == wire
 
 
+# ── tones wire round-trip ─────────────────────────────────────────────────────
+
+def test_arrangement_tones_round_trip():
+    tones = {
+        "base": "Clean",
+        "changes": [{"t": 12.5, "name": "Drive"}],
+        "definitions": [{"Name": "Clean", "Key": "Tone_A", "GearList": {}}],
+    }
+    arr = Arrangement(name="Lead", tones=tones)
+    wire = arrangement_to_wire(arr)
+    assert wire["tones"] == tones
+    assert arrangement_from_wire(wire).tones == tones
+
+
+def test_arrangement_without_tones_omits_wire_key():
+    wire = arrangement_to_wire(Arrangement(name="Lead"))
+    assert "tones" not in wire
+    assert arrangement_from_wire(wire).tones is None
+
+
+def test_arrangement_from_wire_ignores_non_dict_tones():
+    # A malformed `tones` value must not crash the loader.
+    assert arrangement_from_wire({"name": "Lead", "tones": []}).tones is None
+
+
+def test_arrangement_tones_wire_is_json_safe():
+    # `definitions` is copied verbatim from the PSARC manifest — the wire
+    # output must still be strict JSON (allow_nan=False, as the browser's
+    # JSON.parse requires).
+    arr = Arrangement(name="Lead", tones={
+        "base": "Clean",
+        "changes": [{"t": 12.5, "name": "Drive"}],
+        "definitions": [{
+            "Name": "Clean", "Key": "Tone_A",
+            "GearList": {"Amp": {"Type": "Amp_Twin",
+                                 "KnobValues": {"Gain": 45.5}}},
+        }],
+    })
+    wire = arrangement_to_wire(arr)
+    assert json.loads(json.dumps(wire, allow_nan=False)) == wire
+
+
+def test_arrangement_from_wire_empty_tones_dict_becomes_none():
+    # An empty `{}` normalizes to None, symmetric with arrangement_to_wire
+    # only emitting the key when arr.tones is truthy.
+    assert arrangement_from_wire({"name": "Lead", "tones": {}}).tones is None
+
+
 # ── Dataclass defaults ───────────────────────────────────────────────────────
 
 def test_note_defaults():

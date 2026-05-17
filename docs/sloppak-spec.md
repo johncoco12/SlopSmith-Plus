@@ -159,6 +159,7 @@ The authoritative serializer/deserializer is in [lib/song.py](../lib/song.py):
   "handshapes": [ /* see 3.5 */ ],
   "templates":  [ /* see 3.6 */ ],
   "phrases":    [ /* optional, see 3.7 */ ],
+  "tones":      { /* optional, see 3.9 */ },
   "beats":      [ /* see 3.8, only on first arrangement */ ],
   "sections":   [ /* see 3.8, only on first arrangement */ ]
 }
@@ -282,6 +283,33 @@ If you're writing a converter that doesn't have multi-difficulty data, **omit th
 ```
 
 `measure: -1` = sub-beat (not a downbeat). Section `name` follows Rocksmith conventions (`intro`, `verse`, `chorus`, `bridge`, `solo`, `outro`, …).
+
+### 3.9. Tones (optional)
+
+`tones` carries the arrangement's guitar tones — the amp/pedal/cabinet gear and the in-song tone switches. It's written by the PSARC→sloppak converter (`lib/tones.py`); a sloppak authored from scratch may omit it entirely.
+
+```json
+"tones": {
+  "base": "Clean Rhythm",
+  "changes": [
+    {"t": 12.5, "name": "Lead Drive"},
+    {"t": 48.0, "name": "Clean Rhythm"}
+  ],
+  "definitions": [
+    {
+      "Name": "Clean Rhythm",
+      "Key": "Tone_A",
+      "GearList": { /* raw Rocksmith gear blocks: Amp, PrePedal1-4, … */ }
+    }
+  ]
+}
+```
+
+- `base` (string) — the tone in effect before the first change.
+- `changes` (list, time-sorted) — `{"t": seconds, "name": str}` tone switches. The highway draws a marker at each. Omit when the arrangement never switches tone.
+- `definitions` (list) — the **raw Rocksmith tone objects** (`Name`, `Key`, `GearList`), copied verbatim from the source PSARC manifest. The Tones plugin parses these into the rendered signal chain (it owns the gear-name/image map, so the data is stored unparsed here).
+
+All three sub-keys are individually optional; an arrangement with none of them simply omits `tones`. Readers that don't know about tones ignore the key (the loader preserves it verbatim).
 
 ---
 
