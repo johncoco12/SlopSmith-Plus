@@ -31,5 +31,13 @@ services:
       - 8.8.8.8
       - 1.1.1.1
 
+  vue:
+    build: ./vue-frontend
+    ports:
+      - "8001:80"
+    depends_on:
+      - web
+
 volumes:
   rocksmith-config:
+

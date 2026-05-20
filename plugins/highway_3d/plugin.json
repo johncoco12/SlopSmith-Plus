@@ -5,7 +5,7 @@
     "type": "visualization",
     "bundled": true,
     "script": "screen.js",
-    "settings": { "html": "settings.html", "server_files": ["plugin_uploads/highway_3d/current.mp4", "plugin_uploads/highway_3d/current.webm"] },
+    "settings": { "html": "settings.html", "server_files": ["plugin_uploads/highway_3d/current.mp4", "plugin_uploads/highway_3d/current.webm", "plugin_uploads/highway_3d/headstock/current.glb", "plugin_uploads/highway_3d/headstock/current-bass.glb"] },
     "routes": "routes.py",
     "tour": "tour.json"
 }

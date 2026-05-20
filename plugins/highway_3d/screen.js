@@ -19,6 +19,7 @@
     // version against breakages from upstream Three.js drift.
     const THREE_URL = '/static/vendor/three/three.module.min.js';
     const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js';
+    const GLTF_URL  = '/static/vendor/three/GLTFLoader.js';
 
     // Selectable per-string color palettes (issue #10). Each palette has
     // 8 entries to match MAX_RENDER_STRINGS so 6/7/8-string arrangements
@@ -711,6 +712,42 @@
         return threeLoadPromise;
     }
 
+    // GLTFLoader — loaded lazily after Three.js is ready (it imports Three as a
+    // peer dep). Vendored at /static/vendor/three/GLTFLoader.js with the bare
+    // 'three' specifier patched to the local vendor URL so it shares the same
+    // module instance as loadThree() above. No CDN fallback — GLB upload is a
+    // server-side feature and is only useful with a running local server anyway.
+    let GLTFLoaderClass = null;
+    let gltfLoadPromise = null;
+    function loadGLTFLoader() {
+        if (!gltfLoadPromise) {
+            gltfLoadPromise = loadThree()
+                .then(() => import(GLTF_URL))
+                .then(mod => { GLTFLoaderClass = mod.GLTFLoader; return GLTFLoaderClass; })
+                .catch(e => {
+                    console.error('[3D-Hwy] GLTFLoader load failed:', e);
+                    gltfLoadPromise = null;
+                    throw e;
+                });
+        }
+        return gltfLoadPromise;
+    }
+
+    // Load a GLB from a URL and return the root THREE.Group. Resolves null on
+    // error so callers can treat a missing/corrupt model as "no custom model".
+    function loadGLB(url) {
+        return loadGLTFLoader().then(Loader => {
+            return new Promise((resolve) => {
+                new Loader().load(
+                    url,
+                    (gltf) => resolve(gltf.scene),
+                    undefined,
+                    (err) => { console.warn('[3D-Hwy] GLB load error:', err); resolve(null); }
+                );
+            });
+        }).catch(() => null);
+    }
+
     /* ======================================================================
      *  Splitscreen helpers
      * ====================================================================== */
@@ -844,7 +881,7 @@
         return _bgBandsCache;
     }
 
-    const BG_DEFAULTS = { style: 'particles', intensity: 0.5, reactive: true, palette: 'default', showFretOnNote: true, fretNumberGhostScope: 'rocksmith', cameraSmoothing: 0.5, zoomSmoothing: 0.5, tiltSmoothing: 0.5, cameraLockLow: false, cameraLockZoom: 0.5, cameraMode: 'lookahead', nutHeadstockVisible: true, tuningLabelsVisible: true, nutColor: '#f5f3f0', headstockColor: '#d4b48a', textSize: 0.5, vibrancy: 0.85, glow: 0.25, customImageDataUrl: '', customImageName: '', customVideoName: '', chordDiagramSize: 0.5, chordDiagramPosition: 'tl', fretColumnMarkerCadence: 1, projectionVisible: true, inlayLabelsVisible: false, sectionLabelsOnHighway: false, sectionHudVisible: true, sectionHudPosition: 'tr', sectionHudSize: 0.5 };
+    const BG_DEFAULTS = { style: 'particles', intensity: 0.5, reactive: true, palette: 'default', showFretOnNote: true, fretNumberGhostScope: 'rocksmith', cameraSmoothing: 0.5, zoomSmoothing: 0.5, tiltSmoothing: 0.5, cameraLockLow: false, cameraLockZoom: 0.5, cameraMode: 'lookahead', nutHeadstockVisible: true, tuningLabelsVisible: true, nutColor: '#f5f3f0', headstockColor: '#d4b48a', textSize: 0.5, vibrancy: 0.85, glow: 0.25, customImageDataUrl: '', customImageName: '', customVideoName: '', chordDiagramSize: 0.5, chordDiagramPosition: 'tl', fretColumnMarkerCadence: 1, projectionVisible: true, inlayLabelsVisible: false, sectionLabelsOnHighway: false, sectionHudVisible: true, sectionHudPosition: 'tr', sectionHudSize: 0.5, customHeadstockName: '', customHeadstockOffsetX: 0, customHeadstockOffsetY: 0, customHeadstockOffsetZ: 0, customHeadstockScale: 1.0, customHeadstockRotX: 0, customHeadstockRotY: 0, customHeadstockRotZ: 0, customHeadstockBassName: '', customHeadstockBassOffsetX: 0, customHeadstockBassOffsetY: 0, customHeadstockBassOffsetZ: 0, customHeadstockBassScale: 1.0, customHeadstockBassRotX: 0, customHeadstockBassRotY: 0, customHeadstockBassRotZ: 0, hideDefaultHeadstockWhenCustom: false };
     const BG_STYLE_IDS = ['off', 'particles', 'silhouettes', 'lights', 'geometric', 'image', 'video'];
     const FRET_NUMBER_GHOST_SCOPE_IDS = ['rocksmith', 'all'];
 
@@ -883,7 +920,7 @@
     // means (fall back to default rather than silently flipping to
     // false). Add new boolean keys to BG_DEFAULTS and they pick this
     // up via the dispatch below.
-    const _BG_BOOL_KEYS = new Set(['reactive', 'showFretOnNote', 'cameraLockLow', 'inlayLabelsVisible', 'sectionLabelsOnHighway', 'sectionHudVisible', 'nutHeadstockVisible', 'tuningLabelsVisible', 'projectionVisible']);
+    const _BG_BOOL_KEYS = new Set(['reactive', 'showFretOnNote', 'cameraLockLow', 'inlayLabelsVisible', 'sectionLabelsOnHighway', 'sectionHudVisible', 'nutHeadstockVisible', 'tuningLabelsVisible', 'projectionVisible', 'hideDefaultHeadstockWhenCustom']);
     function _bgCoerceBool(val, fallback) {
         if (val === 'true' || val === '1') return true;
         if (val === 'false' || val === '0') return false;
@@ -922,6 +959,21 @@
             const n = parseInt(val, 10);
             if (!Number.isFinite(n)) return BG_DEFAULTS.fretColumnMarkerCadence;
             return Math.max(0, Math.min(16, n));
+        }
+        if (key === 'customHeadstockOffsetX' || key === 'customHeadstockOffsetY' || key === 'customHeadstockOffsetZ' ||
+            key === 'customHeadstockRotX'    || key === 'customHeadstockRotY'    || key === 'customHeadstockRotZ'    ||
+            key === 'customHeadstockBassOffsetX' || key === 'customHeadstockBassOffsetY' || key === 'customHeadstockBassOffsetZ' ||
+            key === 'customHeadstockBassRotX'    || key === 'customHeadstockBassRotY'    || key === 'customHeadstockBassRotZ') {
+            const n = parseFloat(val);
+            return Number.isFinite(n) ? Math.max(-10, Math.min(10, n)) : BG_DEFAULTS[key];
+        }
+        if (key === 'customHeadstockScale') {
+            const n = parseFloat(val);
+            return Number.isFinite(n) ? Math.max(0.01, Math.min(20, n)) : BG_DEFAULTS.customHeadstockScale;
+        }
+        if (key === 'customHeadstockBassScale') {
+            const n = parseFloat(val);
+            return Number.isFinite(n) ? Math.max(0.01, Math.min(20, n)) : BG_DEFAULTS.customHeadstockBassScale;
         }
         return val;
     }
@@ -1026,6 +1078,30 @@
         _bgWriteGlobal('customVideoName', (asset && asset.name) || '');
     };
     window.h3dBgClearCustomVideo = () => _bgWriteGlobal('customVideoName', '');
+    // Custom headstock GLB — bytes live on disk under
+    // {config_dir}/plugin_uploads/highway_3d/headstock/; localStorage
+    // holds only the filename. Transform knobs are stored as individual
+    // globals so settings.html can update them per-slider without
+    // rebuilding the whole board.
+    window.h3dBgSetCustomHeadstockName = (name) => _bgWriteGlobal('customHeadstockName', name || '');
+    window.h3dBgClearCustomHeadstock   = () => _bgWriteGlobal('customHeadstockName', '');
+    window.h3dBgSetCustomHeadstockOffsetX = (v) => _bgWriteGlobal('customHeadstockOffsetX', v);
+    window.h3dBgSetCustomHeadstockOffsetY = (v) => _bgWriteGlobal('customHeadstockOffsetY', v);
+    window.h3dBgSetCustomHeadstockOffsetZ = (v) => _bgWriteGlobal('customHeadstockOffsetZ', v);
+    window.h3dBgSetCustomHeadstockScale   = (v) => _bgWriteGlobal('customHeadstockScale', v);
+    window.h3dBgSetCustomHeadstockRotX    = (v) => _bgWriteGlobal('customHeadstockRotX', v);
+    window.h3dBgSetCustomHeadstockRotY    = (v) => _bgWriteGlobal('customHeadstockRotY', v);
+    window.h3dBgSetCustomHeadstockRotZ    = (v) => _bgWriteGlobal('customHeadstockRotZ', v);
+    window.h3dBgSetCustomHeadstockBassName = (name) => _bgWriteGlobal('customHeadstockBassName', name || '');
+    window.h3dBgClearCustomHeadstockBass   = () => _bgWriteGlobal('customHeadstockBassName', '');
+    window.h3dBgSetCustomHeadstockBassOffsetX = (v) => _bgWriteGlobal('customHeadstockBassOffsetX', v);
+    window.h3dBgSetCustomHeadstockBassOffsetY = (v) => _bgWriteGlobal('customHeadstockBassOffsetY', v);
+    window.h3dBgSetCustomHeadstockBassOffsetZ = (v) => _bgWriteGlobal('customHeadstockBassOffsetZ', v);
+    window.h3dBgSetCustomHeadstockBassScale   = (v) => _bgWriteGlobal('customHeadstockBassScale', v);
+    window.h3dBgSetCustomHeadstockBassRotX    = (v) => _bgWriteGlobal('customHeadstockBassRotX', v);
+    window.h3dBgSetCustomHeadstockBassRotY    = (v) => _bgWriteGlobal('customHeadstockBassRotY', v);
+    window.h3dBgSetCustomHeadstockBassRotZ    = (v) => _bgWriteGlobal('customHeadstockBassRotZ', v);
+    window.h3dBgSetHideDefaultHeadstockWhenCustom = (v) => _bgWriteGlobal('hideDefaultHeadstockWhenCustom', !!v);
     // Back-compat alias for any caller that picked up the original
     // (inconsistent) name during this PR's review window.
     window.h3dSetPalette = window.h3dBgSetPalette;
@@ -1966,6 +2042,23 @@
         let nutColor               = BG_DEFAULTS.nutColor;
         let headstockColor         = BG_DEFAULTS.headstockColor;
         let projectionVisible      = BG_DEFAULTS.projectionVisible;   // board "note preview" ghost on the fretboard
+        let customHeadstockName    = BG_DEFAULTS.customHeadstockName;
+        let customHeadstockOffsetX = BG_DEFAULTS.customHeadstockOffsetX;
+        let customHeadstockOffsetY = BG_DEFAULTS.customHeadstockOffsetY;
+        let customHeadstockOffsetZ = BG_DEFAULTS.customHeadstockOffsetZ;
+        let customHeadstockScale   = BG_DEFAULTS.customHeadstockScale;
+        let customHeadstockRotX    = BG_DEFAULTS.customHeadstockRotX;
+        let customHeadstockRotY    = BG_DEFAULTS.customHeadstockRotY;
+        let customHeadstockRotZ    = BG_DEFAULTS.customHeadstockRotZ;
+        let customHeadstockBassName    = BG_DEFAULTS.customHeadstockBassName;
+        let customHeadstockBassOffsetX = BG_DEFAULTS.customHeadstockBassOffsetX;
+        let customHeadstockBassOffsetY = BG_DEFAULTS.customHeadstockBassOffsetY;
+        let customHeadstockBassOffsetZ = BG_DEFAULTS.customHeadstockBassOffsetZ;
+        let customHeadstockBassScale   = BG_DEFAULTS.customHeadstockBassScale;
+        let customHeadstockBassRotX    = BG_DEFAULTS.customHeadstockBassRotX;
+        let customHeadstockBassRotY    = BG_DEFAULTS.customHeadstockBassRotY;
+        let customHeadstockBassRotZ    = BG_DEFAULTS.customHeadstockBassRotZ;
+        let hideDefaultHeadstockWhenCustom = BG_DEFAULTS.hideDefaultHeadstockWhenCustom;
         let _vibrancyIdleOp = 0.4  + 0.6  * BG_DEFAULTS.vibrancy;
         let _vibrancyProjOp = 0.15 + 0.35 * BG_DEFAULTS.vibrancy;
         // Custom image asset (issue #19). Data URL is the bytes that
@@ -1994,6 +2087,7 @@
         // once per frame in update() to keep the arrays small.
         const _ND_TTL_MS = 500;
         const _ND_TIME_EPS = 0.01;
+        const _ND_FLASH_MS = 450;
         let _ndHitMarks = [];
         let _ndMissMarks = [];
         let _ndOnHit = null, _ndOnMiss = null;
@@ -2010,6 +2104,7 @@
         // persists exactly as long as the provider keeps reporting
         // hit/active for it.
         let _ndSizzle = [];
+        let _ndFlash  = [];  // {x,y,z,s,bornMs} — one-shot bloom bursts on hit
         // Per-chord-occurrence verdict latch for the chord-frame rim
         // tint. Once a chord is observed all-hit/active during its linger
         // fade we latch 'green' here so subsequent frames can't undo it
@@ -2087,6 +2182,12 @@
         let stringLineGlows = [];
         /** Nut + headstock 3D subtree; visibility toggled from settings without rebuild. */
         let nutHeadstockGroup = null;
+        /** Custom headstock GLB — a THREE.Group added as child of nutHeadstockGroup. */
+        let _customHeadstockObj = null;
+        /** URL of the GLB currently loaded into _customHeadstockObj (to detect stale loads). */
+        let _customHeadstockLoadedUrl = '';
+        /** Inner group holding ONLY built-in nut/headstock meshes; nested inside nutHeadstockGroup so it can be hidden independently of the custom GLB. */
+        let _builtinNutHeadGroup = null;
         /** Left edge X of drawable string meshes; updated in buildBoard() at nut / fret junction. */
         let boardStringStartX = fretX(0);
         /** Open-string label column X — over headstock, left of nut (set in buildBoard()). */
@@ -4188,6 +4289,37 @@
                     for (const lbl of _inlayLabels) lbl.visible = inlayLabelsVisible;
                     return;
                 }
+                if (changedKey === 'customHeadstockName') {
+                    _bgLoadSettings();
+                    if (nStr > 4) { _customHeadstockLoadedUrl = ''; _applyCustomHeadstock(); }
+                    return;
+                }
+                if (changedKey === 'customHeadstockOffsetX' || changedKey === 'customHeadstockOffsetY' ||
+                    changedKey === 'customHeadstockOffsetZ' || changedKey === 'customHeadstockScale'   ||
+                    changedKey === 'customHeadstockRotX'    || changedKey === 'customHeadstockRotY'    ||
+                    changedKey === 'customHeadstockRotZ') {
+                    _bgLoadSettings();
+                    if (nStr > 4) _applyCustomHeadstockTransform();
+                    return;
+                }
+                if (changedKey === 'customHeadstockBassName') {
+                    _bgLoadSettings();
+                    if (nStr <= 4) { _customHeadstockLoadedUrl = ''; _applyCustomHeadstock(); }
+                    return;
+                }
+                if (changedKey === 'customHeadstockBassOffsetX' || changedKey === 'customHeadstockBassOffsetY' ||
+                    changedKey === 'customHeadstockBassOffsetZ'  || changedKey === 'customHeadstockBassScale'  ||
+                    changedKey === 'customHeadstockBassRotX'     || changedKey === 'customHeadstockBassRotY'   ||
+                    changedKey === 'customHeadstockBassRotZ') {
+                    _bgLoadSettings();
+                    if (nStr <= 4) _applyCustomHeadstockTransform();
+                    return;
+                }
+                if (changedKey === 'hideDefaultHeadstockWhenCustom') {
+                    _bgLoadSettings();
+                    _updateBuiltinNutHeadVisibility();
+                    return;
+                }
                 if (changedKey === 'reactive' || changedKey === 'showFretOnNote' ||
                     changedKey === 'fretNumberGhostScope' ||
                     changedKey === 'cameraSmoothing' || changedKey === 'zoomSmoothing' ||
@@ -4347,14 +4479,23 @@
                 arr.push({ ...mark, expiresAt: now + _ND_TTL_MS });
                 return arr;
             };
-            _ndOnHit = (e) => { _ndHitMarks = _ndPushMark(_ndHitMarks, e.detail); };
+            const _ndPushFlash = (d) => {
+                if (!d) return;
+                const note = d.note || d.chartNote;
+                if (!note || !Number.isFinite(note.s) || !Number.isFinite(note.f)) return;
+                if (!validString(note.s)) return;
+                const fx = note.f === 0 ? curX : xFretMid(note.f);
+                const fy = sY(note.s);
+                _ndFlash.push({ x: fx, y: fy, z: 0, s: note.s, bornMs: performance.now() });
+            };
+            _ndOnHit = (e) => { _ndHitMarks = _ndPushMark(_ndHitMarks, e.detail); _ndPushFlash(e.detail); };
             _ndOnMiss = (e) => { _ndMissMarks = _ndPushMark(_ndMissMarks, e.detail); };
             window.addEventListener('notedetect:hit', _ndOnHit);
             window.addEventListener('notedetect:miss', _ndOnMiss);
             if (window.slopsmith &&
                     typeof window.slopsmith.on  === 'function' &&
                     typeof window.slopsmith.off === 'function') {
-                _ndOnBusHit  = (e) => { _ndHitMarks  = _ndPushMark(_ndHitMarks,  e.detail); };
+                _ndOnBusHit  = (e) => { _ndHitMarks  = _ndPushMark(_ndHitMarks,  e.detail); _ndPushFlash(e.detail); };
                 _ndOnBusMiss = (e) => { _ndMissMarks = _ndPushMark(_ndMissMarks, e.detail); };
                 window.slopsmith.on('note:hit', _ndOnBusHit);
                 window.slopsmith.on('note:miss', _ndOnBusMiss);
@@ -4406,6 +4547,42 @@
             nutColor               = _bgReadSetting(panelKey, 'nutColor');
             headstockColor         = _bgReadSetting(panelKey, 'headstockColor');
             projectionVisible      = _bgReadSetting(panelKey, 'projectionVisible');
+            // Custom headstock GLB transform — read from global only (like customVideoName).
+            // Per-panel overrides are not meaningful for uploaded model assets.
+            {
+                const mem = _bgMemFallback;
+                customHeadstockName    = mem.customHeadstockName    !== undefined ? mem.customHeadstockName    : (localStorage.getItem('h3d_bg_customHeadstockName')    ?? BG_DEFAULTS.customHeadstockName);
+                customHeadstockOffsetX = mem.customHeadstockOffsetX !== undefined ? Number(mem.customHeadstockOffsetX) : parseFloat(localStorage.getItem('h3d_bg_customHeadstockOffsetX') ?? BG_DEFAULTS.customHeadstockOffsetX);
+                customHeadstockOffsetY = mem.customHeadstockOffsetY !== undefined ? Number(mem.customHeadstockOffsetY) : parseFloat(localStorage.getItem('h3d_bg_customHeadstockOffsetY') ?? BG_DEFAULTS.customHeadstockOffsetY);
+                customHeadstockOffsetZ = mem.customHeadstockOffsetZ !== undefined ? Number(mem.customHeadstockOffsetZ) : parseFloat(localStorage.getItem('h3d_bg_customHeadstockOffsetZ') ?? BG_DEFAULTS.customHeadstockOffsetZ);
+                customHeadstockScale   = mem.customHeadstockScale   !== undefined ? Number(mem.customHeadstockScale)   : parseFloat(localStorage.getItem('h3d_bg_customHeadstockScale')   ?? BG_DEFAULTS.customHeadstockScale);
+                customHeadstockRotX    = mem.customHeadstockRotX    !== undefined ? Number(mem.customHeadstockRotX)    : parseFloat(localStorage.getItem('h3d_bg_customHeadstockRotX')    ?? BG_DEFAULTS.customHeadstockRotX);
+                customHeadstockRotY    = mem.customHeadstockRotY    !== undefined ? Number(mem.customHeadstockRotY)    : parseFloat(localStorage.getItem('h3d_bg_customHeadstockRotY')    ?? BG_DEFAULTS.customHeadstockRotY);
+                customHeadstockRotZ    = mem.customHeadstockRotZ    !== undefined ? Number(mem.customHeadstockRotZ)    : parseFloat(localStorage.getItem('h3d_bg_customHeadstockRotZ')    ?? BG_DEFAULTS.customHeadstockRotZ);
+                if (!Number.isFinite(customHeadstockOffsetX)) customHeadstockOffsetX = BG_DEFAULTS.customHeadstockOffsetX;
+                if (!Number.isFinite(customHeadstockOffsetY)) customHeadstockOffsetY = BG_DEFAULTS.customHeadstockOffsetY;
+                if (!Number.isFinite(customHeadstockOffsetZ)) customHeadstockOffsetZ = BG_DEFAULTS.customHeadstockOffsetZ;
+                if (!Number.isFinite(customHeadstockScale)  || customHeadstockScale <= 0) customHeadstockScale = BG_DEFAULTS.customHeadstockScale;
+                if (!Number.isFinite(customHeadstockRotX))  customHeadstockRotX = BG_DEFAULTS.customHeadstockRotX;
+                if (!Number.isFinite(customHeadstockRotY))  customHeadstockRotY = BG_DEFAULTS.customHeadstockRotY;
+                if (!Number.isFinite(customHeadstockRotZ))  customHeadstockRotZ = BG_DEFAULTS.customHeadstockRotZ;
+                customHeadstockBassName    = mem.customHeadstockBassName    !== undefined ? mem.customHeadstockBassName    : (localStorage.getItem('h3d_bg_customHeadstockBassName')    ?? BG_DEFAULTS.customHeadstockBassName);
+                customHeadstockBassOffsetX = mem.customHeadstockBassOffsetX !== undefined ? Number(mem.customHeadstockBassOffsetX) : parseFloat(localStorage.getItem('h3d_bg_customHeadstockBassOffsetX') ?? BG_DEFAULTS.customHeadstockBassOffsetX);
+                customHeadstockBassOffsetY = mem.customHeadstockBassOffsetY !== undefined ? Number(mem.customHeadstockBassOffsetY) : parseFloat(localStorage.getItem('h3d_bg_customHeadstockBassOffsetY') ?? BG_DEFAULTS.customHeadstockBassOffsetY);
+                customHeadstockBassOffsetZ = mem.customHeadstockBassOffsetZ !== undefined ? Number(mem.customHeadstockBassOffsetZ) : parseFloat(localStorage.getItem('h3d_bg_customHeadstockBassOffsetZ') ?? BG_DEFAULTS.customHeadstockBassOffsetZ);
+                customHeadstockBassScale   = mem.customHeadstockBassScale   !== undefined ? Number(mem.customHeadstockBassScale)   : parseFloat(localStorage.getItem('h3d_bg_customHeadstockBassScale')   ?? BG_DEFAULTS.customHeadstockBassScale);
+                customHeadstockBassRotX    = mem.customHeadstockBassRotX    !== undefined ? Number(mem.customHeadstockBassRotX)    : parseFloat(localStorage.getItem('h3d_bg_customHeadstockBassRotX')    ?? BG_DEFAULTS.customHeadstockBassRotX);
+                customHeadstockBassRotY    = mem.customHeadstockBassRotY    !== undefined ? Number(mem.customHeadstockBassRotY)    : parseFloat(localStorage.getItem('h3d_bg_customHeadstockBassRotY')    ?? BG_DEFAULTS.customHeadstockBassRotY);
+                customHeadstockBassRotZ    = mem.customHeadstockBassRotZ    !== undefined ? Number(mem.customHeadstockBassRotZ)    : parseFloat(localStorage.getItem('h3d_bg_customHeadstockBassRotZ')    ?? BG_DEFAULTS.customHeadstockBassRotZ);
+                if (!Number.isFinite(customHeadstockBassOffsetX)) customHeadstockBassOffsetX = BG_DEFAULTS.customHeadstockBassOffsetX;
+                if (!Number.isFinite(customHeadstockBassOffsetY)) customHeadstockBassOffsetY = BG_DEFAULTS.customHeadstockBassOffsetY;
+                if (!Number.isFinite(customHeadstockBassOffsetZ)) customHeadstockBassOffsetZ = BG_DEFAULTS.customHeadstockBassOffsetZ;
+                if (!Number.isFinite(customHeadstockBassScale)  || customHeadstockBassScale <= 0) customHeadstockBassScale = BG_DEFAULTS.customHeadstockBassScale;
+                if (!Number.isFinite(customHeadstockBassRotX))  customHeadstockBassRotX = BG_DEFAULTS.customHeadstockBassRotX;
+                if (!Number.isFinite(customHeadstockBassRotY))  customHeadstockBassRotY = BG_DEFAULTS.customHeadstockBassRotY;
+                if (!Number.isFinite(customHeadstockBassRotZ))  customHeadstockBassRotZ = BG_DEFAULTS.customHeadstockBassRotZ;
+            }
+            hideDefaultHeadstockWhenCustom = _bgReadSetting(panelKey, 'hideDefaultHeadstockWhenCustom');
             _vibrancyIdleOp = 0.4  + 0.6  * vibrancy;
             _vibrancyProjOp = 0.15 + 0.35 * vibrancy;
             // Custom image asset is a single GLOBAL slot — bytes are
@@ -4661,6 +4838,11 @@
             return parseInt(s.slice(1), 16);
         }
         function buildBoard() {
+            // Dispose the custom GLB first so it is cleanly removed from the
+            // old nutHeadstockGroup before the clear loop below disposes the
+            // rest of fretG's subtree. This also clears _customHeadstockLoadedUrl
+            // so _applyCustomHeadstock() re-fetches into the fresh group.
+            _disposeCustomHeadstock();
             // Dispose before clearing (traverse: nut/headstock may live in a Group).
             while (fretG.children.length) {
                 const child = fretG.children[0];
@@ -4736,6 +4918,7 @@
             // Guitar nut + headstock — grouped so visibility + colors are user-tunable.
             {
                 nutHeadstockGroup = new T.Group();
+                _builtinNutHeadGroup = new T.Group();
                 const yTopN = Math.max(sY(0), sY(nStr - 1));
                 const yBottomN = Math.min(sY(0), sY(nStr - 1));
                 const yMidN = (yTopN + yBottomN) / 2;
@@ -4772,7 +4955,7 @@
                     mapleDark,
                 );
                 headCore.position.set(coreCX, yMidN, zBack - headCoreD * 0.35);
-                nutHeadstockGroup.add(headCore);
+                _builtinNutHeadGroup.add(headCore);
 
                 const xs = 14;
                 const ys = 12;
@@ -4809,7 +4992,7 @@
                 rampGeo.setAttribute('position', new T.BufferAttribute(posR, 3));
                 rampGeo.setIndex(idxR);
                 rampGeo.computeVertexNormals();
-                nutHeadstockGroup.add(new T.Mesh(rampGeo, mapleMat));
+                _builtinNutHeadGroup.add(new T.Mesh(rampGeo, mapleMat));
 
                 const boneMat = new T.MeshStandardMaterial({
                     color: nutBase, roughness: 0.38, metalness: 0.02,
@@ -4826,7 +5009,7 @@
                     boneMat,
                 );
                 nutBody.position.set(nutXC, yMidN, nutZc);
-                nutHeadstockGroup.add(nutBody);
+                _builtinNutHeadGroup.add(nutBody);
 
                 const crownR = nutLenX * 0.52;
                 const crownSeg = new T.CylinderGeometry(
@@ -4840,7 +5023,7 @@
                     yMidN + nutHalfH - 0.02 * K,
                     nutZc + nutD * 0.22,
                 );
-                nutHeadstockGroup.add(crown);
+                _builtinNutHeadGroup.add(crown);
 
                 const slotDrop = 0.11 * K;
                 const slotHalfW = STR_THICK * 1.15;
@@ -4851,11 +5034,17 @@
                         grooveMat,
                     );
                     gr.position.set(nutXC, sY(st), slotZ);
-                    nutHeadstockGroup.add(gr);
+                    _builtinNutHeadGroup.add(gr);
                 }
+                nutHeadstockGroup.add(_builtinNutHeadGroup);
                 nutHeadstockGroup.visible = nutHeadstockVisible;
                 fretG.add(nutHeadstockGroup);
             }
+
+            // Attach custom headstock GLB (if one is configured).
+            // _applyCustomHeadstock clears any previous model first, then
+            // async-loads from the server and re-attaches to nutHeadstockGroup.
+            _applyCustomHeadstock();
 
             // Fret wires
             const yTop = Math.max(sY(0), sY(nStr - 1));
@@ -4929,6 +5118,77 @@
                 _inlayLabels.push(lbl);
                 _inlayMats.push(mat);
             }
+        }
+
+        /* ── Custom headstock GLB ────────────────────────────────────────── */
+
+        function _updateBuiltinNutHeadVisibility() {
+            if (_builtinNutHeadGroup) {
+                _builtinNutHeadGroup.visible = !(hideDefaultHeadstockWhenCustom && !!_customHeadstockObj);
+            }
+        }
+
+        function _disposeCustomHeadstock() {
+            if (!_customHeadstockObj) return;
+            if (nutHeadstockGroup) nutHeadstockGroup.remove(_customHeadstockObj);
+            _customHeadstockObj.traverse(obj => {
+                obj.geometry?.dispose?.();
+                if (obj.material) {
+                    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                    for (const m of mats) { m.map?.dispose?.(); m.dispose?.(); }
+                }
+            });
+            _customHeadstockObj = null;
+            _customHeadstockLoadedUrl = '';
+            _updateBuiltinNutHeadVisibility();
+        }
+
+        function _applyCustomHeadstockTransform() {
+            if (!_customHeadstockObj) return;
+            const isBass = nStr <= 4;
+            const s    = isBass ? customHeadstockBassScale   : customHeadstockScale;
+            const offX = isBass ? customHeadstockBassOffsetX : customHeadstockOffsetX;
+            const offY = isBass ? customHeadstockBassOffsetY : customHeadstockOffsetY;
+            const offZ = isBass ? customHeadstockBassOffsetZ : customHeadstockOffsetZ;
+            const rotX = isBass ? customHeadstockBassRotX    : customHeadstockRotX;
+            const rotY = isBass ? customHeadstockBassRotY    : customHeadstockRotY;
+            const rotZ = isBass ? customHeadstockBassRotZ    : customHeadstockRotZ;
+            _customHeadstockObj.scale.set(s, s, s);
+            _customHeadstockObj.position.set(offX * K, offY * K, offZ * K);
+            _customHeadstockObj.rotation.set(
+                rotX * Math.PI / 180,
+                rotY * Math.PI / 180,
+                rotZ * Math.PI / 180,
+            );
+        }
+
+        function _applyCustomHeadstock() {
+            const isBass = nStr <= 4;
+            const name = isBass
+                ? ((typeof customHeadstockBassName === 'string') ? customHeadstockBassName.trim() : '')
+                : ((typeof customHeadstockName     === 'string') ? customHeadstockName.trim()     : '');
+            if (!name) {
+                _disposeCustomHeadstock();
+                return;
+            }
+            const url = isBass
+                ? '/api/plugins/highway_3d/headstock/current-bass.glb'
+                : '/api/plugins/highway_3d/headstock/current.glb';
+            if (url === _customHeadstockLoadedUrl) {
+                _applyCustomHeadstockTransform();
+                return;
+            }
+            const expectedUrl = url;
+            loadGLB(url).then(obj => {
+                if (url !== expectedUrl) return;
+                _disposeCustomHeadstock();
+                if (!obj || !nutHeadstockGroup) return;
+                _customHeadstockObj = obj;
+                _customHeadstockLoadedUrl = url;
+                _applyCustomHeadstockTransform();
+                nutHeadstockGroup.add(_customHeadstockObj);
+                _updateBuiltinNutHeadVisibility();
+            });
         }
 
         /* ── String glow (called each frame) ────────────────────────────── */
@@ -8287,6 +8547,66 @@
         // every frame, so the sparkle lives for exactly as long as the
         // provider keeps reporting hit/active for that note (and stops
         // the instant it goes away or a held sustain drops off-pitch).
+        function drawNotedetectFlash(ctx, W, H) {
+            if (!_ndFlash.length || !cam || !_probe) return;
+            const nowMs = performance.now();
+            _ndFlash = _ndFlash.filter(fl => nowMs - fl.bornMs < _ND_FLASH_MS);
+            if (!_ndFlash.length) return;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            for (const fl of _ndFlash) {
+                _probe.set(fl.x, fl.y, fl.z);
+                _probe.project(cam);
+                if (_probe.z < -1 || _probe.z > 1) continue;
+                const cx = (_probe.x * 0.5 + 0.5) * W;
+                const cy = (-_probe.y * 0.5 + 0.5) * H;
+                // Measure on-screen note width for scaling
+                _probe.set(fl.x + NW * 0.5, fl.y, fl.z);
+                _probe.project(cam);
+                const ex = (_probe.x * 0.5 + 0.5) * W, ey = (-_probe.y * 0.5 + 0.5) * H;
+                const baseR = Math.max(10, Math.hypot(ex - cx, ey - cy));
+                if (baseR > Math.min(W, H) * 0.4) continue;
+
+                const age  = (nowMs - fl.bornMs) / _ND_FLASH_MS;          // 0 → 1
+                const fade = Math.pow(1 - age, 1.8);                       // fast falloff
+                const c    = activePalette[fl.s];
+                const hex  = typeof c === 'number'
+                    ? '#' + ('000000' + (c >>> 0).toString(16)).slice(-6)
+                    : '#ffffff';
+                const a2   = n => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
+
+                // Expanding ring — grows from 1× to 5× note radius, fades out
+                const ringR = baseR * (1 + age * 4);
+                const ringW = baseR * 0.55 * (1 - age * 0.6);
+                const gRing = ctx.createRadialGradient(cx, cy, Math.max(0, ringR - ringW), cx, cy, ringR + ringW * 0.5);
+                gRing.addColorStop(0,   hex + '00');
+                gRing.addColorStop(0.3, hex + a2(fade * 180));
+                gRing.addColorStop(0.6, '#ffffff' + a2(fade * 220));
+                gRing.addColorStop(1,   hex + '00');
+                ctx.fillStyle = gRing;
+                ctx.beginPath();
+                ctx.arc(cx, cy, ringR + ringW, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Inner core burst — only during first 35% of the animation
+                if (age < 0.35) {
+                    const coreAge  = age / 0.35;
+                    const coreAlpha = (1 - coreAge) * fade;
+                    const coreR  = baseR * (0.7 + coreAge * 0.5);
+                    const gCore  = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
+                    gCore.addColorStop(0,   '#ffffff' + a2(coreAlpha * 255));
+                    gCore.addColorStop(0.4, '#ffffff' + a2(coreAlpha * 200));
+                    gCore.addColorStop(0.7, hex       + a2(coreAlpha * 160));
+                    gCore.addColorStop(1,   hex       + '00');
+                    ctx.fillStyle = gCore;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+        }
+
         function drawNotedetectSizzle(ctx, W, H) {
             if (!_ndSizzle.length || !cam || !_probe) return;
             ctx.save();
@@ -8451,6 +8771,8 @@
             _ndMissMarks = [];
             _ndLabels = [];
             _ndSizzle = [];
+            _ndFlash  = [];
+            _disposeCustomHeadstock();
             _chordVerdicts = new Map();
             _bgUnmountStyle();
             bgGroup = null; _bgLastT = 0;
@@ -8748,6 +9070,7 @@
                     if (bundle.lyricsVisible && bundle.lyrics?.length) {
                         lyricsBottom = drawLyrics(bundle.lyrics, bundle.currentTime, lyricsCtx, lyricsCanvas.width, lyricsCanvas.height) || 0;
                     }
+                    drawNotedetectFlash(lyricsCtx, lyricsCanvas.width, lyricsCanvas.height);
                     drawNotedetectSizzle(lyricsCtx, lyricsCanvas.width, lyricsCanvas.height);
                     drawNotedetectLabels(lyricsCtx, lyricsCanvas.width, lyricsCanvas.height);
                     // Draw outgoing diagram first so the incoming diagram renders on top,

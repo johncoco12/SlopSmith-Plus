@@ -36,6 +36,11 @@ MAX_VIDEO_BYTES = 50 * 1024 * 1024  # 50 MB raw
 # client that knew the name.
 SLOT_FILENAME_RE = re.compile(r"^current\.(mp4|webm)$")
 
+ALLOWED_GLB_EXT = "glb"
+ALLOWED_GLB_MIMES = {"model/gltf-binary", "application/octet-stream"}
+MAX_GLB_BYTES = 20 * 1024 * 1024  # 20 MB
+HEADSTOCK_SLOT_FILENAME_RE = re.compile(r"^current(-bass)?\.glb$")
+
 
 def setup(app: FastAPI, context: dict) -> None:
     config_dir = Path(context["config_dir"])
@@ -302,4 +307,190 @@ def setup(app: FastAPI, context: dict) -> None:
                     deleted.append(path.name)
                 except OSError:
                     leftover.append({"name": path.name, "error": "unlink failed"})
+        return JSONResponse({"ok": True, "deleted": deleted, "leftover": leftover})
+
+    # ── Custom headstock GLB slot ──────────────────────────────────────────
+    # Separate from the video slot: different directory, different size cap,
+    # only accepts .glb files. Same atomic-replace + lock pattern.
+
+    headstock_dir = upload_dir / "headstock"
+    headstock_dir.mkdir(parents=True, exist_ok=True)
+    _headstock_lock = asyncio.Lock()
+    _headstock_bass_lock = asyncio.Lock()
+
+    @app.post(f"/api/plugins/{PLUGIN_ID}/headstock")
+    async def upload_headstock(request: Request):
+        cl = request.headers.get("content-length")
+        if cl is not None:
+            try:
+                cl_int = int(cl)
+            except ValueError:
+                raise HTTPException(400, "Invalid Content-Length header.")
+            if cl_int < 0:
+                raise HTTPException(400, "Invalid Content-Length header.")
+            if cl_int > MAX_GLB_BYTES:
+                raise HTTPException(
+                    413,
+                    f"Upload exceeds {MAX_GLB_BYTES // (1024 * 1024)} MB limit.",
+                )
+
+        form = await request.form()
+        try:
+            file = form.get("file")
+            if not isinstance(file, UploadFile):
+                raise HTTPException(400, "Expected a file upload in field 'file'.")
+            try:
+                return await _do_upload_headstock(file)
+            finally:
+                try:
+                    await file.close()
+                except Exception:
+                    pass
+        finally:
+            try:
+                await form.close()
+            except Exception:
+                pass
+
+    async def _do_upload_headstock_slot(file: UploadFile, out_name: str, lock: asyncio.Lock):
+        ext = (Path(file.filename or "").suffix.lstrip(".") or "").lower()
+        if ext != ALLOWED_GLB_EXT:
+            raise HTTPException(400, "Filename must end in .glb.")
+
+        out_path = headstock_dir / out_name
+        fd, tmp_name = await run_in_threadpool(
+            tempfile.mkstemp, dir=str(headstock_dir), prefix="upload-", suffix=".part"
+        )
+        tmp_path = Path(tmp_name)
+        bytes_read = 0
+        try:
+            try:
+                tmpf = await run_in_threadpool(os.fdopen, fd, "wb")
+            except BaseException:
+                try:
+                    await run_in_threadpool(os.close, fd)
+                except OSError:
+                    pass
+                raise
+            try:
+                while True:
+                    chunk = await file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    bytes_read += len(chunk)
+                    if bytes_read > MAX_GLB_BYTES:
+                        raise HTTPException(
+                            413,
+                            f"GLB exceeds {MAX_GLB_BYTES // (1024 * 1024)} MB cap.",
+                        )
+                    await run_in_threadpool(tmpf.write, chunk)
+            finally:
+                await run_in_threadpool(tmpf.close)
+
+            if bytes_read == 0:
+                raise HTTPException(400, "Empty upload — file is 0 bytes.")
+
+            async with lock:
+                await run_in_threadpool(os.replace, str(tmp_path), str(out_path))
+        except BaseException:
+            try:
+                await run_in_threadpool(tmp_path.unlink)
+            except OSError:
+                pass
+            raise
+
+        return {
+            "url": f"/api/plugins/{PLUGIN_ID}/headstock/{out_name}",
+            "name": out_name,
+            "size": bytes_read,
+        }
+
+    async def _do_upload_headstock(file: UploadFile):
+        return await _do_upload_headstock_slot(file, "current.glb", _headstock_lock)
+
+    @app.get(f"/api/plugins/{PLUGIN_ID}/headstock/{{filename}}")
+    async def get_headstock(filename: str):
+        if not HEADSTOCK_SLOT_FILENAME_RE.match(filename):
+            raise HTTPException(404, "Not found.")
+        path = headstock_dir / filename
+        try:
+            resolved = path.resolve()
+            resolved.relative_to(headstock_dir.resolve())
+        except (OSError, ValueError):
+            raise HTTPException(404, "Not found.")
+        if not resolved.is_file():
+            raise HTTPException(404, "Not found.")
+        return FileResponse(
+            resolved,
+            media_type="model/gltf-binary",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.delete(f"/api/plugins/{PLUGIN_ID}/headstock")
+    async def delete_headstock():
+        async with _headstock_lock:
+            path = headstock_dir / "current.glb"
+            deleted = []
+            leftover = []
+            try:
+                await run_in_threadpool(path.unlink)
+                deleted.append(path.name)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                leftover.append({"name": path.name, "error": "unlink failed"})
+        return JSONResponse({"ok": True, "deleted": deleted, "leftover": leftover})
+
+    # ── Bass headstock slot ────────────────────────────────────────────────
+
+    @app.post(f"/api/plugins/{PLUGIN_ID}/headstock/bass")
+    async def upload_headstock_bass(request: Request):
+        cl = request.headers.get("content-length")
+        if cl is not None:
+            try:
+                cl_int = int(cl)
+            except ValueError:
+                raise HTTPException(400, "Invalid Content-Length header.")
+            if cl_int < 0:
+                raise HTTPException(400, "Invalid Content-Length header.")
+            if cl_int > MAX_GLB_BYTES:
+                raise HTTPException(
+                    413,
+                    f"Upload exceeds {MAX_GLB_BYTES // (1024 * 1024)} MB limit.",
+                )
+
+        form = await request.form()
+        try:
+            file = form.get("file")
+            if not isinstance(file, UploadFile):
+                raise HTTPException(400, "Expected a file upload in field 'file'.")
+            try:
+                return await _do_upload_headstock_slot(file, "current-bass.glb", _headstock_bass_lock)
+            finally:
+                try:
+                    await file.close()
+                except Exception:
+                    pass
+        finally:
+            try:
+                await form.close()
+            except Exception:
+                pass
+
+    @app.delete(f"/api/plugins/{PLUGIN_ID}/headstock/bass")
+    async def delete_headstock_bass():
+        async with _headstock_bass_lock:
+            path = headstock_dir / "current-bass.glb"
+            deleted = []
+            leftover = []
+            try:
+                await run_in_threadpool(path.unlink)
+                deleted.append(path.name)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                leftover.append({"name": path.name, "error": "unlink failed"})
         return JSONResponse({"ok": True, "deleted": deleted, "leftover": leftover})

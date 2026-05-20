@@ -187,6 +187,11 @@ _DEMO_BLOCKED: list[tuple[str, re.Pattern]] = [
     # Bundled core plugin — video background upload/delete
     ("POST",   re.compile(r"^/api/plugins/highway_3d/files$")),
     ("DELETE", re.compile(r"^/api/plugins/highway_3d/files$")),
+    # Bundled core plugin — custom headstock GLB upload/delete
+    ("POST",   re.compile(r"^/api/plugins/highway_3d/headstock$")),
+    ("DELETE", re.compile(r"^/api/plugins/highway_3d/headstock$")),
+    ("POST",   re.compile(r"^/api/plugins/highway_3d/headstock/bass$")),
+    ("DELETE", re.compile(r"^/api/plugins/highway_3d/headstock/bass$")),
 ]
 
 

@@ -1,0 +1,13 @@
+{
+    "hide-files.files": [
+        "ug_browser.py"
+    ],
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "ug_browser.py": true
+    }
+}

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Slopsmith</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Loaded from the FastAPI backend (/static/ is proxied to web:8000) -->
+    <script src="/static/diagnostics.js"></script>
+  </head>
+  <body class="bg-dark-800 text-gray-200 antialiased">
+    <div id="app"></div>
+    <script src="/static/highway.js"></script>
+    <script src="/static/audio-mixer.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
