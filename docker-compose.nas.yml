@@ -2,23 +2,32 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile
     ports:
-      - "8000:8000"
+      - "8080:8080"
     volumes:
       # CDLC library folder on NAS
       - /volume1/piracy/cdlc:/dlc
-      # Persistent config, cache, favorites, loops, practice data
+      # Persistent config, cache, database
       - slopsmith-config:/config
     environment:
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config
+      - DATABASE_URL=file:/config/web_library.db
       - RSCLI_PATH=/opt/rscli/RsCli
+      - VGMSTREAM_CLI=/usr/local/bin/vgmstream-cli
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
       # Logging (optional)
-      # - LOG_LEVEL=INFO        # DEBUG | INFO | WARNING | ERROR  (default: INFO)
-      # - LOG_FORMAT=json       # json | text  (default: text)
-      # - LOG_FILE=/config/slopsmith.log  # also write to a persistent file
+      # - LOG_LEVEL=info        # trace | debug | info | warn | error  (default: info)
+      # - LOG_FORMAT=json       # set LOG_PRETTY= to disable pretty-print
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8001:80"
+    depends_on:
+      - web
     restart: unless-stopped
 
 volumes:

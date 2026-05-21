@@ -1,0 +1,8 @@
+{
+    "id": "pitch_yin",
+    "name": "YIN Pitch Detector",
+    "version": "0.1.0",
+    "bundled": true,
+    "script": "screen.js",
+    "settings": { "html": "settings.html" }
+}

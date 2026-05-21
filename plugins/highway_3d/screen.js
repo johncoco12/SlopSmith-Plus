@@ -594,6 +594,23 @@
     }
     const dZ = dt => -dt * TS;
 
+    // ── Speaker cone particle constants ─────────────────────────────────────
+    const SPK_SIDE     = 195 * K;           // world-X offset from curX to speaker centre
+    const SPK_Y        =  25 * K;           // height above board surface
+    const SPK_Z        = -144 * K;          // Z position (negative = behind hit line)
+    const SPK_R_OUTER  =  34 * K;           // outer ring radius
+    const SPK_DEPTH    =  30 * K;           // cone depth (apex leads toward viewer)
+    const SPK_PUMP_MAX =  14 * K;           // max apex Z travel on a hard beat
+    const SPK_PT_SIZE  =   6 * K;           // sprite point size
+    // _spkRings is mutable per-instance (moved into createFactory) — kept here as the default shape
+    const _SPK_RINGS_DEFAULT = [32, 28, 24, 20, 16, 12, 8, 1]; // pts per ring, index 0 = apex
+    // ── Speaker rotation ─────────────────────────────────────────────────────
+    // SPK_SPLAY_Y: Y-axis — splays cone outward so left faces left, right faces right.
+    // SPK_CANT_Z:  Z-axis — tilts the ring plane; gives "/" "\" silhouettes from camera.
+    // Both are mirrored (±) automatically for left vs right speaker.
+    const SPK_SPLAY_Y  = -101 * Math.PI / 180;  // -101°
+    const SPK_CANT_Z   = -133 * Math.PI / 180;  // -133°
+
     /**
      * Pitched slide uses `sl`, unpitched uses `slu` (slide-to vs unpitched slide fields).
      * Prefer `sl` when both are present — matches RS wire.
@@ -1219,62 +1236,100 @@
         },
         particles: {
             build(scene, settings) {
-                const N = Math.max(20, Math.floor(80 + 200 * settings.intensity));
+                const N = Math.max(120, Math.floor(220 + 380 * settings.intensity));
                 const positions = new Float32Array(N * 3);
+                const colors    = new Float32Array(N * 3);
+                // Per-particle stable data — not BufferAttributes, just JS arrays
+                const baseY  = new Float32Array(N);  // rest Y
+                const phase  = new Float32Array(N);  // wave phase offset (rad)
+                const freq   = new Float32Array(N);  // wave frequency (Hz)
+                const speedX = new Float32Array(N);  // X drift speed (world/frame)
+                const hueV   = new Float32Array(N);  // 0-1 per-particle hue variety
+
                 for (let i = 0; i < N; i++) {
-                    positions[i * 3] = (Math.random() - 0.5) * 800 * K;
-                    positions[i * 3 + 1] = (Math.random() - 0.4) * 80 * K;
-                    // Spawn within the visible fog range. Fog reaches
-                    // its far limit at FOG_END * 1.2 from the camera,
-                    // and cam.position.z is updated each frame in
-                    // camUpdate() (`dist * 0.75`, where dist tracks
-                    // aspectScale). Anything beyond that camera-relative
-                    // distance gets fully fogged out, so the cutoff in
-                    // world z is dynamic — the earlier "push past notes"
-                    // fix placed particles at -FOG_END * (0.95..1.20)
-                    // which sat past fog far at any camera z, making
-                    // them invisible. renderOrder = -1 on the bg stage
-                    // already keeps particles behind notes regardless
-                    // of z, so depth-based separation wasn't needed and
-                    // was actively breaking visibility.
-                    positions[i * 3 + 2] = -FOG_START - Math.random() * (FOG_END - FOG_START) * 0.85;
+                    const x = (Math.random() - 0.5) * 900 * K;
+                    const y = (Math.random() - 0.5) * 70  * K;
+                    const z = -FOG_START - Math.random() * (FOG_END - FOG_START) * 0.80;
+                    positions[i*3]   = x;
+                    positions[i*3+1] = y;
+                    positions[i*3+2] = z;
+                    baseY[i]  = y;
+                    phase[i]  = Math.random() * Math.PI * 2;
+                    freq[i]   = 0.30 + Math.random() * 1.40;
+                    speedX[i] = (0.10 + Math.random() * 0.22) * K * (Math.random() < 0.5 ? 1 : -1);
+                    hueV[i]   = Math.random();
+                    const h = hueV[i];
+                    colors[i*3]   = 0.20 + h * 0.30;
+                    colors[i*3+1] = 0.50 + h * 0.25;
+                    colors[i*3+2] = 0.90 + h * 0.10;
                 }
+
+                // Circular glow sprite — same radial-gradient technique as speaker dots
+                const sz = 64;
+                const dc = document.createElement('canvas');
+                dc.width = dc.height = sz;
+                const dctx = dc.getContext('2d');
+                const grad = dctx.createRadialGradient(sz/2, sz/2, 0, sz/2, sz/2, sz/2);
+                grad.addColorStop(0.0, 'rgba(255,255,255,1)');
+                grad.addColorStop(0.35, 'rgba(160,200,255,0.75)');
+                grad.addColorStop(1.0,  'rgba(80,120,255,0)');
+                dctx.fillStyle = grad;
+                dctx.fillRect(0, 0, sz, sz);
+                const dotTex = new T.CanvasTexture(dc);
+
                 const geo = new T.BufferGeometry();
                 geo.setAttribute('position', new T.BufferAttribute(positions, 3));
+                geo.setAttribute('color',    new T.BufferAttribute(colors, 3));
                 const mat = new T.PointsMaterial({
-                    // size 5*K (bumped from 1.5*K). At distance ~700*K
-                    // with sizeAttenuation the prior sprite shrank
-                    // below 2 pixels — practically invisible against
-                    // dark fog. 5*K reads as a small bright dot.
-                    // Build-time opacity is overridden every frame in
-                    // update() — the runtime formula is the source of
-                    // truth.
-                    color: 0xa0c0ff, size: 5 * K, transparent: true,
+                    map: dotTex, size: 5 * K, transparent: true, vertexColors: true,
                     blending: T.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+                    alphaTest: 0.01,
                 });
                 const points = new T.Points(geo, mat);
                 scene.add(points);
-                return { points, geo, mat, N };
+                return { points, geo, mat, dotTex, N, baseY, phase, freq, speedX, hueV };
             },
-            update(s, bands, dt) {
-                const positions = s.geo.attributes.position.array;
-                const dx = dt * (3 + bands.mid * 12) * K;
+            update(s, bands, dt, t) {
+                const pos = s.geo.attributes.position.array;
+                const col = s.geo.attributes.color.array;
+                const bass = bands.bass, mid = bands.mid, treb = bands.treble;
+
+                // Bass swells the wave height, mid gently speeds up the drift
+                const waveAmp = (0.5 + bass * 2.2) * K * 4;
+                const xScale  = 1 + mid  * 0.8;
+
                 for (let i = 0; i < s.N; i++) {
-                    positions[i * 3] += dx;
-                    if (positions[i * 3] > 400 * K) positions[i * 3] -= 800 * K;
+                    // X drift — each particle moves at its own speed
+                    pos[i*3] += s.speedX[i] * xScale * dt * 60;
+                    if (pos[i*3] >  450 * K) pos[i*3] -= 900 * K;
+                    if (pos[i*3] < -450 * K) pos[i*3] += 900 * K;
+
+                    // Y sine wave — phase + frequency are per-particle so they
+                    // travel in staggered waves rather than all moving together
+                    pos[i*3+1] = s.baseY[i] + Math.sin(t * s.freq[i] + s.phase[i]) * waveAmp;
+
+                    // Color: cool blue-purple base that reacts to audio:
+                    //   bass  → pushes toward orange-gold
+                    //   treble → pushes toward bright cyan-white
+                    const h = s.hueV[i];
+                    col[i*3]   = Math.min(1, 0.20 + h * 0.20 + bass * 0.95 + treb * 0.30);
+                    col[i*3+1] = Math.min(1, 0.50 + h * 0.20 + treb * 0.45 - bass * 0.15);
+                    col[i*3+2] = Math.min(1, 0.85 + treb * 0.15 - bass * 0.65);
                 }
+
                 s.geo.attributes.position.needsUpdate = true;
-                // Bumped opacity floor 0.4 → 0.55 + treble headroom
-                // 0.4 → 0.45 so particles read as visible specks even
-                // when bgReactive is false / treble≈0 (was effectively
-                // 0.4 floor, below noise floor against dark fog).
-                s.mat.opacity = 0.55 + bands.treble * 0.45;
+                s.geo.attributes.color.needsUpdate    = true;
+
+                // Size and opacity breathe with bass + treble
+                s.mat.size    = K * (1.4 + bass * 2.8 + treb * 0.8);
+                s.mat.opacity = 0.45 + treb * 0.35 + bass * 0.15;
             },
             teardown(s) {
                 if (!s) return;
                 s.points.parent?.remove(s.points);
                 s.geo.dispose();
                 s.mat.dispose();
+                s.dotTex?.dispose();
             },
         },
         silhouettes: {
@@ -2136,6 +2191,59 @@
         // with no scorer registered. Older note_detect builds that only
         // emit notedetect:hit/miss events still work via _ndHitMarks.
         let _ndGetNoteState = null;
+
+        // Ambient dome particle state
+        let _domePts = null, _domeGeo = null, _domeMat = null, _domeDotTex = null;
+        let _domeRotY = 0;
+
+        // Speaker cone particle state
+        let _spkRings       = _SPK_RINGS_DEFAULT.slice();
+        let _spkRingOffsets = _SPK_RINGS_DEFAULT.map(() => 0);   // per-ring phase offset (radians)
+        let _spkRingRadii   = _SPK_RINGS_DEFAULT.map((_, i, a) => i / Math.max(1, a.length - 1)); // 0-1 × rOuter
+        let _spkRingDepths  = _SPK_RINGS_DEFAULT.map((_, i, a) => { const rf = i / Math.max(1, a.length - 1); return rf * rf; }); // 0-1 × depth
+        let _spkPtsL = null, _spkPtsR = null;
+        let _spkGeo = null, _spkMat = null, _spkDotTex = null;
+        let _spkPulse = 0, _spkLastBeatT = -999;
+        let _spkVel = null;          // Float32Array(total*3) — per-particle velocity
+        let _spkRotAngle = 0;        // vortex spin accumulator
+        let _spkBassSmooth = 0, _spkMidSmooth = 0, _spkTrebSmooth = 0;
+        let _spkHitHeat  = 0;        // 0-1, rises on note hits, decays slowly
+        let _spkHitBurst = 0;        // instantaneous spit burst, decays fast
+        let _spkHitKeys  = new Set(); // tracks active hit keys to detect NEW hits
+        let _spkFollowCam = true;    // pinned to camera by default
+        let _spkCamBtn = null;
+        let _spkPanel = null, _spkPanelBtn = null;
+        // Per-instance mutable speaker config — sliders write here, update fns read here
+        let _spkCfg = {
+            side:     SPK_SIDE,
+            y:        SPK_Y,
+            z:        SPK_Z,
+            rOuter:   SPK_R_OUTER,
+            depth:    SPK_DEPTH,
+            pump:     SPK_PUMP_MAX,
+            ptSize:   SPK_PT_SIZE,
+            splayY:   SPK_SPLAY_Y,
+            cantZ:    SPK_CANT_Z,
+            rotSpeed: 1.0,   // multiplier on base rotation rate
+        };
+
+        // Debug orbit state
+        let _dbgOrbit    = false;
+        let _dbgOrbitTheta = 0;                    // horizontal angle (rad)
+        let _dbgOrbitPhi   = Math.PI * 0.35;       // vertical angle from top (rad)
+        let _dbgOrbitR     = CAM_DIST_BASE * 1.5;  // distance from look-at target
+        let _dbgDragging   = false;
+        let _dbgLastMX = 0, _dbgLastMY = 0;
+        let _dbgBtn    = null;       // toggle button element
+        let _dbgOnMouseDown  = null;
+        let _dbgOnMouseMove  = null;
+        let _dbgOnMouseUp    = null;
+        let _dbgOnWheel      = null;
+        // Preview 3D renderer state (designer panel)
+        let _pdRen = null;
+        let _pdOnMouseMove = null;
+        let _pdOnMouseUp   = null;
+        let _pdSpriteTex   = null;
 
         // Object pools
         let pNote, pSus, pLbl, pBeat, pSec;
@@ -4501,6 +4609,9 @@
                 window.slopsmith.on('note:miss', _ndOnBusMiss);
             }
 
+            _initDome();
+            _initSpeakers();
+            _initDebugOrbit();
             return true;
         }
 
@@ -8726,6 +8837,19 @@
 
             // Final look-at with the corrected Y (overrides the tentative one above)
             cam.lookAt(curX, curLookY, -FOCUS_D * 0.35);
+
+            // Debug orbit: replace camera position with spherical orbit around look-at
+            if (_dbgOrbit) {
+                const tx = curX, ty = curLookY, tz = -FOCUS_D * 0.35;
+                const r  = _dbgOrbitR;
+                cam.position.set(
+                    tx + r * Math.sin(_dbgOrbitPhi) * Math.sin(_dbgOrbitTheta),
+                    ty + r * Math.cos(_dbgOrbitPhi),
+                    tz + r * Math.sin(_dbgOrbitPhi) * Math.cos(_dbgOrbitTheta),
+                );
+                cam.lookAt(tx, ty, tz);
+                cam.updateMatrixWorld();
+            }
         }
 
         /* ── Resize helper ───────────────────────────────────────────────── */
@@ -8740,6 +8864,1203 @@
             cam.aspect = w / h;
             cam.updateProjectionMatrix();
             aspectScale = Math.max(1, REF_ASPECT / Math.max(cam.aspect, 0.5));
+        }
+
+        /* ── Ambient dome particles ─────────────────────────────────────── */
+
+        function _initDome() {
+            // Soft circular glow sprite
+            const sz = 32;
+            const dc = document.createElement('canvas');
+            dc.width = dc.height = sz;
+            const dctx = dc.getContext('2d');
+            const grad = dctx.createRadialGradient(sz/2, sz/2, 0, sz/2, sz/2, sz/2);
+            grad.addColorStop(0.0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.4, 'rgba(160,190,255,0.7)');
+            grad.addColorStop(1.0, 'rgba(80,120,255,0)');
+            dctx.fillStyle = grad;
+            dctx.fillRect(0, 0, sz, sz);
+            _domeDotTex = new T.CanvasTexture(dc);
+
+            // Distribute points uniformly on a hemisphere surface only —
+            // cosφ uniform in [0,1] gives equal-area spacing (no pole clustering)
+            const N = 320;
+            const R = 420 * K;
+            const pos = new Float32Array(N * 3);
+            for (let i = 0; i < N; i++) {
+                const cosφ = Math.random();
+                const sinφ = Math.sqrt(1 - cosφ * cosφ);
+                const θ    = Math.random() * Math.PI * 2;
+                pos[i*3]   = R * sinφ * Math.cos(θ);
+                pos[i*3+1] = R * cosφ;            // y ≥ 0 → upper hemisphere only
+                pos[i*3+2] = R * sinφ * Math.sin(θ);
+            }
+
+            _domeGeo = new T.BufferGeometry();
+            _domeGeo.setAttribute('position', new T.BufferAttribute(pos, 3));
+            _domeMat = new T.PointsMaterial({
+                map: _domeDotTex, size: 1.8 * K, transparent: true,
+                color: 0xaaccff, opacity: 0.40,
+                blending: T.AdditiveBlending, depthWrite: false,
+                sizeAttenuation: true, alphaTest: 0.01,
+            });
+            _domePts = new T.Points(_domeGeo, _domeMat);
+            scene.add(_domePts);
+        }
+
+        function _updateDome() {
+            if (!_domePts) return;
+            const bands = _bgReadBands();
+            // Very slow Y-axis rotation for a breathing starfield feel
+            _domeRotY += 0.00035 + bands.mid * 0.0008;
+            _domePts.rotation.y = _domeRotY;
+            // Clearly visible at idle, brightens further with audio
+            _domeMat.size    = K * (2.8 + bands.bass * 2.0);
+            _domeMat.opacity = 0.40 + bands.treble * 0.20 + bands.bass * 0.15;
+        }
+
+        /* ── Speaker cone particles ─────────────────────────────────────── */
+
+        function _rebuildSpeakers() {
+            // Keep per-ring arrays in sync with rings length
+            const nR = _spkRings.length;
+            while (_spkRingOffsets.length < nR) _spkRingOffsets.push(0);
+            _spkRingOffsets.length = nR;
+            while (_spkRingRadii.length < nR) {
+                const rf = (_spkRingRadii.length) / Math.max(1, nR - 1);
+                _spkRingRadii.push(rf);
+            }
+            _spkRingRadii.length = nR;
+            while (_spkRingDepths.length < nR) {
+                const rf = (_spkRingDepths.length) / Math.max(1, nR - 1);
+                _spkRingDepths.push(rf * rf);
+            }
+            _spkRingDepths.length = nR;
+
+            if (_spkPtsL) { scene?.remove(_spkPtsL); _spkPtsL = null; }
+            if (_spkPtsR) { scene?.remove(_spkPtsR); _spkPtsR = null; }
+            _spkGeo?.dispose(); _spkGeo = null;
+            _spkMat?.dispose(); _spkMat = null;
+            _spkDotTex?.dispose(); _spkDotTex = null;
+            _spkVel = null;
+            _initSpeakers();
+        }
+
+        function _initSpeakers() {
+            const sz = 64;
+            const dc = document.createElement('canvas');
+            dc.width = dc.height = sz;
+            const dctx = dc.getContext('2d');
+            const grad = dctx.createRadialGradient(sz / 2, sz / 2, 0, sz / 2, sz / 2, sz / 2);
+            grad.addColorStop(0.0, 'rgba(255,245,230,1)');
+            grad.addColorStop(0.3, 'rgba(100,140,255,0.85)');
+            grad.addColorStop(1.0, 'rgba(50,80,200,0)');
+            dctx.fillStyle = grad;
+            dctx.fillRect(0, 0, sz, sz);
+            _spkDotTex = new T.CanvasTexture(dc);
+
+            const total = _spkRings.reduce((a, b) => a + b, 0);
+            const pos = new Float32Array(total * 3);
+            const col = new Float32Array(total * 3);
+            const nR = _spkRings.length;
+            let i = 0;
+            for (let ri = 0; ri < nR; ri++) {
+                const rf = ri / Math.max(1, nR - 1);
+                const cnt = _spkRings[ri];
+                for (let pi = 0; pi < cnt; pi++) {
+                    const a = (pi / cnt) * Math.PI * 2;
+                    pos[i * 3 + 0] = Math.cos(a) * rf * _spkCfg.rOuter;
+                    pos[i * 3 + 1] = Math.sin(a) * rf * _spkCfg.rOuter;
+                    pos[i * 3 + 2] = -(rf * rf) * _spkCfg.depth;
+                    col[i * 3 + 0] = 1.0 - rf * 0.55;
+                    col[i * 3 + 1] = 0.75 - rf * 0.2;
+                    col[i * 3 + 2] = 0.6 + rf * 0.4;
+                    i++;
+                }
+            }
+
+            _spkGeo = new T.BufferGeometry();
+            _spkGeo.setAttribute('position', new T.BufferAttribute(pos, 3));
+            _spkGeo.setAttribute('color',    new T.BufferAttribute(col, 3));
+            _spkVel = new Float32Array(total * 3);  // zero-init = at rest
+
+            _spkMat = new T.PointsMaterial({
+                size: _spkCfg.ptSize,
+                map: _spkDotTex,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.5,
+                depthWrite: false,
+                blending: T.AdditiveBlending,
+                sizeAttenuation: true,
+            });
+
+            _spkPtsL = new T.Points(_spkGeo, _spkMat);
+            _spkPtsR = new T.Points(_spkGeo, _spkMat);
+            _spkPtsL.rotation.set(0, +_spkCfg.splayY, +_spkCfg.cantZ);
+            _spkPtsR.rotation.set(0, -_spkCfg.splayY, -_spkCfg.cantZ);
+            _spkPtsL.position.set(curX - _spkCfg.side, _spkCfg.y, _spkCfg.z);
+            _spkPtsR.position.set(curX + _spkCfg.side, _spkCfg.y, _spkCfg.z);
+            scene.add(_spkPtsL);
+            scene.add(_spkPtsR);
+        }
+
+        function _updateSpeakers(bundle) {
+            if (!_spkPtsL || !_spkGeo || !_spkVel) return;
+
+            // ── Audio bands ─────────────────────────────────────────────────
+            const bands = _bgReadBands();
+            _spkBassSmooth += (bands.bass   - _spkBassSmooth) * 0.18;
+            _spkMidSmooth  += (bands.mid    - _spkMidSmooth)  * 0.14;
+            _spkTrebSmooth += (bands.treble - _spkTrebSmooth) * 0.22;
+
+            // ── Beat detection ───────────────────────────────────────────────
+            const now = bundle.currentTime;
+            let beatFired = false, isMeasureBeat = false;
+            if (bundle.beats && bundle.beats.length) {
+                for (let i = 0; i < bundle.beats.length; i++) {
+                    const bt = bundle.beats[i].time;
+                    if (bt !== _spkLastBeatT && Math.abs(bt - now) < 0.12) {
+                        _spkLastBeatT = bt;
+                        isMeasureBeat = i === 0 ||
+                            (bundle.beats[i].measure !== undefined &&
+                             bundle.beats[i].measure !== bundle.beats[i - 1].measure);
+                        _spkPulse = isMeasureBeat ? 1.0 : 0.6;
+                        beatFired = true;
+                        break;
+                    }
+                }
+            }
+            _spkPulse *= 0.86;
+
+            // ── Note-hit detection: track new hits to feed heat + burst ───────
+            {
+                const getState = bundle.getNoteState;
+                let newHits = 0;
+                if (typeof getState === 'function') {
+                    const curKeys = new Set();
+                    const check = (n, t) => {
+                        const ns = getState(n, t);
+                        if (ns && (ns.state === 'hit' || ns.state === 'active')) {
+                            const key = `${t}_${n.s}_${n.f}`;
+                            curKeys.add(key);
+                            if (!_spkHitKeys.has(key)) newHits++;
+                        }
+                    };
+                    for (const n of (bundle.notes  ?? [])) check(n, n.t);
+                    for (const ch of (bundle.chords ?? [])) {
+                        for (const n of (ch.notes ?? [])) check(n, ch.t);
+                    }
+                    _spkHitKeys = curKeys;
+                }
+                if (newHits > 0) {
+                    _spkHitHeat  = Math.min(1, _spkHitHeat  + newHits * 0.28);
+                    _spkHitBurst = Math.min(1, _spkHitBurst + newHits * 0.50);
+                }
+            }
+            _spkHitHeat  *= 0.988;  // decays to ~0 over ~5 s of no hits
+            _spkHitBurst *= 0.70;   // snappy burst decay
+
+            // ── Vortex rotation — outer rings spin faster ────────────────────
+            _spkRotAngle += (_spkCfg.rotSpeed) * (0.003 + _spkMidSmooth * 0.03 + _spkHitHeat * 0.015);
+
+            const { rOuter, depth, ptSize, splayY, cantZ, side, y, z } = _spkCfg;
+            const vel    = _spkVel;
+            const posArr = _spkGeo.attributes.position.array;
+            const colArr = _spkGeo.attributes.color.array;
+            const nR = _spkRings.length;
+
+            // Beat kick strength scales with live bass
+            const kickStr = beatFired
+                ? (isMeasureBeat ? 1.0 : 0.55) * (1 + _spkBassSmooth * 2.0)
+                : 0;
+
+            // Treble shifts hue toward purple/cyan (0 = warm, 1 = vivid purple)
+            const hue   = Math.min(1, _spkTrebSmooth * 3.0);
+            const flash = _spkPulse * 0.8;
+            const bBoost = _spkBassSmooth * 0.5;
+
+            let idx = 0;
+            for (let ri = 0; ri < nR; ri++) {
+                const rf  = ri / Math.max(1, nR - 1);
+                const cnt = _spkRings[ri];
+                const baseRad = (_spkRingRadii[ri] ?? rf) * rOuter;
+                // Outer rings rotate faster → vortex silhouette
+                const angle = _spkRotAngle * (0.25 + rf * 0.75) + (_spkRingOffsets[ri] ?? 0);
+                const cosA  = Math.cos(angle), sinA = Math.sin(angle);
+
+                for (let pi = 0; pi < cnt; pi++) {
+                    const a  = (pi / cnt) * Math.PI * 2;
+                    const bx = Math.cos(a) * baseRad;
+                    const by = Math.sin(a) * baseRad;
+                    const bz = -(_spkRingDepths[ri] ?? rf * rf) * depth;
+
+                    // Outward unit vector (zero for apex)
+                    const nx = baseRad > 1e-9 ? bx / baseRad : 0;
+                    const ny = baseRad > 1e-9 ? by / baseRad : 0;
+
+                    // ── Beat kick: radial burst + apex forward punch ──────────
+                    if (beatFired) {
+                        vel[idx*3+0] += nx * kickStr * K * 4.5;
+                        vel[idx*3+1] += ny * kickStr * K * 4.5;
+                        vel[idx*3+2] += (1 - rf * rf) * kickStr * K * 7;
+                        if (isMeasureBeat) {
+                            vel[idx*3+0] += (Math.random() - 0.5) * K * kickStr * 3;
+                            vel[idx*3+1] += (Math.random() - 0.5) * K * kickStr * 3;
+                        }
+                    }
+
+                    // ── Note-hit spit: outer particles fly hardest ────────────
+                    if (_spkHitBurst > 0.02) {
+                        const bStr = _spkHitBurst * (0.3 + rf * 1.2);
+                        vel[idx*3+0] += nx * bStr * K * 14 + (Math.random() - 0.5) * K * bStr * 7;
+                        vel[idx*3+1] += ny * bStr * K * 14 + (Math.random() - 0.5) * K * bStr * 7;
+                        vel[idx*3+2] += (1.2 - rf * 0.8) * bStr * K * 20 + Math.random() * K * bStr * 4;
+                    }
+
+                    // ── Continuous bass breathing (outer rings swell more) ────
+                    vel[idx*3+0] += nx * _spkBassSmooth * K * 0.25 * rf;
+                    vel[idx*3+1] += ny * _spkBassSmooth * K * 0.25 * rf;
+                    vel[idx*3+2] += (1 - rf) * _spkBassSmooth * K * 0.3;
+
+                    // ── Drag — particles spring back to ring shape ───────────
+                    vel[idx*3+0] *= 0.76;
+                    vel[idx*3+1] *= 0.76;
+                    vel[idx*3+2] *= 0.72;
+
+                    // ── Position = rotated base + velocity ───────────────────
+                    posArr[idx*3+0] = cosA * bx - sinA * by + vel[idx*3+0];
+                    posArr[idx*3+1] = sinA * bx + cosA * by + vel[idx*3+1];
+                    posArr[idx*3+2] = bz + vel[idx*3+2];
+
+                    // ── Dynamic colour ───────────────────────────────────────
+                    // Cool base: warm-white apex → blue rim (treble → purple).
+                    // Hit-heat blends toward fire: orange apex → red/magenta rim.
+                    // High heat → white-hot center. Beat flash + bass brightness on top.
+                    const coolR = 1.00 - rf * 0.60 + hue * rf * 0.50;
+                    const coolG = 0.80 - rf * 0.38 - hue * 0.42;
+                    const coolB = 0.50 + rf * 0.48 + hue * 0.52;
+                    const h  = _spkHitHeat;
+                    const h2 = h * h;
+                    // Fire palette: white core at apex, orange mid, deep red/magenta rim
+                    const fireR = 1.0  - rf * 0.20 * (1 - h);
+                    const fireG = 0.55 - rf * 0.45 + h2 * 0.30;
+                    const fireB = 0.10 - rf * 0.08 + h2 * 0.35; // magenta creep at full heat
+                    const cool = 1 - h;
+                    const cr = cool * coolR + h * fireR;
+                    const cg = cool * coolG + h * fireG;
+                    const cb = cool * coolB + h * fireB;
+                    colArr[idx*3+0] = Math.min(1, cr + flash * 0.65 + bBoost * 0.55);
+                    colArr[idx*3+1] = Math.min(1, cg + flash * 0.55 + bBoost * 0.35);
+                    colArr[idx*3+2] = Math.min(1, cb + flash * 0.35);
+                    idx++;
+                }
+            }
+
+            _spkGeo.attributes.position.needsUpdate = true;
+            _spkGeo.attributes.color.needsUpdate    = true;
+            _spkGeo.computeBoundingSphere();
+
+            // Size and opacity breathe with bass + beat flash + hit heat
+            _spkMat.size    = ptSize * (1.0 + _spkBassSmooth * 1.4 + _spkPulse * 0.6 + _spkHitHeat * 0.9 + _spkHitBurst * 1.2);
+            _spkMat.opacity = 0.40 + _spkBassSmooth * 0.40 + _spkPulse * 0.25 + _spkHitHeat * 0.35 + _spkHitBurst * 0.20;
+
+            _spkPtsL.rotation.set(0, +splayY, +cantZ);
+            _spkPtsR.rotation.set(0, -splayY, -cantZ);
+
+            if (_spkFollowCam && cam) {
+                // Transform camera-local offsets into world space each frame.
+                // cam.matrixWorld is column-major: [0..3]=col0, [4..7]=col1, [8..11]=col2, [12..15]=translation
+                cam.updateMatrixWorld();
+                const e = cam.matrixWorld.elements;
+                _spkPtsL.position.set(
+                    e[0]*(-side) + e[4]*y + e[8]*z + e[12],
+                    e[1]*(-side) + e[5]*y + e[9]*z + e[13],
+                    e[2]*(-side) + e[6]*y + e[10]*z + e[14],
+                );
+                _spkPtsR.position.set(
+                    e[0]*(+side) + e[4]*y + e[8]*z + e[12],
+                    e[1]*(+side) + e[5]*y + e[9]*z + e[13],
+                    e[2]*(+side) + e[6]*y + e[10]*z + e[14],
+                );
+            } else {
+                _spkPtsL.position.set(curX - side, y, z);
+                _spkPtsR.position.set(curX + side, y, z);
+            }
+        }
+
+        function _spkSetFollow(follow) {
+            if (_spkFollowCam === follow || !_spkPtsL) return;
+            _spkFollowCam = follow;
+            // Speakers stay in scene — _updateSpeakers handles positioning each frame.
+            // No reparenting needed; follow mode just reads cam.matrixWorld as the origin.
+            if (_spkCamBtn) {
+                _spkCamBtn.style.background = follow ? 'rgba(64,180,100,0.7)' : 'rgba(0,0,0,0.55)';
+                _spkCamBtn.style.color  = follow ? '#fff' : '#8af';
+                _spkCamBtn.style.opacity = follow ? '1' : '0.7';
+            }
+        }
+
+        /* ── Debug orbit control ────────────────────────────────────────── */
+
+        function _initDebugOrbit() {
+            if (!wrap) return;
+
+            _dbgBtn = document.createElement('button');
+            _dbgBtn.textContent = '⟳';
+            _dbgBtn.title = 'Toggle orbit debug camera (drag to rotate, scroll to zoom)';
+            _dbgBtn.style.cssText = [
+                'position:absolute', 'top:6px', 'right:6px',
+                'width:26px', 'height:26px', 'border-radius:5px',
+                'background:rgba(0,0,0,0.55)', 'border:1px solid rgba(255,255,255,0.18)',
+                'color:#8af', 'font-size:15px', 'line-height:1', 'cursor:pointer',
+                'pointer-events:auto', 'z-index:10', 'opacity:0.7',
+                'display:flex', 'align-items:center', 'justify-content:center',
+                'transition:opacity 0.15s, background 0.15s',
+            ].join(';');
+            _dbgBtn.addEventListener('click', () => {
+                _dbgOrbit = !_dbgOrbit;
+                _dbgBtn.style.background = _dbgOrbit
+                    ? 'rgba(64,120,220,0.7)' : 'rgba(0,0,0,0.55)';
+                _dbgBtn.style.color = _dbgOrbit ? '#fff' : '#8af';
+                _dbgBtn.style.opacity = _dbgOrbit ? '1' : '0.7';
+                // reset orbit angles to match current camera
+                if (_dbgOrbit) {
+                    _dbgOrbitTheta = 0;
+                    _dbgOrbitPhi   = Math.PI * 0.35;
+                    _dbgOrbitR     = curDist * 1.5;
+                }
+            });
+            wrap.appendChild(_dbgBtn);
+
+            // Camera-follow toggle for speakers
+            _spkCamBtn = document.createElement('button');
+            _spkCamBtn.textContent = '📌';
+            _spkCamBtn.title = 'Attach speakers to camera (follow cam)';
+            _spkCamBtn.style.cssText = [
+                'position:absolute', 'top:6px', 'right:36px',
+                'width:26px', 'height:26px', 'border-radius:5px',
+                'background:rgba(0,0,0,0.55)', 'border:1px solid rgba(255,255,255,0.18)',
+                'color:#8af', 'font-size:13px', 'line-height:1', 'cursor:pointer',
+                'pointer-events:auto', 'z-index:10', 'opacity:0.7',
+                'display:flex', 'align-items:center', 'justify-content:center',
+                'transition:opacity 0.15s, background 0.15s',
+            ].join(';');
+            _spkCamBtn.addEventListener('click', () => _spkSetFollow(!_spkFollowCam));
+            wrap.appendChild(_spkCamBtn);
+            // Reflect default-true follow state on the button
+            _spkSetFollow(_spkFollowCam);
+
+            // ── Speaker Designer — full-page overlay ────────────────────────
+            _spkPanel = document.createElement('div');
+            _spkPanel.style.cssText = [
+                'position:fixed', 'inset:0', 'z-index:200',
+                'background:rgba(5,8,18,0.97)',
+                'backdrop-filter:blur(10px)',
+                'display:none', 'flex-direction:column',
+                'font:12px/1.5 monospace', 'color:#ccd',
+                'pointer-events:auto',
+            ].join(';');
+            document.body.appendChild(_spkPanel);
+
+            // ── Header ───────────────────────────────────────────────────────
+            const dHdr = document.createElement('div');
+            dHdr.style.cssText = 'display:flex;align-items:center;gap:10px;padding:0 18px;height:48px;border-bottom:1px solid rgba(60,100,200,0.2);flex-shrink:0;background:rgba(8,14,32,0.85);';
+            const dHdrIcon = document.createElement('span');
+            dHdrIcon.style.cssText = 'font-size:20px;';
+            dHdrIcon.textContent = '🔊';
+            const dHdrTitle = document.createElement('span');
+            dHdrTitle.style.cssText = 'font-size:15px;font-weight:bold;letter-spacing:.06em;color:#7af;';
+            dHdrTitle.textContent = 'Speaker Designer';
+            const dHdrSep = document.createElement('div');
+            dHdrSep.style.cssText = 'flex:1;';
+            // Follow-cam toggle in header (mirrors _spkCamBtn)
+            const dPinBtn = document.createElement('button');
+            dPinBtn.title = 'Attach speakers to camera (follow cam)';
+            dPinBtn.style.cssText = 'padding:5px 12px;border-radius:6px;cursor:pointer;border:1px solid rgba(100,160,255,0.3);font:11px monospace;transition:background 0.15s,color 0.15s;';
+            function _dPinUpdate() {
+                dPinBtn.textContent = _spkFollowCam ? '📌 Pinned to camera' : '📌 Free position';
+                dPinBtn.style.background = _spkFollowCam ? 'rgba(40,130,80,0.5)' : 'rgba(0,0,0,0.4)';
+                dPinBtn.style.color = _spkFollowCam ? '#8fa' : '#8af';
+            }
+            _dPinUpdate();
+            dPinBtn.addEventListener('click', () => { _spkSetFollow(!_spkFollowCam); _dPinUpdate(); });
+            const dCloseBtn = document.createElement('button');
+            dCloseBtn.textContent = '✕  Close';
+            dCloseBtn.style.cssText = 'padding:5px 14px;border-radius:6px;cursor:pointer;background:rgba(60,20,20,0.5);border:1px solid rgba(200,80,80,0.3);color:#f88;font:11px monospace;';
+            dCloseBtn.addEventListener('click', () => {
+                _spkPanel.style.display = 'none';
+                _spkPanelBtn.style.background = 'rgba(0,0,0,0.55)';
+                _spkPanelBtn.style.color = '#8af';
+                _spkPanelBtn.style.opacity = '0.7';
+                _pdRaf = null;
+            });
+            dHdr.appendChild(dHdrIcon); dHdr.appendChild(dHdrTitle); dHdr.appendChild(dHdrSep);
+            dHdr.appendChild(dPinBtn); dHdr.appendChild(dCloseBtn);
+            _spkPanel.appendChild(dHdr);
+
+            // ── Body: left controls + right 3D preview ───────────────────────
+            const dBody = document.createElement('div');
+            dBody.style.cssText = 'display:flex;flex:1;overflow:hidden;min-height:0;';
+            _spkPanel.appendChild(dBody);
+
+            // Left column — scrollable controls
+            const dLeft = document.createElement('div');
+            dLeft.style.cssText = 'width:340px;flex-shrink:0;min-height:0;overflow-y:auto;padding:14px 16px 16px;border-right:1px solid rgba(60,100,200,0.18);display:flex;flex-direction:column;gap:12px;background:rgba(6,10,22,0.5);';
+            dBody.appendChild(dLeft);
+
+            // Right column — 3D preview fills remaining space
+            const dRight = document.createElement('div');
+            dRight.style.cssText = 'flex:1;position:relative;overflow:hidden;background:#020408;';
+            dBody.appendChild(dRight);
+
+            // Hint overlay on the canvas
+            const dHint = document.createElement('div');
+            dHint.style.cssText = 'position:absolute;bottom:10px;right:14px;font-size:10px;color:rgba(80,120,200,0.45);pointer-events:none;line-height:1.7;text-align:right;';
+            dHint.innerHTML = 'drag to orbit&nbsp;&nbsp;scroll to zoom<br>double-click to reset view';
+            dRight.appendChild(dHint);
+
+            // ── 3D preview canvas ────────────────────────────────────────────
+            const pdCanvas = document.createElement('canvas');
+            pdCanvas.style.cssText = 'display:block;width:100%;height:100%;cursor:grab;touch-action:none;';
+            dRight.appendChild(pdCanvas);
+
+            let _pdRaf      = null;
+            let _pdScn      = null, _pdCam = null;
+            let _pdPtsL     = null, _pdPtsR = null;
+            let _pdTheta    = 0.4, _pdPhi = 1.15;
+            let _pdDirty    = true;
+            let _pdDragging = false, _pdLastX = 0, _pdLastY = 0;
+
+            function _pdAutoR() {
+                return Math.max(_spkCfg.side * 2.6 + _spkCfg.rOuter * 2, _spkCfg.rOuter * 5, 0.3);
+            }
+            let _pdR = _pdAutoR();
+
+            function _pdMarkDirty() { _pdDirty = true; }
+
+            // Soft-circle canvas texture for point sprites
+            function _pdGetSpriteTex() {
+                if (_pdSpriteTex || !T) return _pdSpriteTex;
+                const sz = 64;
+                const c  = document.createElement('canvas');
+                c.width = c.height = sz;
+                const cx = c.getContext('2d');
+                const r  = sz / 2;
+                const grd = cx.createRadialGradient(r, r, 0, r, r, r);
+                grd.addColorStop(0.0,  'rgba(255,255,255,1.0)');
+                grd.addColorStop(0.35, 'rgba(255,255,255,0.85)');
+                grd.addColorStop(0.70, 'rgba(255,255,255,0.35)');
+                grd.addColorStop(1.0,  'rgba(255,255,255,0.0)');
+                cx.fillStyle = grd;
+                cx.beginPath(); cx.arc(r, r, r, 0, Math.PI * 2); cx.fill();
+                _pdSpriteTex = new T.CanvasTexture(c);
+                return _pdSpriteTex;
+            }
+
+            function _pdSyncSize() {
+                if (!_pdRen) return;
+                const w = dRight.offsetWidth, h = dRight.offsetHeight;
+                if (w < 4 || h < 4) return;
+                _pdRen.setSize(w, h, true);
+                _pdCam.aspect = w / h;
+                _pdCam.updateProjectionMatrix();
+            }
+
+            function _pdInitRenderer() {
+                if (_pdRen || !T) return;
+                const w = dRight.offsetWidth || 600, h = dRight.offsetHeight || 500;
+                _pdRen = new T.WebGLRenderer({ canvas: pdCanvas, antialias: true, alpha: false });
+                _pdRen.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                _pdRen.setSize(w, h, true);
+                _pdRen.setClearColor(0x020408, 1);
+                _pdScn = new T.Scene();
+                _pdScn.add(new T.AxesHelper(0.08));
+                _pdCam = new T.PerspectiveCamera(45, w / h, 0.0005, 2000);
+                _pdR = _pdAutoR();
+                // Keep canvas sized to container
+                const ro = new ResizeObserver(() => _pdSyncSize());
+                ro.observe(dRight);
+            }
+
+            function _pdBuildOneSide(sign) {
+                const nR = _spkRings.length;
+                const pos = [], col = [];
+                for (let ri = 0; ri < nR; ri++) {
+                    const rf   = ri / Math.max(1, nR - 1);
+                    const cnt  = _spkRings[ri];
+                    const rRing = (_spkRingRadii[ri] ?? rf) * _spkCfg.rOuter;
+                    const bz    = -(_spkRingDepths[ri] ?? rf * rf) * _spkCfg.depth;
+                    const ang0  = _spkRingOffsets[ri] ?? 0;
+                    const cr = 1.00 - rf * 0.60, cg = 0.80 - rf * 0.38, cb = 0.50 + rf * 0.48;
+                    for (let pi = 0; pi < cnt; pi++) {
+                        const a = (pi / Math.max(cnt, 1)) * Math.PI * 2 + ang0;
+                        pos.push(Math.cos(a) * rRing, Math.sin(a) * rRing, bz);
+                        col.push(cr, cg, cb);
+                    }
+                }
+                const geo = new T.BufferGeometry();
+                geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+                geo.setAttribute('color',    new T.Float32BufferAttribute(col, 3));
+                const pts = new T.Points(geo, new T.PointsMaterial({
+                    size: Math.max(_spkCfg.ptSize * 5, 0.004),
+                    map: _pdGetSpriteTex(),
+                    vertexColors: true, sizeAttenuation: true,
+                    alphaTest: 0.02,
+                    blending: T.AdditiveBlending, depthWrite: false, transparent: true,
+                }));
+                pts.rotation.set(0, sign * _spkCfg.splayY, sign * _spkCfg.cantZ);
+                pts.position.set(sign * _spkCfg.side, _spkCfg.y, _spkCfg.z);
+                return pts;
+            }
+
+            function _pdRebuildPoints() {
+                if (!_pdScn || !T) return;
+                if (_pdPtsL) { _pdScn.remove(_pdPtsL); _pdPtsL.geometry.dispose(); _pdPtsL.material.dispose(); _pdPtsL = null; }
+                if (_pdPtsR) { _pdScn.remove(_pdPtsR); _pdPtsR.geometry.dispose(); _pdPtsR.material.dispose(); _pdPtsR = null; }
+                _pdPtsL = _pdBuildOneSide(-1); _pdScn.add(_pdPtsL);
+                _pdPtsR = _pdBuildOneSide(+1); _pdScn.add(_pdPtsR);
+                _pdDirty = false;
+            }
+
+            function _pdDraw() {
+                if (!_pdRen) _pdInitRenderer();
+                if (!_pdRen || !T) { if (_pdRaf !== null) _pdRaf = requestAnimationFrame(_pdDraw); return; }
+                if (_pdDirty) _pdRebuildPoints();
+                const camX = _pdR * Math.sin(_pdPhi) * Math.sin(_pdTheta);
+                const camY = _pdR * Math.cos(_pdPhi);
+                const camZ = _pdR * Math.sin(_pdPhi) * Math.cos(_pdTheta);
+                _pdCam.position.set(camX, camY, camZ);
+                _pdCam.lookAt(0, _spkCfg.y, _spkCfg.z);
+                _pdRen.render(_pdScn, _pdCam);
+                if (_pdRaf !== null) _pdRaf = requestAnimationFrame(_pdDraw);
+            }
+
+            // Orbit controls on the canvas
+            pdCanvas.addEventListener('mousedown', e => {
+                _pdDragging = true; _pdLastX = e.clientX; _pdLastY = e.clientY;
+                pdCanvas.style.cursor = 'grabbing'; e.preventDefault();
+            });
+            _pdOnMouseMove = e => {
+                if (!_pdDragging) return;
+                _pdTheta -= (e.clientX - _pdLastX) * 0.008;
+                _pdPhi    = Math.max(0.05, Math.min(Math.PI - 0.05, _pdPhi + (e.clientY - _pdLastY) * 0.008));
+                _pdLastX = e.clientX; _pdLastY = e.clientY;
+            };
+            _pdOnMouseUp = () => { _pdDragging = false; pdCanvas.style.cursor = 'grab'; };
+            window.addEventListener('mousemove', _pdOnMouseMove);
+            window.addEventListener('mouseup',   _pdOnMouseUp);
+            pdCanvas.addEventListener('wheel', e => {
+                _pdR = Math.max(0.02, _pdR * (1 + e.deltaY * 0.001));
+                e.preventDefault();
+            }, { passive: false });
+            pdCanvas.addEventListener('dblclick', () => {
+                _pdTheta = 0.4; _pdPhi = 1.15; _pdR = _pdAutoR();
+            });
+
+            // ── Left column — Speaker Controls section ───────────────────────
+            (function () {
+                const sec = document.createElement('div');
+                sec.style.cssText = 'display:flex;flex-direction:column;gap:0;border:1px solid rgba(60,100,200,0.2);border-radius:8px;overflow:hidden;';
+
+                const secHdr = document.createElement('div');
+                secHdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:rgba(20,35,80,0.7);cursor:pointer;user-select:none;';
+                const secLbl = document.createElement('span');
+                secLbl.style.cssText = 'font-size:10px;letter-spacing:.12em;color:rgba(120,180,255,0.85);font-weight:bold;';
+                secLbl.textContent = 'SPEAKER CONTROLS';
+                const secArr = document.createElement('span');
+                secArr.style.cssText = 'color:rgba(100,140,220,0.6);transition:transform 0.15s;font-size:12px;';
+                secArr.textContent = '▾';
+                secHdr.appendChild(secLbl); secHdr.appendChild(secArr);
+
+                const secBody = document.createElement('div');
+                secBody.style.cssText = 'padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px;background:rgba(8,14,32,0.5);';
+
+                let secCollapsed = false;
+                secHdr.addEventListener('click', () => {
+                    secCollapsed = !secCollapsed;
+                    secBody.style.display = secCollapsed ? 'none' : 'flex';
+                    secArr.style.transform = secCollapsed ? 'rotate(-90deg)' : '';
+                });
+
+                const Kv = SCALE / 300;
+                const toK = v => v / Kv;
+                const fmtK   = v => Math.round(v) + 'K';
+                const fmtDeg = v => Math.round(v) + '°';
+                const fmtX   = v => v.toFixed(2) + '×';
+
+                function mkCfgSlider(label, color, min, max, step, getV, setV, fmt) {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:grid;grid-template-columns:64px 1fr 52px;align-items:center;gap:8px;';
+                    const lbl = document.createElement('span');
+                    lbl.style.cssText = 'font-size:11px;color:#99a;';
+                    lbl.textContent = label;
+                    const sl = document.createElement('input');
+                    sl.type = 'range'; sl.min = String(min); sl.max = String(max); sl.step = String(step);
+                    sl.value = String(getV());
+                    sl.style.cssText = `width:100%;height:4px;cursor:pointer;accent-color:${color};`;
+                    const vl = document.createElement('span');
+                    vl.style.cssText = 'font-size:11px;color:#dde;text-align:right;font-variant-numeric:tabular-nums;';
+                    vl.textContent = fmt(getV());
+                    sl.addEventListener('input', () => { setV(parseFloat(sl.value)); vl.textContent = fmt(getV()); });
+                    row.appendChild(lbl); row.appendChild(sl); row.appendChild(vl);
+                    return row;
+                }
+
+                // Group label
+                function mkGroup(text) {
+                    const g = document.createElement('div');
+                    g.style.cssText = 'font-size:9px;letter-spacing:.1em;color:rgba(80,120,200,0.6);margin-top:4px;';
+                    g.textContent = text;
+                    return g;
+                }
+
+                secBody.appendChild(mkGroup('POSITION'));
+                secBody.appendChild(mkCfgSlider('Side',    '#f88', -10000, 10000, 1,
+                    () => toK(_spkCfg.side),   v => { _spkCfg.side = v * Kv; _pdMarkDirty(); }, fmtK));
+                secBody.appendChild(mkCfgSlider('Y',       '#8f8', -10000, 10000, 1,
+                    () => toK(_spkCfg.y),      v => { _spkCfg.y = v * Kv; _pdMarkDirty(); }, fmtK));
+                secBody.appendChild(mkCfgSlider('Z',       '#88f', -10000, 10000, 1,
+                    () => toK(_spkCfg.z),      v => { _spkCfg.z = v * Kv; _pdMarkDirty(); }, fmtK));
+
+                secBody.appendChild(mkGroup('SHAPE'));
+                secBody.appendChild(mkCfgSlider('Radius',  '#4ff', 1, 10000, 1,
+                    () => toK(_spkCfg.rOuter), v => { _spkCfg.rOuter = v * Kv; _rebuildSpeakers(); _pdMarkDirty(); }, fmtK));
+                secBody.appendChild(mkCfgSlider('Depth',   '#fa4', 1, 10000, 1,
+                    () => toK(_spkCfg.depth),  v => { _spkCfg.depth = v * Kv; _rebuildSpeakers(); _pdMarkDirty(); }, fmtK));
+                secBody.appendChild(mkCfgSlider('Pt Size', '#f4f', 1, 10000, 0.5,
+                    () => toK(_spkCfg.ptSize), v => { _spkCfg.ptSize = v * Kv; if (_spkMat) _spkMat.size = _spkCfg.ptSize; _pdMarkDirty(); }, fmtK));
+
+                secBody.appendChild(mkGroup('ORIENTATION'));
+                secBody.appendChild(mkCfgSlider('Splay Y', '#6af', -360, 360, 1,
+                    () => Math.round(_spkCfg.splayY * 180 / Math.PI), v => { _spkCfg.splayY = v * Math.PI / 180; _pdMarkDirty(); }, fmtDeg));
+                secBody.appendChild(mkCfgSlider('Cant Z',  '#af6', -360, 360, 1,
+                    () => Math.round(_spkCfg.cantZ * 180 / Math.PI),  v => { _spkCfg.cantZ = v * Math.PI / 180; _pdMarkDirty(); }, fmtDeg));
+
+                secBody.appendChild(mkGroup('ANIMATION'));
+                secBody.appendChild(mkCfgSlider('Rot Spd', '#fc8', 0, 20, 0.05,
+                    () => _spkCfg.rotSpeed, v => { _spkCfg.rotSpeed = v; }, fmtX));
+
+                sec.appendChild(secHdr); sec.appendChild(secBody);
+                dLeft.appendChild(sec);
+            })();
+
+            // ── Left column — Rings section ──────────────────────────────────
+            const ringsSec = document.createElement('div');
+            ringsSec.style.cssText = 'display:flex;flex-direction:column;gap:8px;border:1px solid rgba(60,100,200,0.2);border-radius:8px;overflow:hidden;';
+
+            const ringsHdr = document.createElement('div');
+            ringsHdr.style.cssText = 'padding:7px 10px;background:rgba(20,35,80,0.7);';
+            const ringsLbl = document.createElement('span');
+            ringsLbl.style.cssText = 'font-size:10px;letter-spacing:.12em;color:rgba(120,180,255,0.85);font-weight:bold;';
+            ringsLbl.textContent = 'RINGS';
+            const ringsMeta = document.createElement('span');
+            ringsMeta.style.cssText = 'font-size:9px;color:rgba(80,110,180,0.6);margin-left:8px;';
+            ringsMeta.textContent = '(0 = apex · last = rim)';
+            ringsHdr.appendChild(ringsLbl); ringsHdr.appendChild(ringsMeta);
+
+            const ringsBody = document.createElement('div');
+            ringsBody.style.cssText = 'padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;';
+
+            const ringList = document.createElement('div');
+            ringList.style.cssText = 'display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto;padding-right:2px;';
+
+            function mkSliderRow(label, accentColor, min, max, step, getValue, setValue, fmt) {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:grid;grid-template-columns:28px 1fr 38px;align-items:center;gap:7px;';
+                const lbl = document.createElement('span');
+                lbl.style.cssText = 'font-size:10px;color:#667;';
+                lbl.textContent = label;
+                const sl = document.createElement('input');
+                sl.type = 'range'; sl.min = String(min); sl.max = String(max); sl.step = String(step);
+                sl.value = String(getValue());
+                sl.style.cssText = `width:100%;height:4px;cursor:pointer;accent-color:${accentColor};`;
+                const vl = document.createElement('span');
+                vl.style.cssText = 'font-size:10px;color:#ccd;text-align:right;font-variant-numeric:tabular-nums;';
+                vl.textContent = fmt(getValue());
+                sl.addEventListener('input', () => { setValue(parseFloat(sl.value)); vl.textContent = fmt(getValue()); });
+                row.appendChild(lbl); row.appendChild(sl); row.appendChild(vl);
+                return row;
+            }
+
+            let _profileSec = null;
+
+            function buildRingList() {
+                ringList.innerHTML = '';
+                // Clear stale sync hooks so old-count slots don't linger
+                if (_profileSec) { _profileSec._syncR.length = 0; _profileSec._syncD.length = 0; }
+                const nR = _spkRings.length;
+                for (let ri = 0; ri < nR; ri++) {
+                    const rf  = ri / Math.max(1, nR - 1);
+                    const cr  = Math.round((1.00 - rf * 0.60) * 255);
+                    const cg  = Math.round((0.80 - rf * 0.38) * 255);
+                    const cb  = Math.round((0.50 + rf * 0.48) * 255);
+                    const col = `rgb(${cr},${cg},${cb})`;
+
+                    const card = document.createElement('div');
+                    card.style.cssText = `background:rgba(12,18,40,0.8);border:1px solid rgba(${Math.round(cr/2)},${Math.round(cg/2)},${cb},0.3);border-radius:8px;padding:9px 11px 10px;display:flex;flex-direction:column;gap:7px;`;
+
+                    // Card header
+                    const cardHdr = document.createElement('div');
+                    cardHdr.style.cssText = 'display:flex;align-items:center;gap:7px;';
+                    const swatch = document.createElement('div');
+                    swatch.style.cssText = `width:11px;height:11px;border-radius:50%;background:${col};flex-shrink:0;box-shadow:0 0 6px ${col};`;
+                    const cardLbl = document.createElement('span');
+                    cardLbl.style.cssText = 'flex:1;font-size:12px;font-weight:bold;color:#bbd;';
+                    cardLbl.textContent = `Ring ${ri}`;
+                    const del = document.createElement('button');
+                    del.textContent = '×';
+                    del.title = 'Delete ring';
+                    del.style.cssText = 'width:20px;height:20px;border-radius:4px;background:rgba(100,20,20,0.6);border:1px solid rgba(200,60,60,0.4);color:#f88;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;';
+                    del.addEventListener('click', () => {
+                        if (_spkRings.length > 1) {
+                            _spkRings.splice(ri, 1);
+                            _spkRingOffsets.splice(ri, 1);
+                            _spkRingRadii.splice(ri, 1);
+                            _spkRingDepths.splice(ri, 1);
+                            _rebuildSpeakers(); _pdMarkDirty();
+                            buildRingList();
+                            _profileSec?._draw();
+                        }
+                    });
+                    cardHdr.appendChild(swatch); cardHdr.appendChild(cardLbl); cardHdr.appendChild(del);
+                    card.appendChild(cardHdr);
+
+                    card.appendChild(mkSliderRow('pts', '#4af', 1, 64, 1,
+                        () => _spkRings[ri],
+                        v => { _spkRings[ri] = Math.round(v); _rebuildSpeakers(); _pdMarkDirty(); },
+                        v => String(Math.round(v))));
+
+                    // r slider — capture refs so the profile canvas can sync them
+                    let _rSlider = null, _rLabel = null;
+                    const rRow = mkSliderRow('r', '#4ff', 0, 1, 0.01,
+                        () => _spkRingRadii[ri] ?? rf,
+                        v => { _spkRingRadii[ri] = v; _pdMarkDirty(); _profileSec?._draw(); },
+                        v => Math.round(v * 100) + '%');
+                    _rSlider = rRow.querySelector('input');
+                    _rLabel  = rRow.querySelector('span:last-child');
+                    if (_profileSec) {
+                        _profileSec._syncR[ri] = () => {
+                            const v = _spkRingRadii[ri] ?? rf;
+                            if (_rSlider) _rSlider.value = String(v);
+                            if (_rLabel)  _rLabel.textContent = Math.round(v * 100) + '%';
+                        };
+                    }
+                    card.appendChild(rRow);
+
+                    // z (depth) slider — same pattern
+                    let _dSlider = null, _dLabel = null;
+                    const zRow = mkSliderRow('z', '#fa4', 0, 1, 0.01,
+                        () => _spkRingDepths[ri] ?? rf * rf,
+                        v => { _spkRingDepths[ri] = v; _pdMarkDirty(); _profileSec?._draw(); },
+                        v => Math.round(v * 100) + '%');
+                    _dSlider = zRow.querySelector('input');
+                    _dLabel  = zRow.querySelector('span:last-child');
+                    if (_profileSec) {
+                        _profileSec._syncD[ri] = () => {
+                            const v = _spkRingDepths[ri] ?? rf * rf;
+                            if (_dSlider) _dSlider.value = String(v);
+                            if (_dLabel)  _dLabel.textContent = Math.round(v * 100) + '%';
+                        };
+                    }
+                    card.appendChild(zRow);
+
+                    card.appendChild(mkSliderRow('off', '#f80', -Math.PI, Math.PI, 0.01,
+                        () => _spkRingOffsets[ri] ?? 0,
+                        v => { _spkRingOffsets[ri] = v; _pdMarkDirty(); },
+                        v => Math.round(v * 180 / Math.PI) + '°'));
+
+                    ringList.appendChild(card);
+                }
+            }
+            buildRingList();
+            ringsBody.appendChild(ringList);
+
+            // Add Ring button
+            const addRingBtn = document.createElement('button');
+            addRingBtn.textContent = '+ Add Ring';
+            addRingBtn.style.cssText = 'width:100%;padding:6px 0;border-radius:6px;cursor:pointer;background:rgba(25,50,130,0.4);border:1px solid rgba(80,140,255,0.28);color:#8bf;font:11px monospace;letter-spacing:.04em;margin-top:2px;';
+            addRingBtn.addEventListener('click', () => {
+                _spkRings.push(Math.max(1, _spkRings[_spkRings.length - 1] || 8));
+                _rebuildSpeakers(); _pdMarkDirty();
+                buildRingList();
+                _profileSec?._draw();
+            });
+            ringsBody.appendChild(addRingBtn);
+
+            // Copy / Reset
+            const actionRow = document.createElement('div');
+            actionRow.style.cssText = 'display:flex;gap:6px;padding-top:6px;border-top:1px solid rgba(50,80,180,0.15);';
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = 'Copy Rings';
+            copyBtn.style.cssText = 'flex:1;padding:5px 0;border-radius:6px;cursor:pointer;background:rgba(30,70,160,0.4);border:1px solid rgba(80,140,255,0.3);color:#9cf;font:11px monospace;';
+            copyBtn.addEventListener('click', () => {
+                const offDeg = _spkRingOffsets.map(r => Math.round(r * 180 / Math.PI));
+                const txt = `rings:   [${_spkRings.join(', ')}]\noffsets: [${offDeg.join(', ')}]°`;
+                navigator.clipboard?.writeText(txt).catch(() => {});
+                console.log('[Speaker Designer]\n' + txt);
+                copyBtn.textContent = 'Copied ✓';
+                setTimeout(() => { copyBtn.textContent = 'Copy Rings'; }, 1500);
+            });
+            const resetBtn = document.createElement('button');
+            resetBtn.textContent = 'Reset';
+            resetBtn.style.cssText = 'flex:1;padding:5px 0;border-radius:6px;cursor:pointer;background:rgba(70,30,15,0.4);border:1px solid rgba(200,120,60,0.3);color:#da8;font:11px monospace;';
+            resetBtn.addEventListener('click', () => {
+                _spkRings = _SPK_RINGS_DEFAULT.slice();
+                _rebuildSpeakers(); _pdMarkDirty();
+                buildRingList();
+                _profileSec?._draw();
+            });
+            actionRow.appendChild(copyBtn); actionRow.appendChild(resetBtn);
+            ringsBody.appendChild(actionRow);
+
+            ringsSec.appendChild(ringsHdr); ringsSec.appendChild(ringsBody);
+            dLeft.appendChild(ringsSec);
+
+            // ── Cone Profile Editor ───────────────────────────────────────────
+            // Side-view canvas: X = depth (front→back), Y = radius (0=center→rim)
+            // Each dot = one ring. Drag horizontally → depth, vertically → radius.
+            (function () {
+                const profileSec = document.createElement('div');
+                profileSec.style.cssText = 'display:flex;flex-direction:column;gap:0;border:1px solid rgba(60,100,200,0.2);border-radius:8px;overflow:hidden;';
+
+                const profileHdr = document.createElement('div');
+                profileHdr.style.cssText = 'padding:7px 10px;background:rgba(20,35,80,0.7);display:flex;align-items:center;gap:8px;';
+                const profileLbl = document.createElement('span');
+                profileLbl.style.cssText = 'font-size:10px;letter-spacing:.12em;color:rgba(120,180,255,0.85);font-weight:bold;flex:1;';
+                profileLbl.textContent = 'CONE PROFILE';
+                const profileSub = document.createElement('span');
+                profileSub.style.cssText = 'font-size:9px;color:rgba(80,110,180,0.6);';
+                profileSub.textContent = 'drag dots · X=depth · Y=radius';
+                profileHdr.appendChild(profileLbl); profileHdr.appendChild(profileSub);
+
+                const profileBody = document.createElement('div');
+                profileBody.style.cssText = 'padding:10px 10px 12px;background:rgba(6,10,22,0.6);';
+
+                const PC = document.createElement('canvas');
+                const PAD = 22;  // axis label space
+                PC.width  = 308;
+                PC.height = 200;
+                PC.style.cssText = 'display:block;width:100%;border-radius:6px;background:#030508;cursor:crosshair;user-select:none;touch-action:none;border:1px solid rgba(40,60,140,0.3);';
+                profileBody.appendChild(PC);
+                const pctx = PC.getContext('2d');
+
+                // Map ring index → canvas coords and back
+                function ringToXY(ri) {
+                    const nR = _spkRings.length;
+                    const rf = ri / Math.max(1, nR - 1);
+                    const d  = _spkRingDepths[ri]  ?? rf * rf;   // 0..1
+                    const r  = _spkRingRadii[ri]   ?? rf;         // 0..1
+                    const W = PC.width, H = PC.height;
+                    const iW = W - PAD * 2, iH = H - PAD * 2;
+                    return {
+                        x: PAD + d * iW,
+                        y: PAD + (1 - r) * iH,   // radius 0 = bottom, 1 = top
+                    };
+                }
+
+                function xyToRing(x, y) {
+                    const W = PC.width, H = PC.height;
+                    const iW = W - PAD * 2, iH = H - PAD * 2;
+                    return {
+                        d: Math.max(0, Math.min(1, (x - PAD) / iW)),
+                        r: Math.max(0, Math.min(1, 1 - (y - PAD) / iH)),
+                    };
+                }
+
+                function ringColor(ri) {
+                    const nR = _spkRings.length;
+                    const rf = ri / Math.max(1, nR - 1);
+                    const cr = Math.round((1.00 - rf * 0.60) * 255);
+                    const cg = Math.round((0.80 - rf * 0.38) * 255);
+                    const cb = Math.round((0.50 + rf * 0.48) * 255);
+                    return `rgb(${cr},${cg},${cb})`;
+                }
+
+                function drawProfile() {
+                    const W = PC.width, H = PC.height;
+                    const iW = W - PAD * 2, iH = H - PAD * 2;
+                    pctx.clearRect(0, 0, W, H);
+                    pctx.fillStyle = '#030508';
+                    pctx.fillRect(0, 0, W, H);
+
+                    // Grid
+                    pctx.strokeStyle = 'rgba(40,60,140,0.3)';
+                    pctx.lineWidth = 0.5;
+                    for (let i = 0; i <= 4; i++) {
+                        const gx = PAD + (i / 4) * iW;
+                        const gy = PAD + (i / 4) * iH;
+                        pctx.beginPath(); pctx.moveTo(gx, PAD); pctx.lineTo(gx, PAD + iH); pctx.stroke();
+                        pctx.beginPath(); pctx.moveTo(PAD, gy); pctx.lineTo(PAD + iW, gy); pctx.stroke();
+                    }
+
+                    // Axis labels
+                    pctx.fillStyle = 'rgba(70,100,180,0.55)';
+                    pctx.font = '8px monospace';
+                    pctx.textAlign = 'center';
+                    pctx.fillText('depth →', PAD + iW / 2, H - 4);
+                    pctx.save();
+                    pctx.translate(9, PAD + iH / 2);
+                    pctx.rotate(-Math.PI / 2);
+                    pctx.fillText('radius', 0, 0);
+                    pctx.restore();
+
+                    // Cone silhouette — mirror the top half
+                    const nR = _spkRings.length;
+                    if (nR > 1) {
+                        // Top profile (positive radius)
+                        pctx.beginPath();
+                        for (let ri = 0; ri < nR; ri++) {
+                            const { x, y } = ringToXY(ri);
+                            ri === 0 ? pctx.moveTo(x, y) : pctx.lineTo(x, y);
+                        }
+                        // Mirror to bottom (center at PAD + iH)
+                        const centerY = PAD + iH;
+                        for (let ri = nR - 1; ri >= 0; ri--) {
+                            const { x, y } = ringToXY(ri);
+                            pctx.lineTo(x, centerY + (centerY - y));
+                        }
+                        pctx.closePath();
+                        pctx.fillStyle = 'rgba(40,80,180,0.08)';
+                        pctx.fill();
+
+                        // Profile line (top)
+                        pctx.beginPath();
+                        for (let ri = 0; ri < nR; ri++) {
+                            const { x, y } = ringToXY(ri);
+                            ri === 0 ? pctx.moveTo(x, y) : pctx.lineTo(x, y);
+                        }
+                        pctx.strokeStyle = 'rgba(60,100,220,0.35)';
+                        pctx.lineWidth = 1.5;
+                        pctx.stroke();
+
+                        // Profile line (bottom mirror)
+                        pctx.beginPath();
+                        for (let ri = 0; ri < nR; ri++) {
+                            const { x, y } = ringToXY(ri);
+                            const my = centerY + (centerY - y);
+                            ri === 0 ? pctx.moveTo(x, my) : pctx.lineTo(x, my);
+                        }
+                        pctx.stroke();
+
+                        // Vertical tick per ring connecting top to bottom
+                        for (let ri = 0; ri < nR; ri++) {
+                            const { x, y } = ringToXY(ri);
+                            const my = centerY + (centerY - y);
+                            pctx.strokeStyle = `${ringColor(ri)}44`;
+                            pctx.lineWidth = 1;
+                            pctx.setLineDash([2, 3]);
+                            pctx.beginPath(); pctx.moveTo(x, y); pctx.lineTo(x, my); pctx.stroke();
+                            pctx.setLineDash([]);
+                        }
+                    }
+
+                    // Center axis
+                    const centerY = PAD + iH;
+                    pctx.strokeStyle = 'rgba(60,80,180,0.25)';
+                    pctx.lineWidth = 1;
+                    pctx.beginPath(); pctx.moveTo(PAD, centerY); pctx.lineTo(PAD + iW, centerY); pctx.stroke();
+
+                    // Dots
+                    for (let ri = 0; ri < nR; ri++) {
+                        const { x, y } = ringToXY(ri);
+                        const col = ringColor(ri);
+                        const active = ri === _profDragging;
+                        const r = active ? 7 : 5;
+
+                        // Glow
+                        pctx.beginPath();
+                        pctx.arc(x, y, r + 3, 0, Math.PI * 2);
+                        pctx.fillStyle = `${col}30`;
+                        pctx.fill();
+
+                        // Dot
+                        pctx.beginPath();
+                        pctx.arc(x, y, r, 0, Math.PI * 2);
+                        pctx.fillStyle = active ? col : `${col}bb`;
+                        pctx.fill();
+                        pctx.strokeStyle = active ? '#fff' : col;
+                        pctx.lineWidth = active ? 1.5 : 0.8;
+                        pctx.stroke();
+
+                        // Mirror dot
+                        const my = centerY + (centerY - y);
+                        pctx.beginPath();
+                        pctx.arc(x, my, active ? 5 : 3.5, 0, Math.PI * 2);
+                        pctx.fillStyle = `${col}66`;
+                        pctx.fill();
+
+                        // Ring index label
+                        pctx.fillStyle = active ? '#fff' : 'rgba(180,200,255,0.6)';
+                        pctx.font = `${active ? 'bold ' : ''}9px monospace`;
+                        pctx.textAlign = 'center';
+                        pctx.fillText(String(ri), x, y - r - 3);
+                    }
+                }
+
+                // Drag state
+                let _profDragging = -1;
+                const HIT_R = 10;
+
+                function hitTest(mx, my) {
+                    const nR = _spkRings.length;
+                    for (let ri = 0; ri < nR; ri++) {
+                        const { x, y } = ringToXY(ri);
+                        if (Math.hypot(mx - x, my - y) <= HIT_R) return ri;
+                    }
+                    return -1;
+                }
+
+                function getCanvasPos(e) {
+                    const rect = PC.getBoundingClientRect();
+                    const scaleX = PC.width  / rect.width;
+                    const scaleY = PC.height / rect.height;
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top)  * scaleY,
+                    };
+                }
+
+                PC.addEventListener('mousedown', e => {
+                    const { x, y } = getCanvasPos(e);
+                    _profDragging = hitTest(x, y);
+                    if (_profDragging >= 0) {
+                        PC.style.cursor = 'grabbing';
+                        e.preventDefault();
+                    }
+                });
+
+                // Use window so drag continues outside canvas
+                const _profOnMove = e => {
+                    if (_profDragging < 0) return;
+                    const { x, y } = getCanvasPos(e);
+                    const { d, r } = xyToRing(x, y);
+                    _spkRingDepths[_profDragging] = d;
+                    _spkRingRadii[_profDragging]  = r;
+                    _pdMarkDirty();
+                    // Update the matching slider rows so the numbers stay in sync
+                    _profRefreshSliders(_profDragging);
+                    drawProfile();
+                };
+                const _profOnUp = () => {
+                    if (_profDragging >= 0) { _profDragging = -1; PC.style.cursor = 'crosshair'; drawProfile(); }
+                };
+                window.addEventListener('mousemove', _profOnMove);
+                window.addEventListener('mouseup',   _profOnUp);
+
+                // Keep sliders in sync when a dot is dragged
+                // We expose a refresh hook that `buildRingList` wires up per card
+                const _profSliderSyncR = [];  // [ri] → function to update r slider display
+                const _profSliderSyncD = [];  // [ri] → function to update z slider display
+
+                function _profRefreshSliders(ri) {
+                    _profSliderSyncR[ri]?.();
+                    _profSliderSyncD[ri]?.();
+                }
+
+                // Patch mkSliderRow to register sync hooks for r and z sliders
+                // We do this by re-wrapping buildRingList's slider callbacks.
+                // Simpler: expose the hook arrays and let buildRingList fill them.
+                // Store refs so buildRingList can call them after re-building.
+                // We expose these on the profile section so buildRingList (same scope) can access:
+                profileSec._syncR = _profSliderSyncR;
+                profileSec._syncD = _profSliderSyncD;
+
+                profileSec._draw = drawProfile;
+
+                drawProfile();
+
+                profileSec.appendChild(profileHdr);
+                profileSec.appendChild(profileBody);
+                dLeft.appendChild(profileSec);
+                // Expose to buildRingList (same _initDebugOrbit scope)
+                _profileSec = profileSec;
+
+                // Store refs so teardown can remove window listeners
+                profileSec._cleanup = () => {
+                    window.removeEventListener('mousemove', _profOnMove);
+                    window.removeEventListener('mouseup',   _profOnUp);
+                };
+            })();
+            // Re-build ring cards now that _profileSec exists so sync hooks are wired
+            buildRingList();
+
+            // ── Trigger button (stays in highway overlay) ─────────────────────
+            _spkPanelBtn = document.createElement('button');
+            _spkPanelBtn.textContent = '🔊';
+            _spkPanelBtn.title = 'Speaker designer';
+            _spkPanelBtn.style.cssText = [
+                'position:absolute', 'top:6px', 'right:66px',
+                'width:26px', 'height:26px', 'border-radius:5px',
+                'background:rgba(0,0,0,0.55)', 'border:1px solid rgba(255,255,255,0.18)',
+                'color:#8af', 'font-size:13px', 'line-height:1', 'cursor:pointer',
+                'pointer-events:auto', 'z-index:10', 'opacity:0.7',
+                'display:flex', 'align-items:center', 'justify-content:center',
+                'transition:opacity 0.15s, background 0.15s',
+            ].join(';');
+            _spkPanelBtn.addEventListener('click', () => {
+                const open = _spkPanel.style.display === 'none';
+                _spkPanel.style.display = open ? 'flex' : 'none';
+                _spkPanelBtn.style.background = open ? 'rgba(64,120,220,0.7)' : 'rgba(0,0,0,0.55)';
+                _spkPanelBtn.style.color   = open ? '#fff' : '#8af';
+                _spkPanelBtn.style.opacity = open ? '1'   : '0.7';
+                if (open) { _pdMarkDirty(); _pdRaf = 1; _pdDraw(); } else { _pdRaf = null; }
+            });
+            wrap.appendChild(_spkPanelBtn);
+
+            const el = highwayCanvas;
+
+            _dbgOnMouseDown = (e) => {
+                if (!_dbgOrbit) return;
+                _dbgDragging = true;
+                _dbgLastMX = e.clientX;
+                _dbgLastMY = e.clientY;
+                e.preventDefault();
+            };
+            _dbgOnMouseMove = (e) => {
+                if (!_dbgOrbit || !_dbgDragging) return;
+                const dx = e.clientX - _dbgLastMX;
+                const dy = e.clientY - _dbgLastMY;
+                _dbgLastMX = e.clientX;
+                _dbgLastMY = e.clientY;
+                _dbgOrbitTheta -= dx * 0.008;
+                _dbgOrbitPhi    = Math.max(0.05, Math.min(Math.PI * 0.9,
+                    _dbgOrbitPhi + dy * 0.008));
+            };
+            _dbgOnMouseUp = () => { _dbgDragging = false; };
+            _dbgOnWheel = (e) => {
+                if (!_dbgOrbit) return;
+                _dbgOrbitR = Math.max(20 * K, Math.min(CAM_DIST_BASE * 8,
+                    _dbgOrbitR + e.deltaY * K * 0.08));
+                e.preventDefault();
+            };
+
+            el.addEventListener('mousedown',  _dbgOnMouseDown);
+            window.addEventListener('mousemove',  _dbgOnMouseMove);
+            window.addEventListener('mouseup',    _dbgOnMouseUp);
+            el.addEventListener('wheel',       _dbgOnWheel, { passive: false });
+        }
+
+        function _teardownDebugOrbit() {
+            if (_dbgBtn)      { _dbgBtn.remove();      _dbgBtn = null; }
+            if (_spkPanel)    { _spkPanel.remove();    _spkPanel = null; }
+            if (_spkPanelBtn) { _spkPanelBtn.remove(); _spkPanelBtn = null; }
+            if (_spkCamBtn)   { _spkCamBtn.remove();   _spkCamBtn = null; }
+            _dbgOrbit = false; _dbgDragging = false;
+            if (highwayCanvas) {
+                if (_dbgOnMouseDown) highwayCanvas.removeEventListener('mousedown', _dbgOnMouseDown);
+                if (_dbgOnWheel)     highwayCanvas.removeEventListener('wheel', _dbgOnWheel);
+            }
+            if (_dbgOnMouseMove) window.removeEventListener('mousemove', _dbgOnMouseMove);
+            if (_dbgOnMouseUp)   window.removeEventListener('mouseup',   _dbgOnMouseUp);
+            _dbgOnMouseDown = _dbgOnMouseMove = _dbgOnMouseUp = _dbgOnWheel = null;
+            // Dispose preview 3D renderer
+            if (_pdOnMouseMove) { window.removeEventListener('mousemove', _pdOnMouseMove); _pdOnMouseMove = null; }
+            if (_pdOnMouseUp)   { window.removeEventListener('mouseup',   _pdOnMouseUp);   _pdOnMouseUp   = null; }
+            if (_pdSpriteTex) { _pdSpriteTex.dispose(); _pdSpriteTex = null; }
+            if (_pdRen) { _pdRen.dispose(); _pdRen = null; }
+            // Cone profile canvas window listeners
+            if (_profileSec) { _profileSec._cleanup(); _profileSec = null; }
         }
 
         /* ── Teardown ────────────────────────────────────────────────────── */
@@ -8877,6 +10198,39 @@
             // after scene.traverse() is safe in both the instantiated and
             // uninstantiated cases.
             mBarre?.dispose?.(); mBarre = null;
+            // Ambient dome particles
+            if (_domePts) { scene?.remove(_domePts); _domePts = null; }
+            _domeGeo?.dispose(); _domeGeo = null;
+            _domeMat?.dispose(); _domeMat = null;
+            _domeDotTex?.dispose(); _domeDotTex = null;
+            _domeRotY = 0;
+
+            // Speaker cone particles — always in scene (no reparenting)
+            if (_spkPtsL) { scene?.remove(_spkPtsL); _spkPtsL = null; }
+            if (_spkPtsR) { scene?.remove(_spkPtsR); _spkPtsR = null; }
+            _spkGeo?.dispose(); _spkGeo = null;
+            _spkMat?.dispose(); _spkMat = null;
+            _spkDotTex?.dispose(); _spkDotTex = null;
+            _spkPulse = 0; _spkLastBeatT = -999;
+            _spkVel = null; _spkRotAngle = 0;
+            _spkBassSmooth = _spkMidSmooth = _spkTrebSmooth = 0;
+            _spkHitHeat = 0; _spkHitBurst = 0; _spkHitKeys = new Set();
+            _spkRings       = _SPK_RINGS_DEFAULT.slice();
+            _spkRingOffsets = _SPK_RINGS_DEFAULT.map(() => 0);
+            _spkRingRadii   = _SPK_RINGS_DEFAULT.map((_, i, a) => i / Math.max(1, a.length - 1));
+            _spkRingDepths  = _SPK_RINGS_DEFAULT.map((_, i, a) => { const rf = i / Math.max(1, a.length - 1); return rf * rf; });
+            _spkFollowCam = true;
+            _spkCfg = {
+                side: SPK_SIDE, y: SPK_Y, z: SPK_Z,
+                rOuter: SPK_R_OUTER, depth: SPK_DEPTH,
+                pump: SPK_PUMP_MAX, ptSize: SPK_PT_SIZE,
+                splayY: SPK_SPLAY_Y, cantZ: SPK_CANT_Z,
+                rotSpeed: 1.0,
+            };
+
+            // Debug orbit (also removes speaker panel/buttons from DOM)
+            _teardownDebugOrbit();
+
             _paletteColorTmp = null;
             lyricsCanvas = lyricsCtx = null;
             projMeshArr = null;
@@ -9061,6 +10415,8 @@
                     }
                 }
 
+                _updateDome();
+                _updateSpeakers(bundle);
                 ren.render(scene, cam);
                 if (lyricsCtx && lyricsCanvas) {
                     lyricsCtx.clearRect(0, 0, lyricsCanvas.width, lyricsCanvas.height);

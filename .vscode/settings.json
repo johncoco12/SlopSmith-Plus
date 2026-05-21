@@ -1,6 +1,11 @@
 {
     "hide-files.files": [
-        "ug_browser.py"
+        "ug_browser.py",
+        "vue-frontend/dist",
+        ".claude",
+        ".github",
+        ".specify",
+        ".vscode"
     ],
     "files.exclude": {
         "**/.git": true,
@@ -8,6 +13,11 @@
         "**/.hg": true,
         "**/.DS_Store": true,
         "**/Thumbs.db": true,
-        "ug_browser.py": true
+        "ug_browser.py": true,
+        "vue-frontend/dist": true,
+        ".claude": true,
+        ".github": true,
+        ".specify": true,
+        ".vscode": true
     }
 }

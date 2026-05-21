@@ -2174,3 +2174,172 @@
         })();
     </script>
 </div>
+
+<div role="group" aria-labelledby="h3d-playalong-heading" class="mt-6">
+    <h3 id="h3d-playalong-heading" class="text-sm font-medium text-gray-400 mb-2">Play-along mic detection</h3>
+    <p class="text-xs text-gray-500 mb-3">
+        Play your real guitar into a microphone. Notes light up on the highway
+        as you hit them. Requires the YIN pitch detector plugin and a working
+        microphone. Press <kbd class="bg-dark-700 border border-gray-700 rounded px-1 text-[10px]">M</kbd> in the player to toggle.
+    </p>
+
+    <!-- Enable toggle -->
+    <div class="flex items-center gap-3 mt-3">
+        <label class="flex items-center gap-2 text-sm text-gray-300">
+            <input type="checkbox" id="h3d-playalong-enabled" checked
+                   class="accent-accent">
+            Enable note-hit detection while mic is active
+        </label>
+    </div>
+
+    <!-- Mic source selector -->
+    <div class="mt-3">
+        <label for="h3d-playalong-mic" class="text-xs font-medium text-gray-400 mb-1 block">Microphone</label>
+        <div class="flex items-center gap-2">
+            <select id="h3d-playalong-mic"
+                class="flex-1 bg-dark-700 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-300 outline-none">
+                <option value="">Default microphone</option>
+            </select>
+            <button type="button" id="h3d-playalong-mic-refresh"
+                class="text-xs px-2 py-1 rounded bg-dark-700 border border-gray-800 text-gray-400 hover:text-gray-200">
+                Refresh
+            </button>
+        </div>
+        <p id="h3d-playalong-mic-error" class="text-xs text-red-400 mt-1 hidden"></p>
+    </div>
+
+    <!-- Pitch tolerance slider -->
+    <div class="mt-3">
+        <label for="h3d-playalong-tolerance" class="text-xs font-medium text-gray-400 mb-1 block">
+            Pitch tolerance: <span id="h3d-playalong-tolerance-label">50</span> cents
+        </label>
+        <input type="range" id="h3d-playalong-tolerance" min="10" max="100" step="5" value="50"
+            oninput="document.getElementById('h3d-playalong-tolerance-label').textContent = this.value;"
+            onchange="try { localStorage.setItem('pitch_yin.playTolerance', this.value); } catch(_){}"
+            class="w-full accent-accent">
+        <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+            <span>Strict (10 ¢)</span>
+            <span>Lenient (100 ¢)</span>
+        </div>
+        <p class="text-[10px] text-gray-500 mt-1">How far off-pitch you can be and still register a hit. 50 cents = half a semitone.</p>
+    </div>
+
+    <!-- Start / Stop button -->
+    <div class="mt-4">
+        <button type="button" id="h3d-playalong-toggle"
+            class="text-xs px-3 py-1.5 rounded bg-dark-700 border border-gray-800 text-gray-300 hover:text-white hover:border-gray-600">
+            Start microphone
+        </button>
+        <p id="h3d-playalong-status" class="text-xs text-gray-500 mt-1"></p>
+    </div>
+
+    <script>
+    (function () {
+        const LS_DEVICE   = 'pitch_yin.deviceId';
+        const LS_ENABLED  = 'pitch_yin.playEnabled';
+        const LS_TOLERANC = 'pitch_yin.playTolerance';
+
+        const enabledCb  = document.getElementById('h3d-playalong-enabled');
+        const micSel     = document.getElementById('h3d-playalong-mic');
+        const refreshBtn = document.getElementById('h3d-playalong-mic-refresh');
+        const micErr     = document.getElementById('h3d-playalong-mic-error');
+        const tolSlider  = document.getElementById('h3d-playalong-tolerance');
+        const tolLabel   = document.getElementById('h3d-playalong-tolerance-label');
+        const toggleBtn  = document.getElementById('h3d-playalong-toggle');
+        const statusEl   = document.getElementById('h3d-playalong-status');
+
+        function _ls(key, fallback) {
+            try { const v = localStorage.getItem(key); return v !== null ? v : fallback; } catch(_) { return fallback; }
+        }
+        function _lsSet(key, val) { try { localStorage.setItem(key, val); } catch(_) {} }
+
+        // Hydrate from localStorage
+        if (enabledCb) enabledCb.checked = _ls(LS_ENABLED, 'true') !== 'false';
+        if (tolSlider) {
+            const saved = parseInt(_ls(LS_TOLERANC, '50'), 10);
+            tolSlider.value = saved;
+            if (tolLabel) tolLabel.textContent = saved;
+        }
+
+        if (enabledCb) {
+            enabledCb.addEventListener('change', function () {
+                _lsSet(LS_ENABLED, enabledCb.checked ? 'true' : 'false');
+            });
+        }
+
+        // Mic enumeration
+        async function _populateMics() {
+            if (!micSel) return;
+            if (micErr) micErr.classList.add('hidden');
+            try {
+                // Request permission so labels are populated
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(t => t.stop());
+            } catch (e) {
+                if (micErr) { micErr.textContent = 'Mic permission denied: ' + (e.message || e); micErr.classList.remove('hidden'); }
+                return;
+            }
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const mics = devices.filter(d => d.kind === 'audioinput');
+            const saved = _ls(LS_DEVICE, '');
+            micSel.innerHTML = '<option value="">Default microphone</option>';
+            mics.forEach(function (d) {
+                const o = document.createElement('option');
+                o.value = d.deviceId;
+                o.textContent = d.label || ('Microphone ' + micSel.options.length);
+                if (d.deviceId === saved) o.selected = true;
+                micSel.appendChild(o);
+            });
+        }
+
+        if (micSel) {
+            micSel.addEventListener('change', function () {
+                _lsSet(LS_DEVICE, micSel.value);
+                // Restart mic if already running so new device takes effect
+                if (window.pitchYin && window.pitchYin.isRunning()) {
+                    window.pitchYin.stop();
+                    window.pitchYin.start().catch(function (e) {
+                        if (micErr) { micErr.textContent = 'Restart failed: ' + (e.message || e); micErr.classList.remove('hidden'); }
+                    });
+                }
+            });
+        }
+
+        if (refreshBtn) refreshBtn.addEventListener('click', _populateMics);
+
+        // Start / Stop button
+        function _updateToggleBtn() {
+            if (!toggleBtn) return;
+            const running = window.pitchYin && window.pitchYin.isRunning();
+            toggleBtn.textContent = running ? 'Stop microphone' : 'Start microphone';
+            if (statusEl) statusEl.textContent = running ? 'Microphone active — play into it and watch notes light up.' : '';
+        }
+
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function () {
+                if (!window.pitchYin) {
+                    if (statusEl) statusEl.textContent = 'YIN pitch detector plugin not loaded.';
+                    return;
+                }
+                if (window.pitchYin.isRunning()) {
+                    window.pitchYin.stop();
+                    _updateToggleBtn();
+                } else {
+                    if (statusEl) statusEl.textContent = 'Starting…';
+                    window.pitchYin.start().then(function () {
+                        _updateToggleBtn();
+                    }).catch(function (e) {
+                        if (statusEl) statusEl.textContent = 'Failed: ' + (e.message || e);
+                    });
+                }
+            });
+        }
+
+        // Populate mics on load and sync button state
+        _populateMics();
+        _updateToggleBtn();
+        // Re-sync every 2 s in case the user toggles via M key in the player
+        setInterval(_updateToggleBtn, 2000);
+    })();
+    </script>
+</div>

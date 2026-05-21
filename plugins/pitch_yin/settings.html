@@ -1,0 +1,461 @@
+<div role="group" aria-labelledby="py-heading">
+    <h3 id="py-heading" class="text-sm font-medium text-gray-400 mb-1">YIN Pitch Detector</h3>
+    <p class="text-xs text-gray-500 mb-4">
+        Real-time pitch detection via a C++ WebAssembly YIN algorithm.
+        Select your microphone, hit <strong class="text-gray-400">Test mic</strong> to see it live,
+        then use <kbd class="px-1 py-0.5 rounded bg-dark-600 border border-gray-700 text-[10px] font-mono">M</kbd>
+        in the player to toggle detection during play-along.
+    </p>
+
+    <!-- Microphone selector -->
+    <div class="mb-4">
+        <div class="flex items-center justify-between mb-1">
+            <label for="py-mic-select" class="text-xs font-medium text-gray-400">Microphone</label>
+            <button id="py-mic-refresh"
+                    class="text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1 transition">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 4v5h.582M20 20v-5h-.581M5.635 15A9 9 0 1 0 4.582 9H4"/>
+                </svg>
+                Refresh
+            </button>
+        </div>
+        <select id="py-mic-select"
+                class="w-full bg-dark-700 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-300 outline-none focus:border-gray-600">
+            <option value="">Default microphone</option>
+        </select>
+        <p id="py-mic-error" class="text-xs text-red-400 mt-1 hidden"></p>
+    </div>
+
+    <!-- Live tuner preview -->
+    <div class="mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-gray-400">Live preview</span>
+            <button id="py-test-btn"
+                    class="text-xs px-3 py-1 rounded bg-dark-600 border border-gray-700 text-gray-300 hover:border-gray-500 hover:text-gray-100 transition">
+                Test mic
+            </button>
+        </div>
+        <canvas id="py-tuner" width="400" height="180"
+                class="w-full rounded-lg border border-gray-800 block"
+                style="height: auto; background: #0d1117"></canvas>
+    </div>
+
+    <!-- Clarity threshold -->
+    <div>
+        <label for="py-clarity-slider" class="text-xs font-medium text-gray-400 flex justify-between mb-1">
+            <span>Clarity threshold</span>
+            <span id="py-clarity-label">0.85</span>
+        </label>
+        <input id="py-clarity-slider" type="range" min="0.60" max="0.97" step="0.01" value="0.85"
+               class="w-full accent-accent">
+        <p class="text-[10px] text-gray-500 mt-1">
+            Lower = more detections (including uncertain ones).
+            Higher = only very clean pitches get through.
+        </p>
+    </div>
+
+    <!-- Monitor volume -->
+    <div class="mt-4 border-t border-gray-800 pt-4">
+        <label for="py-monitor-slider" class="text-xs font-medium text-gray-400 flex justify-between mb-1">
+            <span>Monitor volume</span>
+            <span id="py-monitor-label">0.00</span>
+        </label>
+        <input id="py-monitor-slider" type="range" min="0" max="2" step="0.05" value="0"
+               class="w-full accent-accent">
+        <p class="text-[10px] text-gray-500 mt-1">
+            Passes the raw mic signal through to your speakers so you can hear yourself play.
+            Starts at 0 to avoid feedback — raise it only when using headphones or a direct monitor.
+            Also adjustable in the player's Mixer popover while playing.
+        </p>
+        <p class="text-[10px] text-yellow-400/70 mt-1">
+            ⚠ Raise above 0 only when using headphones — speakers will cause feedback.
+        </p>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    const LS_DEVICE   = 'pitch_yin.deviceId';
+    const LS_CLARITY  = 'pitch_yin.clarityThreshold';
+    const LS_MONITOR  = 'pitch_yin.monitorVolume';
+    const WINDOW_SIZE = 4096;
+
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+
+    const micSelect     = document.getElementById('py-mic-select');
+    const micRefreshBtn = document.getElementById('py-mic-refresh');
+    const micError      = document.getElementById('py-mic-error');
+    const testBtn       = document.getElementById('py-test-btn');
+    const canvas        = document.getElementById('py-tuner');
+    const claritySlider = document.getElementById('py-clarity-slider');
+    const clarityLabel  = document.getElementById('py-clarity-label');
+    const monitorSlider = document.getElementById('py-monitor-slider');
+    const monitorLabel  = document.getElementById('py-monitor-label');
+
+    // ── Preview mic state (independent of player mic) ─────────────────────────
+
+    let _mod       = null;   // Wasm module (shared with screen.js via loadWasm)
+    let _audioCtx  = null;
+    let _stream    = null;
+    let _processor = null;
+    let _source    = null;
+    let _rafId     = null;
+    let _testing   = false;
+
+    // Latest frame data for the canvas rAF loop.
+    let _frame = { hz: 0, clarity: 0, vu: 0, active: false };
+
+    // ── Note math ─────────────────────────────────────────────────────────────
+
+    const NOTE_NAMES = ['A','A♯','B','C','C♯','D','D♯','E','F','F♯','G','G♯'];
+
+    function hzToNote(hz) {
+        if (hz <= 0) return null;
+        const semis   = 12 * Math.log2(hz / 440);
+        const rounded = Math.round(semis);
+        const cents   = (semis - rounded) * 100;
+        const idx     = ((rounded % 12) + 12) % 12;
+        const octave  = 4 + Math.floor((rounded + 9) / 12);
+        return { name: NOTE_NAMES[idx], octave, cents };
+    }
+
+    // ── Canvas tuner renderer ─────────────────────────────────────────────────
+
+    function drawIdle(ctx, W, H) {
+        ctx.fillStyle = '#0d1117';
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold 56px system-ui,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('—', W / 2, H * 0.30);
+
+        ctx.font = '11px system-ui,sans-serif';
+        ctx.fillStyle = '#374151';
+        ctx.fillText('Start test to see live pitch', W / 2, H * 0.58);
+
+        _drawBars(ctx, W, H, 0, 0, 0, false);
+    }
+
+    function drawFrame(ctx, W, H, { hz, clarity, vu }) {
+        ctx.fillStyle = '#0d1117';
+        ctx.fillRect(0, 0, W, H);
+
+        const note   = hzToNote(hz);
+        const cents  = note ? Math.max(-50, Math.min(50, note.cents)) : 0;
+        const absC   = Math.abs(cents);
+        const color  = !note    ? '#374151'
+                     : absC < 5 ? '#22c55e'
+                     : absC < 20 ? '#e8c040'
+                     :             '#ef4444';
+
+        // Note name
+        ctx.font = 'bold 56px system-ui,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = color;
+
+        if (note) {
+            // Note letter, then superscript-style octave number
+            const nameW = ctx.measureText(note.name).width;
+            ctx.fillText(note.name, W / 2 - 10, H * 0.28);
+            ctx.font = 'bold 26px system-ui,sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(String(note.octave), W / 2 - 10 + nameW / 2 + 3, H * 0.10);
+        } else {
+            ctx.fillText('—', W / 2, H * 0.28);
+        }
+
+        // Hz readout
+        ctx.font = '12px system-ui,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#6b7280';
+        ctx.fillText(note ? `${hz.toFixed(1)} Hz` : '', W / 2, H * 0.52);
+
+        _drawBars(ctx, W, H, cents, clarity, vu, !!note);
+    }
+
+    function _drawBars(ctx, W, H, cents, clarity, vu, hasNote) {
+        const bx = 24, bw = W - 48;
+        const centsY = Math.round(H * 0.635);
+
+        // ── Cents bar ──
+        ctx.fillStyle = '#1a1f2e';
+        ctx.fillRect(bx, centsY, bw, 10);
+
+        // Coloured zone gradient (always visible as a dim guide)
+        const grad = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+        grad.addColorStop(0,    '#ef444466');
+        grad.addColorStop(0.25, '#e8c04066');
+        grad.addColorStop(0.42, '#22c55e66');
+        grad.addColorStop(0.58, '#22c55e66');
+        grad.addColorStop(0.75, '#e8c04066');
+        grad.addColorStop(1,    '#ef444466');
+        ctx.fillStyle = grad;
+        ctx.fillRect(bx, centsY, bw, 10);
+
+        // Centre tick
+        const cx = bx + bw / 2;
+        ctx.strokeStyle = '#4b5563';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx, centsY - 5);
+        ctx.lineTo(cx, centsY + 15);
+        ctx.stroke();
+
+        // Needle
+        if (hasNote) {
+            const nx = cx + (cents / 50) * (bw / 2);
+            const absC = Math.abs(cents);
+            const nc   = absC < 5 ? '#22c55e' : absC < 20 ? '#e8c040' : '#ef4444';
+            ctx.fillStyle = nc;
+            ctx.beginPath();                          // down-pointing triangle above bar
+            ctx.moveTo(nx - 5, centsY - 8);
+            ctx.lineTo(nx + 5, centsY - 8);
+            ctx.lineTo(nx,     centsY - 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillRect(nx - 2, centsY, 4, 10);     // stem through bar
+        }
+
+        // Labels
+        ctx.font = '9px system-ui,sans-serif';
+        ctx.fillStyle = '#4b5563';
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';  ctx.fillText('−50', bx, centsY + 13);
+        ctx.textAlign = 'center'; ctx.fillText('0',   cx,      centsY + 13);
+        ctx.textAlign = 'right';  ctx.fillText('+50', bx + bw, centsY + 13);
+
+        // ── Clarity bar ──
+        const clY = Math.round(H * 0.84);
+        ctx.fillStyle = '#1a1f2e';
+        ctx.fillRect(bx, clY, bw, 5);
+        ctx.fillStyle = '#4080e0';
+        ctx.fillRect(bx, clY, bw * Math.max(0, clarity), 5);
+
+        ctx.font = '9px system-ui,sans-serif';
+        ctx.fillStyle = '#4b5563';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`clarity ${Math.round(clarity * 100)}%`, bx + bw, clY - 1);
+
+        // ── VU meter ──
+        const vuY = Math.round(H * 0.94);
+        ctx.fillStyle = '#1a1f2e';
+        ctx.fillRect(bx, vuY, bw, 4);
+        const vuNorm  = Math.min(1, vu * 6);   // RMS is quiet; scale up for visibility
+        const vuColor = vuNorm > 0.85 ? '#ef4444' : vuNorm > 0.5 ? '#e8c040' : '#22c55e';
+        ctx.fillStyle = vuColor;
+        ctx.fillRect(bx, vuY, bw * vuNorm, 4);
+
+        ctx.font = '9px system-ui,sans-serif';
+        ctx.fillStyle = '#4b5563';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('mic', bx, vuY - 1);
+    }
+
+    // ── rAF draw loop ─────────────────────────────────────────────────────────
+
+    function _startDrawLoop() {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        function loop() {
+            _rafId = requestAnimationFrame(loop);
+            if (_frame.active) {
+                drawFrame(ctx, W, H, _frame);
+            } else {
+                drawIdle(ctx, W, H);
+            }
+        }
+        loop();
+    }
+
+    function _stopDrawLoop() {
+        if (_rafId !== null) { cancelAnimationFrame(_rafId); _rafId = null; }
+        const ctx = canvas.getContext('2d');
+        drawIdle(ctx, canvas.width, canvas.height);
+    }
+
+    // ── Mic pipeline ─────────────────────────────────────────────────────────
+
+    function _rms(buf) {
+        let s = 0;
+        for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+        return Math.sqrt(s / buf.length);
+    }
+
+    async function _startTest() {
+        micError.classList.add('hidden');
+        micError.textContent = '';
+
+        try {
+            // Reuse the already-loaded Wasm module if available.
+            _mod = await (window.pitchYin?.loadWasm?.() ?? Promise.reject(
+                new Error('pitch_yin plugin not ready — reload the page')
+            ));
+        } catch (e) {
+            _showError(e.message);
+            return;
+        }
+
+        const deviceId = micSelect.value || undefined;
+        const constraints = {
+            audio: {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl:  false,
+                ...(deviceId && { deviceId: { exact: deviceId } }),
+            },
+        };
+
+        try {
+            _audioCtx = new AudioContext();
+            _stream   = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e) {
+            _showError('Microphone access denied: ' + e.message);
+            _audioCtx?.close();
+            _audioCtx = null;
+            return;
+        }
+
+        _mod._pitch_init(_audioCtx.sampleRate);
+        const inputPtr = _mod._pitch_input_ptr();
+
+        _source    = _audioCtx.createMediaStreamSource(_stream);
+        _processor = _audioCtx.createScriptProcessor(WINDOW_SIZE, 1, 1);
+
+        _processor.onaudioprocess = (ev) => {
+            const samples = ev.inputBuffer.getChannelData(0);
+            _mod.HEAPF32.set(samples, inputPtr >> 2);
+            _mod._pitch_process();
+            const hz      = _mod._pitch_get_hz();
+            const clarity = _mod._pitch_get_clarity();
+            _frame = { hz, clarity, vu: _rms(samples), active: true };
+        };
+
+        _source.connect(_processor);
+        _processor.connect(_audioCtx.destination);
+
+        _testing = true;
+        testBtn.textContent = 'Stop';
+        testBtn.classList.replace('bg-dark-600', 'bg-red-900/40');
+        testBtn.classList.replace('border-gray-700', 'border-red-700/60');
+        _startDrawLoop();
+    }
+
+    function _stopTest() {
+        _testing = false;
+        _frame   = { hz: 0, clarity: 0, vu: 0, active: false };
+        _processor?.disconnect();
+        _source?.disconnect();
+        _stream?.getTracks().forEach(t => t.stop());
+        _audioCtx?.close();
+        _audioCtx = _processor = _source = _stream = null;
+        testBtn.textContent = 'Test mic';
+        testBtn.classList.replace('bg-red-900/40', 'bg-dark-600');
+        testBtn.classList.replace('border-red-700/60', 'border-gray-700');
+        _stopDrawLoop();
+    }
+
+    function _showError(msg) {
+        micError.textContent = msg;
+        micError.classList.remove('hidden');
+    }
+
+    // ── Device enumeration ────────────────────────────────────────────────────
+
+    async function _populateMics() {
+        // getUserMedia permission is required before enumerateDevices returns
+        // labelled entries. Request audio-only to trigger the prompt once.
+        try {
+            const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+            tmp.getTracks().forEach(t => t.stop());
+        } catch (_) { /* no permission — list will show only "Default" */ }
+
+        let devices;
+        try {
+            devices = await navigator.mediaDevices.enumerateDevices();
+        } catch (e) {
+            _showError('Cannot enumerate devices: ' + e.message);
+            return;
+        }
+
+        const saved = localStorage.getItem(LS_DEVICE) || '';
+        // Keep the "Default microphone" option, then append real devices.
+        micSelect.innerHTML = '<option value="">Default microphone</option>';
+        devices
+            .filter(d => d.kind === 'audioinput')
+            .forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.deviceId;
+                opt.textContent = d.label || `Microphone (${d.deviceId.slice(0, 8)}…)`;
+                if (d.deviceId === saved) opt.selected = true;
+                micSelect.appendChild(opt);
+            });
+    }
+
+    // ── Event wiring ──────────────────────────────────────────────────────────
+
+    micSelect.addEventListener('change', () => {
+        const id = micSelect.value;
+        if (id) localStorage.setItem(LS_DEVICE, id);
+        else    localStorage.removeItem(LS_DEVICE);
+        // Restart test with new device if already running.
+        if (_testing) { _stopTest(); _startTest(); }
+        // Restart player mic too (picks up the new device on next start).
+        if (window.pitchYin?.isRunning()) { window.pitchYin.stop(); window.pitchYin.start(); }
+    });
+
+    micRefreshBtn.addEventListener('click', _populateMics);
+
+    testBtn.addEventListener('click', () => _testing ? _stopTest() : _startTest());
+
+    claritySlider.addEventListener('input', () => {
+        const v = claritySlider.value;
+        clarityLabel.textContent = v;
+        localStorage.setItem(LS_CLARITY, v);
+    });
+
+    if (monitorSlider) {
+        monitorSlider.addEventListener('input', () => {
+            const v = parseFloat(monitorSlider.value);
+            monitorLabel.textContent = v.toFixed(2);
+            // Delegate to the plugin if the mic is already running so the gain
+            // node is updated immediately; otherwise just persist for next start.
+            if (window.pitchYin?.setMonitorVolume) {
+                window.pitchYin.setMonitorVolume(v);
+            } else {
+                localStorage.setItem(LS_MONITOR, String(v));
+            }
+        });
+    }
+
+    // ── Hydrate from localStorage ─────────────────────────────────────────────
+
+    (function hydrate() {
+        const clarity = parseFloat(localStorage.getItem(LS_CLARITY));
+        if (clarity >= 0.6 && clarity <= 0.97) {
+            claritySlider.value    = clarity;
+            clarityLabel.textContent = clarity.toFixed(2);
+        }
+        const monitor = parseFloat(localStorage.getItem(LS_MONITOR));
+        if (monitorSlider && !isNaN(monitor) && monitor >= 0 && monitor <= 2) {
+            monitorSlider.value = monitor;
+            monitorLabel.textContent = monitor.toFixed(2);
+        }
+        // Draw the idle canvas immediately so it's not blank.
+        const ctx = canvas.getContext('2d');
+        drawIdle(ctx, canvas.width, canvas.height);
+        // Then populate mic list.
+        _populateMics();
+    })();
+
+})();
+</script>

@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Song {
+  filename     String @id
+  mtime        Float
+  size         Int
+  title        String @default("")
+  artist       String @default("")
+  album        String @default("")
+  year         String @default("")
+  duration     Float  @default(0)
+  tuning       String @default("")
+  arrangements String @default("[]") // JSON array
+  hasLyrics    Boolean @default(false)
+  format       String  @default("psarc") // psarc | sloppak | loose
+  stemCount    Int     @default(0)
+  stemIds      String  @default("[]") // JSON array
+  tuningName   String  @default("")
+  tuningSortKey Int    @default(0)
+
+  @@index([artist])
+  @@index([title])
+  @@index([tuningName])
+  @@index([tuningSortKey])
+  @@index([year])
+}
+
+model Favorite {
+  filename String @id
+}
+
+model Loop {
+  id        Int      @id @default(autoincrement())
+  filename  String
+  name      String
+  startTime Float
+  endTime   Float
+  createdAt DateTime @default(now())
+
+  @@index([filename])
+}

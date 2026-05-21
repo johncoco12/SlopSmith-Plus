@@ -1,38 +1,35 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
-      - "8000:8000"
+      - "8080:8080"
     volumes:
       # Mount your Rocksmith DLC folder (adjust path for your system)
       - ${DLC_PATH:-~/.local/share/Steam/steamapps/common/Rocksmith2014/dlc}:/dlc
-      # Persistent config and cache
+      # Persistent config, cache, database
       - rocksmith-config:/config
-      # Mount source for live reload during development
-      - ./static:/app/static
-      - ./server.py:/app/server.py
-      - ./VERSION:/app/VERSION
-      - ./ug_browser.py:/app/ug_browser.py
-      - ./lib:/app/lib
+      # Live-reload source mounts for development
       - ./plugins:/app/plugins
-      # Optional: mount Firefox profile for CustomsForge auth
-      # - ~/.mozilla/firefox:/firefox:ro
+      - ./static:/app/static
+      - ./VERSION:/app/VERSION
     environment:
-      - PYTHONPATH=/app/lib:/app
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config
+      - DATABASE_URL=file:/config/web_library.db
       - RSCLI_PATH=/opt/rscli/RsCli
+      - VGMSTREAM_CLI=/usr/local/bin/vgmstream-cli
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
       # Logging (optional)
-      # - LOG_LEVEL=DEBUG       # DEBUG | INFO | WARNING | ERROR  (default: INFO)
-      # - LOG_FORMAT=json       # json | text  (default: text — coloured console)
-      # - LOG_FILE=/config/slopsmith.log  # also write to a persistent file
+      # - LOG_LEVEL=debug       # trace | debug | info | warn | error  (default: info)
+      # - LOG_PRETTY=true       # human-readable pino output  (default: true)
     dns:
       - 8.8.8.8
       - 1.1.1.1
 
-  vue:
-    build: ./vue-frontend
+  frontend:
+    build: ./frontend
     ports:
       - "8001:80"
     depends_on:
