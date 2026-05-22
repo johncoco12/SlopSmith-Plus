@@ -1,6 +1,5 @@
 import { get, post } from './index'
 
-// Convert "artist-desc" → {sort:"artist", dir:"desc"}, "recent" → {sort:"recent", dir:"asc"}, etc.
 function parseSortBy(sortBy: string): { sort: string; dir: string } {
   if (sortBy.endsWith('-desc')) return { sort: sortBy.slice(0, -5), dir: 'desc' }
   return { sort: sortBy, dir: 'asc' }
@@ -58,9 +57,9 @@ export const fetchLibraryStats = (favoritesOnly = false): Promise<unknown> =>
 
 export async function fetchTuningNames(): Promise<string[]> {
   const data = await get('/api/library/tuning-names') as any
-  // API returns {tunings:[{name,sort_key,count}]} — extract just the names
   return (data.tunings ?? data).map((t: any) => t.name ?? t)
 }
 
-export const toggleFavorite = (filename: string): Promise<unknown> =>
-  post('/api/favorites/toggle', { filename })
+export function toggleFavorite(trackId: string, profileId: number): Promise<unknown> {
+  return post('/api/favorites/toggle', { trackId, profileId })
+}

@@ -7,6 +7,7 @@ import {
   fetchTuningNames,
   toggleFavorite as apiToggleFavorite,
 } from '@/api/library'
+import { useAuthStore } from '@/stores/auth'
 import type { Song, LibraryFilters } from '@/types'
 
 const PAGE_SIZE = 24
@@ -20,6 +21,8 @@ const EMPTY_FILTERS = (): LibraryFilters => ({
 
 function createLibraryStore(id: string, favoritesOnly: boolean) {
   return defineStore(id, () => {
+    const auth = useAuthStore()
+
     // Persisted
     const viewMode = useLocalStorage(`slopsmith.${id}View`, 'grid')
     const sortBy   = useLocalStorage(`slopsmith.${id}Sort`, 'artist')
@@ -108,9 +111,11 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
       treeStats.value = await fetchLibraryStats(favoritesOnly)
     }
 
-    async function toggleFavorite(filename: string): Promise<void> {
-      await apiToggleFavorite(filename)
-      const song = songs.value.find(s => s.filename === filename)
+    async function toggleFavorite(trackId: string): Promise<void> {
+      const profileId = auth.profile?.id
+      if (!profileId) return
+      await apiToggleFavorite(trackId, profileId)
+      const song = songs.value.find(s => s.trackId === trackId || s.filename === trackId)
       if (song) song.isFavorite = !song.isFavorite
     }
 

@@ -80,6 +80,7 @@ export interface SongInfo {
 
 export interface Song {
   filename: string
+  trackId?: string
   title: string
   artist: string
   album?: string
@@ -109,10 +110,11 @@ export interface LibraryFilters {
 
 export interface Loop {
   id: number
-  filename: string
+  profileId: number
+  trackId: number
   name: string
-  start: number
-  end: number
+  startTime: number
+  endTime: number
 }
 
 export interface Plugin {
@@ -156,6 +158,64 @@ export interface VersionInfo {
   license_url?: string
 }
 
+// ─── Auth / Profile / Permissions ──────────────────────────────────────────
+
+export interface SafeProfile {
+  id: number
+  name: string
+  avatarId: number | null
+  locked: boolean
+  profileSettings: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Session {
+  token: string
+  profileId: number
+  profileName: string
+  createdAt: number
+  expiresAt: number
+}
+
+export interface LoginResponse {
+  token: string
+  expiresAt: number
+  profile: SafeProfile
+}
+
+export type Permission =
+  | 'admin'
+  | 'upload'
+  | 'edit_tracks'
+  | 'delete_tracks'
+  | 'manage_profiles'
+  | 'manage_permissions'
+  | 'manage_settings'
+
+export const PERMISSIONS = {
+  ADMIN: 'admin' as Permission,
+  UPLOAD: 'upload' as Permission,
+  EDIT_TRACKS: 'edit_tracks' as Permission,
+  DELETE_TRACKS: 'delete_tracks' as Permission,
+  MANAGE_PROFILES: 'manage_profiles' as Permission,
+  MANAGE_PERMISSIONS: 'manage_permissions' as Permission,
+  MANAGE_SETTINGS: 'manage_settings' as Permission,
+}
+
+export interface SetupStatus {
+  setup: boolean
+}
+
+export interface PermissionGroup {
+  id: number
+  name: string
+  profileIds: number[]
+  permissions: Permission[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface SlopsmithBus extends EventTarget {
   emit(event: string, detail?: unknown): void
   on(event: string, fn: EventListenerOrEventListenerObject, opts?: AddEventListenerOptions): void
@@ -191,7 +251,7 @@ declare global {
     highway: {
       init(canvas: HTMLCanvasElement): void
       stop(): void
-      reconnect(filename: string, arrangement: number): Promise<void>
+      reconnect(trackId: string, arrangement?: number): Promise<void>
       setAvOffset?(ms: number): void
       setMasterDifficulty?(ratio: number): void
       toggleLyrics?(): void
@@ -200,6 +260,7 @@ declare global {
       setTime?(t: number): void
       getTime?(): number
       getAudioElement?(): HTMLAudioElement | null
+      setNoteStateProvider?(fn: ((note: Note, chartTime: number) => { state: string; alpha: number } | null | undefined) | null): void
       getSongInfo(): SongInfo
       getBeats(): Beat[]
       getNotes(): Note[]

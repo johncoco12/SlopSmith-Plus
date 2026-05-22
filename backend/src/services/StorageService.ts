@@ -1,13 +1,8 @@
-import { injectable, inject } from "tsyringe";
-import type { IStorageProvider } from "../domain/interfaces/providers/IStorageProvider.js";
-import type { IStorageService, StoredItem } from "../domain/interfaces/services/IStorageService.js";
-import { IStorageProviderToken } from "../container.js";
+import type { IStorageProvider, StoredItem } from "../domain/interfaces/providers/IStorageProvider.js";
+import type { IStorageService } from "../domain/interfaces/services/IStorageService.js";
 
-@injectable()
 export class StorageService implements IStorageService {
-  constructor(
-    @inject(IStorageProviderToken) private readonly provider: IStorageProvider,
-  ) {}
+  constructor(private readonly provider: IStorageProvider) {}
 
   store(identifier: string, data: Buffer): Promise<StoredItem> {
     return this.provider.store(identifier, data);

@@ -9,7 +9,7 @@ import { ChartState } from './chartState.js';
 import { MasteryFilter } from './masteryFilter.js';
 import { ProjectionHelper, VISIBLE_SECONDS } from './projection.js';
 import { RendererManager } from './RendererManager.js';
-import { HighwayWsClient } from './wsClient.js';
+import { HighwayRestClient } from './restClient.js';
 import { resolveNoteState } from './painters/notes.js';
 import type {
   HighwayApi, ConnectOptions, Renderer, DrawHook, RenderBundle,
@@ -36,7 +36,7 @@ export class Highway implements HighwayApi {
   private filter = new MasteryFilter();
   private proj = new ProjectionHelper();
   private rendererMgr: RendererManager;
-  private wsClient: HighwayWsClient;
+  private restClient: HighwayRestClient;
 
   private renderScale = parseFloat(localStorage.getItem('renderScale') ?? '1') || 1;
   private inverted = localStorage.getItem('invertHighway') === 'true';
@@ -57,7 +57,7 @@ export class Highway implements HighwayApi {
 
   constructor() {
     this.rendererMgr = new RendererManager(slopsmithEmit);
-    this.wsClient = new HighwayWsClient(
+    this.restClient = new HighwayRestClient(
       this.state,
       this.filter,
       this.proj,
@@ -89,23 +89,19 @@ export class Highway implements HighwayApi {
   // ── Connection ────────────────────────────────────────────────────────────
 
   connect(wsUrl: string, opts: ConnectOptions = {}): void {
-    this.connectOpts = opts;
-    this._resetSongState();
-    this.wsClient.connect(wsUrl, opts);
+    // Legacy compat — no-op; use reconnect(trackId, arrangement) instead
   }
 
-  reconnect(filename: string, arrangement?: number): void {
+  async reconnect(trackId: string, arrangement = 0): Promise<void> {
     this._resetSongState();
-    const arrParam = arrangement !== undefined ? `?arrangement=${arrangement}` : '';
-    const decoded = decodeURIComponent(filename);
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${proto}//${location.host}/ws/highway/${decoded}${arrParam}`;
-    this.wsClient.connect(wsUrl, this.connectOpts);
+    this.restClient.abort();
+    await this.restClient.connect(trackId, arrangement, this.connectOpts);
+    this.clock.setSongOffset(this.state.songOffset);
   }
 
   stop(): void {
     this.rendererMgr.stopLoop();
-    this.wsClient.close();
+    this.restClient.abort();
     this._clearLoopInterval();
     if (this.resizeHandler) {
       window.removeEventListener('resize', this.resizeHandler);
@@ -184,8 +180,14 @@ export class Highway implements HighwayApi {
 
   // ── Data accessors ────────────────────────────────────────────────────────
 
-  getNotes(): ChartNote[] { return this.state.notes; }
-  getChords(): ChartChord[] { return this.state.chords; }
+  getNotes(): ChartNote[] {
+    const filtered = this.filter.getFiltered().notes;
+    return filtered ?? this.state.notes;
+  }
+  getChords(): ChartChord[] {
+    const filtered = this.filter.getFiltered().chords;
+    return filtered ?? this.state.chords;
+  }
   getBeats(): Beat[] { return this.state.beats; }
   getSections(): Section[] { return this.state.sections; }
   getChordTemplates(): ChordTemplate[] { return this.state.chordTemplates; }

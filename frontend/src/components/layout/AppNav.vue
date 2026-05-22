@@ -4,15 +4,20 @@ import { useRoute } from 'vue-router'
 import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid, Settings } from 'lucide-vue-next'
 import { useSettingsStore } from '@/stores/settings'
 import { usePluginsStore } from '@/stores/plugins'
+import { useAuthStore } from '@/stores/auth'
 import MobileMenu from './MobileMenu.vue'
+import ProfileSwitcher from './ProfileSwitcher.vue'
 
 const route    = useRoute()
 const settings = useSettingsStore()
 const plugins  = usePluginsStore()
+const auth     = useAuthStore()
 
-const mobileOpen   = ref<boolean>(false)
-const fileInput    = ref<HTMLInputElement | null>(null)
-const uploadStatus = ref<string>('')
+const mobileOpen     = ref<boolean>(false)
+const fileInput      = ref<HTMLInputElement | null>(null)
+const uploadStatus   = ref<string>('')
+const uploading      = ref(false)
+const uploadProgress = ref(0)
 
 const navLinks = computed(() => [
   { name: 'library',   label: 'Library',   icon: Library   },
@@ -32,20 +37,73 @@ function isActive(link: { name: string; params?: { id: string } }): boolean {
   return route.name === link.name
 }
 
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {}
+  if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
+  return headers
+}
+
+async function pollJob(jobId: string): Promise<void> {
+  for (let i = 0; i < 120; i++) {
+    await new Promise(r => setTimeout(r, 500))
+    try {
+      const res = await fetch(`/api/import/status/${jobId}`, { headers: authHeaders() })
+      if (!res.ok) break
+      const job = await res.json()
+      uploadProgress.value = job.progress ?? 0
+      uploadStatus.value = `Processing… ${job.progress ?? 0}%`
+      if (job.status === 'completed') {
+        uploadStatus.value = 'Done'
+        return
+      }
+      if (job.status === 'failed') {
+        uploadStatus.value = `Failed: ${job.error || 'Unknown error'}`
+        return
+      }
+    } catch {
+      break
+    }
+  }
+}
+
 async function handleUpload(e: Event): Promise<void> {
   const files = (e.target as HTMLInputElement).files
   if (!files?.length) return
+  uploading.value = true
+  uploadProgress.value = 0
   uploadStatus.value = 'Uploading…'
   const form = new FormData()
   for (const f of files) form.append('files', f)
   try {
-    const res = await fetch('/api/songs/upload', { method: 'POST', body: form })
-    uploadStatus.value = res.ok ? 'Done' : 'Failed'
+    const res = await fetch('/api/import/upload', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: form,
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      uploadStatus.value = `Failed: ${body.error || res.statusText}`
+      return
+    }
+    const data = await res.json()
+    const jobs: { jobId: string }[] = data.jobs ?? (data.jobId ? [{ jobId: data.jobId }] : [])
+    if (jobs.length === 0) {
+      uploadStatus.value = 'No valid files uploaded'
+      return
+    }
+    uploadStatus.value = `Processing ${jobs.length} file${jobs.length > 1 ? 's' : ''}…`
+    const polls = jobs.map(j => pollJob(j.jobId))
+    await Promise.all(polls)
+    if (uploadStatus.value.startsWith('Processing') || uploadStatus.value === 'Done') {
+      uploadStatus.value = 'Done'
+    }
   } catch {
     uploadStatus.value = 'Error'
+  } finally {
+    uploading.value = false
+    setTimeout(() => { uploadStatus.value = ''; uploadProgress.value = 0 }, 3000)
+    ;(e.target as HTMLInputElement).value = ''
   }
-  setTimeout(() => { uploadStatus.value = '' }, 3000)
-  e.target.value = ''
 }
 </script>
 
@@ -81,12 +139,20 @@ async function handleUpload(e: Event): Promise<void> {
 
     <!-- Right side -->
     <div class="ml-auto flex items-center gap-2">
-      <span v-if="uploadStatus" class="t-caption">{{ uploadStatus }}</span>
+      <div v-if="uploadStatus" class="flex items-center gap-2 t-caption">
+        <span>{{ uploadStatus }}</span>
+        <div v-if="uploading && uploadProgress > 0 && uploadProgress < 100"
+          class="w-20 h-1.5 bg-dark-600 rounded-full overflow-hidden">
+          <div class="h-full bg-accent rounded-full transition-all duration-300"
+            :style="{ width: uploadProgress + '%' }" />
+        </div>
+      </div>
 
       <button
         class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
                text-gray-400 bg-dark-600 border border-white/[.06]
                hover:bg-dark-500 hover:text-gray-200 transition"
+        :disabled="uploading"
         @click="fileInput?.click()"
       >
         <Upload :size="13" />
@@ -98,6 +164,7 @@ async function handleUpload(e: Event): Promise<void> {
         multiple
         accept=".psarc,.sloppak"
         class="hidden"
+        :disabled="uploading"
         @change="handleUpload"
       />
 
@@ -110,6 +177,8 @@ async function handleUpload(e: Event): Promise<void> {
       >
         <component :is="mobileOpen ? X : Menu" :size="20" />
       </button>
+
+      <ProfileSwitcher />
     </div>
   </nav>
 

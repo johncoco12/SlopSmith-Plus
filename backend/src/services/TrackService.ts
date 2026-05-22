@@ -1,5 +1,5 @@
 import type { ITrackRepository, ITrackDataRepository, IStemsRepository, IStemDataRepository, ILoopRepository } from "../domain/repositories.js";
-import type { Track, TrackData, TrackStems, StemData } from "../domain/models/track.js";
+import type { Track, TrackData, TrackStems, StemData, UpdateTrackInput } from "../domain/models/track.js";
 import type { Loop } from "../domain/models/library.js";
 import type { IStorageService } from "../domain/interfaces/services/IStorageService.js";
 import { NotFoundError } from "../domain/errors.js";
@@ -77,5 +77,34 @@ export class TrackService {
 
   async deleteLoop(loopId: number): Promise<void> {
     await this.loops.delete(loopId);
+  }
+
+  async updateTrack(trackId: string, input: UpdateTrackInput): Promise<Track> {
+    const track = await this.tracks.findByTrackId(trackId);
+    if (!track) throw new NotFoundError("Track");
+    return this.tracks.update(track.id, input);
+  }
+
+  async deleteTrack(trackId: string): Promise<void> {
+    const track = await this.tracks.findByTrackId(trackId);
+    if (!track) throw new NotFoundError("Track");
+
+    const data = await this.trackData.findByTrackId(track.id);
+    if (data) {
+      const storageIds = [data.coverImageStorageId, data.audioFileStorageId].filter(Boolean) as string[];
+      await Promise.all(storageIds.map((id) => this.storage.delete(id).catch(() => {})));
+      await this.trackData.delete(data.id);
+    }
+
+    const stemsRecord = await this.stems.findByTrackId(track.id);
+    if (stemsRecord) {
+      const stemRows = await this.stemData.findByStemsId(stemsRecord.id);
+      const stemStorageIds = stemRows.map((s) => s.stemAudioFileStorageId).filter(Boolean) as string[];
+      await Promise.all(stemStorageIds.map((id) => this.storage.delete(id).catch(() => {})));
+      await Promise.all(stemRows.map((s) => this.stemData.delete(s.id).catch(() => {})));
+      await this.stems.delete(stemsRecord.id).catch(() => {});
+    }
+
+    await this.tracks.delete(track.id);
   }
 }

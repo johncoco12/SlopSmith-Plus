@@ -8,7 +8,6 @@ import ScanSection from '@/components/settings/ScanSection.vue'
 import BackupSection from '@/components/settings/BackupSection.vue'
 import DiagnosticsSection from '@/components/settings/DiagnosticsSection.vue'
 import PluginSettings from '@/components/settings/PluginSettings.vue'
-
 const router   = useRouter()
 const settings = useSettingsStore()
 const plugins  = usePluginsStore()

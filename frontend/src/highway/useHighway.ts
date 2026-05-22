@@ -33,9 +33,10 @@ export function useHighway(): void {
     const emitter = (window as unknown as { slopsmith?: { on?: (e: string, h: (e: Event) => void) => void } }).slopsmith;
     emitter?.on?.('song:ready', onSongReady);
 
-    // Re-play if the route watch already fired before mount.
-    if (player.filename) {
-      player.playSong(player.filename, player.arrangement);
+    // Replay the song if the route watch in PlayerView already fired before
+    // the highway was ready (it fires during setup(), before the DOM exists).
+    if (player.trackIdRef) {
+      player.playSong(player.trackIdRef, player.arrangement, player.trackIdRef);
     }
   });
 

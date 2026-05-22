@@ -34,14 +34,9 @@ export function useHighway(): void {
     // Update songInfo whenever a track finishes loading (covers arrangement switches too)
     window.slopsmith?.on('song:ready', onSongReady)
 
-    // The route watch (immediate:true) already ran before this mount, so
-    // playSong() ran with highway.value === null and skipped the WebSocket
-    // connect.  Re-trigger only if a filename is queued — the watch already
-    // called playSong() but the reconnect was skipped.  Use player.filename
-    // (set by playSong) as the sentinel; if it's null nothing was queued.
-    // Pass player.arrangement which playSong() already wrote from the route.
-    if (player.filename) {
-      player.playSong(player.filename, player.arrangement)
+    // Re-trigger if a trackId is queued from the route
+    if (player.trackIdRef) {
+      player.playSong(player.trackIdRef, player.arrangement, player.trackIdRef)
     }
   })
 

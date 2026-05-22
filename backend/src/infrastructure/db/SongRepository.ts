@@ -16,9 +16,10 @@ import type {
 } from "../../domain/models/library.js";
 import { prisma } from "./client.js";
 
-function rowToMeta(row: PrismaSong, favorites: Set<string>): SongMeta {
+function rowToMeta(row: PrismaSong, favorites: Set<string>, trackIdMap: Map<string, string>): SongMeta {
   return {
     filename: row.filename,
+    trackId: trackIdMap.get(row.filename) ?? undefined,
     title: row.title,
     artist: row.artist,
     album: row.album,
@@ -118,6 +119,14 @@ export class SongRepository implements ISongRepository {
     return new Set(rows.map((r) => r.trackId));
   }
 
+  private async getTrackIdMap(filenames: string[]): Promise<Map<string, string>> {
+    const rows = await prisma.trackData.findMany({
+      where: { originalFilename: { in: filenames } },
+      select: { originalFilename: true, track: { select: { trackId: true } } },
+    });
+    return new Map(rows.map((r) => [r.originalFilename, r.track.trackId]));
+  }
+
   async search(query: LibraryQuery): Promise<PageResult<SongMeta>> {
     const favorites = await this.getFavorites();
     const where = buildWhere(query, favorites);
@@ -134,9 +143,10 @@ export class SongRepository implements ISongRepository {
       : rows;
 
     const page = filtered.slice(skip, skip + query.size);
+    const trackIdMap = await this.getTrackIdMap(page.map((r) => r.filename));
 
     return {
-      items: page.map((r) => rowToMeta(r, favorites)),
+      items: page.map((r) => rowToMeta(r, favorites, trackIdMap)),
       total: hasPostFilters(query) ? filtered.length : total,
       page: query.page,
       size: query.size,
@@ -168,10 +178,12 @@ export class SongRepository implements ISongRepository {
       orderBy: [{ artist: "asc" }, { album: "asc" }, { title: "asc" }],
     });
 
+    const trackIdMap = await this.getTrackIdMap(rows.map((r) => r.filename));
+
     // Group by artist → album
     const artistMap = new Map<string, Map<string, SongMeta[]>>();
     for (const row of rows) {
-      const meta = rowToMeta(row, favorites);
+      const meta = rowToMeta(row, favorites, trackIdMap);
       if (!artistMap.has(meta.artist)) artistMap.set(meta.artist, new Map());
       const albumMap = artistMap.get(meta.artist)!;
       if (!albumMap.has(meta.album)) albumMap.set(meta.album, []);
@@ -228,14 +240,16 @@ export class SongRepository implements ISongRepository {
     const row = await prisma.song.findUnique({ where: { filename } });
     if (!row) return null;
     const favorites = await this.getFavorites();
-    return rowToMeta(row, favorites);
+    const trackIdMap = await this.getTrackIdMap([row.filename]);
+    return rowToMeta(row, favorites, trackIdMap);
   }
 
   async findCached(filename: string, mtime: number, size: number): Promise<SongMeta | null> {
     const row = await prisma.song.findUnique({ where: { filename } });
     if (!row || row.mtime !== mtime || row.size !== size) return null;
     const favorites = await this.getFavorites();
-    return rowToMeta(row, favorites);
+    const trackIdMap = await this.getTrackIdMap([row.filename]);
+    return rowToMeta(row, favorites, trackIdMap);
   }
 
   async upsert(filename: string, input: SongInput): Promise<void> {

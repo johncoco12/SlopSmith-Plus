@@ -2,7 +2,7 @@
     "id": "pitch_yin",
     "name": "YIN Pitch Detector",
     "version": "0.1.0",
-    "bundled": true,
+    "bundled": false,
     "script": "screen.js",
     "settings": { "html": "settings.html" }
 }

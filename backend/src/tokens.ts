@@ -1,0 +1,11 @@
+export const IStorageProviderToken = Symbol("IStorageProvider");
+export const IStorageServiceToken = Symbol("IStorageService");
+export const IProfileServiceToken = Symbol("IProfileService");
+export const IPermissionsServiceToken = Symbol("IPermissionsService");
+export const IProfileRepositoryToken = Symbol("IProfileRepository");
+export const IPermissionGroupRepositoryToken = Symbol("IPermissionGroupRepository");
+export const ITrackRepositoryToken = Symbol("ITrackRepository");
+export const ITrackDataRepositoryToken = Symbol("ITrackDataRepository");
+export const IStemsRepositoryToken = Symbol("IStemsRepository");
+export const IStemDataRepositoryToken = Symbol("IStemDataRepository");
+export const ILoopRepositoryToken = Symbol("ILoopRepository");

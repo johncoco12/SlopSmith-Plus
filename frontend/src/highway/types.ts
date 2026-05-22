@@ -164,7 +164,7 @@ export interface HighwayApi {
   init(canvas: HTMLCanvasElement, container?: Element | null): void;
   resize(): void;
   connect(wsUrl: string, opts?: ConnectOptions): void;
-  reconnect(filename: string, arrangement?: number): void;
+  reconnect(trackId: string, arrangement?: number): Promise<void>;
   stop(): void;
 
   setTime(t: number): void;

@@ -1,7 +1,6 @@
 import * as Minio from "minio";
 import { S3Error } from "minio";
 import fs from "node:fs";
-import { injectable } from "tsyringe";
 import { mimeFromFile } from "../../../utils/mime.js";
 import type { IStorageProvider, StoredItem } from "../../../domain/interfaces/providers/IStorageProvider.js";
 
@@ -14,7 +13,6 @@ export interface MinIOProviderOptions {
   readonly useSSL?: boolean;
 }
 
-@injectable()
 export class MinIOProvider implements IStorageProvider {
   readonly name = "MinIO";
   private readonly client: Minio.Client;

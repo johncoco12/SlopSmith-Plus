@@ -6,12 +6,13 @@ import { useShortcuts } from '@/composables/useShortcuts'
 import HighwayCanvas from '@/components/player/HighwayCanvas.vue'
 import PlayerHud from '@/components/player/PlayerHud.vue'
 import PlayerControls from '@/components/player/PlayerControls.vue'
+import DebugOverlay from '@/components/player/DebugOverlay.vue'
 
 const route  = useRoute()
 const router = useRouter()
 const player = usePlayerStore()
 
-const filename    = computed(() => route.params.filename)
+const trackId     = computed(() => route.params.trackId as string)
 const arrangement = computed(() => Number(route.query.arrangement ?? 0))
 
 // Time sync loop — updates player.currentTime each frame
@@ -29,11 +30,11 @@ onUnmounted(() => {
   if (_rafId !== null) cancelAnimationFrame(_rafId)
 })
 
-// Load song whenever filename/arrangement changes
+// Load song whenever trackId/arrangement changes
 watch(
-  [filename, arrangement],
-  async ([fn, arr]) => {
-    if (fn) await player.playSong(fn, arr)
+  [trackId, arrangement],
+  async ([tid, arr]) => {
+    if (tid) await player.playSong(tid, arr, tid)
   },
   { immediate: true }
 )
@@ -77,5 +78,6 @@ function handleBack() {
 
     <!-- Controls bar -->
     <PlayerControls @back="handleBack" />
+    <DebugOverlay />
   </div>
 </template>

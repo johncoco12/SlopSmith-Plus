@@ -10,7 +10,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   open: [song: Song]
-  favorite: [filename: string]
+  favorite: [trackId: string]
 }>()
 
 const expanded = ref(new Set<string>())
@@ -41,7 +41,9 @@ function openSong(song: Song): void {
 }
 
 function artUrl(song: Song & { mtime?: number }): string {
-  return `/api/song/${encodeURIComponent(song.filename)}/art?t=${song.mtime ?? 0}`
+  return song.trackId
+    ? `/api/tracks/${encodeURIComponent(song.trackId)}/cover`
+    : `/api/song/${encodeURIComponent(song.filename)}/art?t=${song.mtime ?? 0}`
 }
 </script>
 
@@ -130,7 +132,7 @@ function artUrl(song: Song & { mtime?: number }): string {
                     ? 'opacity-100 text-gold'
                     : 'opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gold'"
                   :aria-label="song.favorite ? 'Remove from favorites' : 'Add to favorites'"
-                  @click.stop="emit('favorite', song.filename)"
+                  @click.stop="emit('favorite', song.trackId ?? song.filename)"
                 >
                   <Heart :size="13" :fill="song.favorite ? 'currentColor' : 'none'" stroke-width="2" />
                 </button>

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePlayerStore } from '@/stores/player'
 import { X, Mic, MousePointer2 } from 'lucide-vue-next'
+import { start as pitchStart, isRunning as isPitchRunning } from '@/services/pitchDetection'
 
 const props = defineProps<{
   guided?: boolean
@@ -198,9 +199,9 @@ function _isENote(hz) {
 }
 
 async function startGuitarTest() {
-  if (!window.pitchYin?.isRunning()) {
+  if (!isPitchRunning()) {
     try {
-      await window.pitchYin.start()
+      await pitchStart()
       player.pitchDetectionEnabled = true
     } catch (e) {
       console.error('[latency-tester] mic start failed:', e)
@@ -318,7 +319,7 @@ const guitarPct = computed(() => Math.round(guitarCount.value / G_TAPS * 100))
 const audioConsistency  = computed(() => _consistency(tapOffsets.value.slice(WARMUP)))
 const guitarConsistency = computed(() => _consistency(guitarOffsets.value.slice(WARMUP)))
 
-const micAvailable = computed(() => typeof window.pitchYin?.start === 'function')
+const micAvailable = computed(() => true)
 
 // Expose localStorage values for the template (localStorage is not in Vue's template globals)
 const storedInputLatency = computed(() => localStorage.getItem('pitch_yin.inputLatencyMs'))

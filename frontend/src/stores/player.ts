@@ -2,14 +2,18 @@ import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { fetchLoops, saveLoop as apiSaveLoop, deleteLoop as apiDeleteLoop } from '@/api/loops'
+import { useAuthStore } from '@/stores/auth'
 import type { SongInfo, Loop } from '@/types'
+import { start as pitchStart, stop as pitchStop, isRunning as isPitchRunning } from '@/services/pitchDetection'
 
 export const usePlayerStore = defineStore('player', () => {
+  const auth = useAuthStore()
   // DOM-coupled — not reactive-proxied
   const highway = shallowRef<typeof window.highway | null>(null)
 
   // Song state
   const filename    = ref<string | null>(null)
+  const trackIdRef = ref<string | null>(null)
   const arrangement = ref<number>(0)
   const songInfo    = ref<SongInfo>({})
   const arrangements = ref<unknown[]>([])
@@ -25,6 +29,7 @@ export const usePlayerStore = defineStore('player', () => {
   const vizSelection  = useLocalStorage('vizSelection', 'auto')
   const showLyrics    = useLocalStorage('showLyrics', true)
   const masterVolume  = useLocalStorage('volume', 100)
+  const songVolume    = useLocalStorage('songVolume', 100)
 
   // Session
   const speed = ref<number>(1.0)
@@ -51,24 +56,35 @@ export const usePlayerStore = defineStore('player', () => {
     if (vizSelection.value === 'auto' && highway.value) _applyViz()
   }
 
-  async function playSong(fn: string, arrIdx = 0): Promise<void> {
+  async function playSong(fn: string, arrIdx = 0, tid?: string): Promise<void> {
     filename.value = fn
+    trackIdRef.value = tid ?? null
     arrangement.value = arrIdx
     playing.value = false
     currentTime.value = 0
     loopA.value = null
     loopB.value = null
 
+    const tkId = tid ?? fn
+
     if (highway.value) {
-      await highway.value.reconnect(fn, arrIdx)
+      await highway.value.reconnect(tkId, arrIdx)
       highway.value.setAvOffset?.(avOffsetMs.value)
       highway.value.setMasterDifficulty?.(mastery.value / 100)
       if (!showLyrics.value) highway.value.toggleLyrics?.()
       _applyViz()
     }
 
+    // Set audio source from track API
+    const audio = document.getElementById('audio') as HTMLAudioElement | null
+    if (audio) {
+      audio.src = `/api/tracks/${encodeURIComponent(tkId)}/audio`
+      audio.load()
+    }
+
     try {
-      savedLoops.value = await fetchLoops(fn) as Loop[]
+      const profileId = auth.profile?.id ?? 0
+      savedLoops.value = (profileId ? await fetchLoops(tkId, profileId) as Loop[] : [])
     } catch {
       savedLoops.value = []
     }
@@ -77,7 +93,7 @@ export const usePlayerStore = defineStore('player', () => {
   async function changeArrangement(idx: number): Promise<void> {
     arrangement.value = idx
     if (highway.value) {
-      await highway.value.reconnect(filename.value!, idx)
+      await highway.value.reconnect(trackIdRef.value ?? filename.value!, idx)
     }
   }
 
@@ -134,8 +150,17 @@ export const usePlayerStore = defineStore('player', () => {
 
   function setVolume(v: number): void {
     masterVolume.value = v
+    _applyVolume()
+  }
+
+  function setSongVolume(v: number): void {
+    songVolume.value = v
+    _applyVolume()
+  }
+
+  function _applyVolume(): void {
     const audio = highway.value?.getAudioElement()
-    if (audio) audio.volume = v / 100
+    if (audio) audio.volume = (masterVolume.value / 100) * (songVolume.value / 100)
   }
 
   // ── lyrics ────────────────────────────────────────────────────────────────
@@ -148,11 +173,11 @@ export const usePlayerStore = defineStore('player', () => {
   // ── pitch detection ───────────────────────────────────────────────────────
 
   function togglePitchDetection(): void {
-    if (window.pitchYin?.isRunning()) {
-      window.pitchYin.stop()
+    if (isPitchRunning()) {
+      pitchStop()
       pitchDetectionEnabled.value = false
-    } else if (window.pitchYin) {
-      window.pitchYin.start().then(() => {
+    } else {
+      pitchStart().then(() => {
         pitchDetectionEnabled.value = true
       }).catch(e => {
         console.error('[player] pitch detection start failed:', e)
@@ -248,19 +273,22 @@ export const usePlayerStore = defineStore('player', () => {
 
   async function saveLoop(): Promise<void> {
     if (loopA.value === null || loopB.value === null) return
-    const loop = await apiSaveLoop({
-      filename: filename.value,
+    const tid = trackIdRef.value ?? filename.value
+    if (!tid) return
+    const profileId = auth.profile?.id ?? 0
+    if (!profileId) return
+    const loop = await apiSaveLoop(tid, profileId, {
       name: `Loop ${new Date().toLocaleTimeString()}`,
-      start: Math.min(loopA.value, loopB.value),
-      end:   Math.max(loopA.value, loopB.value),
+      start_time: Math.min(loopA.value, loopB.value),
+      end_time:   Math.max(loopA.value, loopB.value),
     }) as Loop
     savedLoops.value.push(loop)
   }
 
   function loadLoop(loop: Loop): void {
-    loopA.value = loop.start
-    loopB.value = loop.end
-    highway.value?.setLoop?.(loop.start, loop.end)
+    loopA.value = loop.startTime
+    loopB.value = loop.endTime
+    highway.value?.setLoop?.(loop.startTime, loop.endTime)
   }
 
   async function deleteLoop(loopId: number): Promise<void> {
@@ -273,7 +301,7 @@ export const usePlayerStore = defineStore('player', () => {
   function syncTime(): void {
     if (!highway.value) return
     const audio = highway.value.getAudioElement?.()
-    if (audio) {
+    if (audio && audio.readyState > 0) {
       // While a seek is in-flight the browser may briefly report
       // audio.currentTime = 0 (Chromium artifact).  Use the intended
       // seek target until the audio element confirms by reaching it.
@@ -283,24 +311,21 @@ export const usePlayerStore = defineStore('player', () => {
       if (_seekTarget !== null && Math.abs(audio.currentTime - _seekTarget) < 0.5) {
         _seekTarget = null
       }
-      if (audio.readyState === 0) {
-        console.warn('[syncTime] audio src was reset', { readyState: audio.readyState, src: audio.src, currentTime: audio.currentTime })
-      }
       highway.value.setTime?.(t)
       duration.value = audio.duration || 0
     }
     currentTime.value = highway.value.getTime?.() ?? 0
-    pitchDetectionEnabled.value = window.pitchYin?.isRunning() ?? false
+    pitchDetectionEnabled.value = isPitchRunning()
   }
 
   return {
-    highway, filename, arrangement, songInfo, arrangements, duration,
+    highway, filename, trackIdRef, arrangement, songInfo, arrangements, duration,
     playing, currentTime,
-    avOffsetMs, mastery, vizSelection, showLyrics, masterVolume,
+    avOffsetMs, mastery, vizSelection, showLyrics, masterVolume, songVolume,
     speed, loopA, loopB, savedLoops,
     pitchDetectionEnabled,
     setHighway, setSongInfo, playSong, changeArrangement, cleanup,
-    togglePlay, seekBy, seekTo, setSpeed, setMastery, setAvOffset, nudgeAvOffset, setVolume,
+    togglePlay, seekBy, seekTo, setSpeed, setMastery, setAvOffset, nudgeAvOffset, setVolume, setSongVolume,
     toggleLyrics, setViz,
     togglePitchDetection,
     setLoopA, setLoopB, clearLoop, saveLoop, loadLoop, deleteLoop,

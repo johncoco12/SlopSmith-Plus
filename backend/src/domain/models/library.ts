@@ -10,6 +10,7 @@ export interface ArrangementMeta {
 
 export interface SongMeta {
   readonly filename: string;
+  readonly trackId?: string;
   readonly title: string;
   readonly artist: string;
   readonly album: string;

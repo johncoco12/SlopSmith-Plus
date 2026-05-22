@@ -1,15 +1,8 @@
 import { randomUUID, createHash } from "node:crypto";
 import type { IProfileRepository } from "../domain/repositories.js";
 import type { Profile, CreateProfileInput, UpdateProfileInput } from "../domain/models/profile.js";
+import type { IProfileService, SafeProfile, Session } from "../domain/interfaces/services/IProfileService.js";
 import { InvalidCredentialsError, AccountLockedError, NotFoundError } from "../domain/errors.js";
-
-export interface Session {
-  readonly token: string;
-  readonly profileId: number;
-  readonly profileName: string;
-  readonly createdAt: number;
-  readonly expiresAt: number;
-}
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_FAILED_ATTEMPTS = 5;
@@ -19,14 +12,12 @@ function hashPin(pin: string, salt: string): string {
   return createHash("sha256").update(salt + pin).digest("hex");
 }
 
-function sanitizeProfile(profile: Profile) {
+function sanitizeProfile(profile: Profile): SafeProfile {
   const { pinCode, pinSalt, recoveryPhrase, recoveryPhraseSalt, ...safe } = profile;
   return safe;
 }
 
-export type SafeProfile = ReturnType<typeof sanitizeProfile>;
-
-export class ProfileService {
+export class ProfileService implements IProfileService {
   private sessions = new Map<string, Session>();
   private failedAttempts = new Map<number, { count: number; lockedUntil: number | null }>();
 
@@ -140,5 +131,10 @@ export class ProfileService {
     const settings = profile.profileSettings as Record<string, unknown> | null;
     if (!settings || !Array.isArray(settings.permissions)) return [];
     return settings.permissions as string[];
+  }
+
+  async isSetup(): Promise<boolean> {
+    const profiles = await this.profiles.findAll();
+    return profiles.length > 0;
   }
 }

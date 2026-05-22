@@ -181,12 +181,14 @@ export interface ParsedSongRoot {
 export function parseSongRoot(xml: string): ParsedSongRoot | null {
   const doc = parser.parse(xml);
   const root = (doc["song"] ?? doc["Song"]) as El | undefined;
-  if (!root || !root["ebeats"]) return null;
+  if (!root) return null;
 
-  const beats: Beat[] = arr<El>(root, "ebeats", "beat").map((b) => ({
-    time: num(b, "time"),
-    measure: num(b, "measure", -1),
-  }));
+  const beats: Beat[] = root["ebeats"]
+    ? arr<El>(root, "ebeats", "beat").map((b) => ({
+        time: num(b, "time"),
+        measure: num(b, "measure", -1),
+      }))
+    : [];
 
   const sections: Section[] = arr<El>(root, "sections", "section").map((s) => ({
     name: str(s, "name"),
@@ -239,6 +241,8 @@ export function parseArrangementXml(xml: string, arrangementName?: string): Arra
   // Tuning. RS XML has string0..string5; extended-range instruments (7/8-string
   // guitar, 5-string bass) add string6+ attributes.
   const tuningEl = root["tuning"] as El | undefined;
+  const rawName = str(root, "arrangement", "");
+  const name = arrangementName ?? arrangementDisplayName(rawName);
   function readStringRange(el: El, prefix: string, defaultVal: number, count?: number): number[] {
     if (count !== undefined) {
       return Array.from({ length: count }, (_, i) => num(el, `${prefix}${i}`, defaultVal));
@@ -251,17 +255,25 @@ export function parseArrangementXml(xml: string, arrangementName?: string): Arra
     }
     return result.length > 0 ? result : Array.from({ length: 6 }, () => defaultVal);
   }
-  const tuning: number[] = tuningEl ? readStringRange(tuningEl, "string", 0) : [0, 0, 0, 0, 0, 0];
+  const defaultStringCount = name.toLowerCase().includes("bass") ? 4 : 6;
+  const tuning: number[] = tuningEl ? readStringRange(tuningEl, "string", 0) : Array.from({ length: defaultStringCount }, () => 0);
+  // Truncate tuning for bass when the XML has extra trailing zero strings
+  if (name.toLowerCase().includes("bass") && tuning.length > 4) {
+    const unused = tuning.slice(4).every((v) => v === 0);
+    if (unused) tuning.length = 4;
+  }
   const stringCount = tuning.length < 6 ? (tuning.length === 4 ? 4 : 6) : tuning.length;
 
   const capo = num(root, "capo");
-  const rawName = str(root, "arrangement", "");
-  const name = arrangementName ?? arrangementDisplayName(rawName);
 
   // All difficulty levels
   const allLevels = arr<El>(root, "levels", "level").map(parseLevel);
-  const maxDifficulty =
-    allLevels.length > 0 ? Math.max(...allLevels.map((l) => l.difficulty)) : 0;
+  // Find the highest difficulty level that has notes (some DDC-created
+  // arrangements pad high difficulties with 0-note, chord-only ghost levels)
+  const levelsWithNotes = allLevels.filter((l) => l.notes.length > 0);
+  const maxDifficulty = levelsWithNotes.length > 0
+    ? Math.max(...levelsWithNotes.map((l) => l.difficulty))
+    : (allLevels.length > 0 ? Math.max(...allLevels.map((l) => l.difficulty)) : 0);
   const topLevel = allLevels.find((l) => l.difficulty === maxDifficulty) ?? allLevels[0];
 
   // Chord templates. RS XML names fret0..finger5; extended-range adds fret6+.

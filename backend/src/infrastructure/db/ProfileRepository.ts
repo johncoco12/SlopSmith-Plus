@@ -49,7 +49,7 @@ export class ProfileRepository implements IProfileRepository {
   }
 
   async findByName(name: string): Promise<Profile | null> {
-    const row = await prisma.profile.findUnique({ where: { name } });
+    const row = await prisma.profile.findFirst({ where: { name: { mode: "insensitive", equals: name } } });
     return row ? rowToProfile(row) : null;
   }
 

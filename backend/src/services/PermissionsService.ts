@@ -1,8 +1,9 @@
 import type { IPermissionGroupRepository } from "../domain/repositories.js";
 import type { PermissionGroup, CreatePermissionGroupInput, UpdatePermissionGroupInput } from "../domain/models/permission.js";
+import type { IPermissionsService } from "../domain/interfaces/services/IPermissionsService.js";
 import { NotFoundError } from "../domain/errors.js";
 
-export class PermissionsService {
+export class PermissionsService implements IPermissionsService {
   private cache = new Map<number, { permissions: string[]; expiresAt: number }>();
   private readonly TTL_MS = 60_000;
 

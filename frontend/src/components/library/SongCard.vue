@@ -5,12 +5,12 @@ import { Heart, Play, Pencil } from 'lucide-vue-next'
 import type { Song } from '@/types'
 
 const props = defineProps<{
-  song: Song & { mtime?: number; favorite?: boolean; tuningName?: string }
+  song: Song & { mtime?: number; favorite?: boolean; tuningName?: string; trackId?: string }
   selected?: boolean
 }>()
 const emit = defineEmits<{
   open: [song: Song]
-  favorite: [filename: string]
+  favorite: [trackId: string]
   edit: [song: Song]
 }>()
 
@@ -21,7 +21,9 @@ const FORMAT_COLOR = {
 }
 
 const artUrl = computed(() =>
-  `/api/song/${encodeURIComponent(props.song.filename)}/art?t=${props.song.mtime ?? 0}`
+  props.song.trackId
+    ? `/api/tracks/${encodeURIComponent(props.song.trackId)}/cover`
+    : `/api/song/${encodeURIComponent(props.song.filename)}/art?t=${props.song.mtime ?? 0}`
 )
 const arrNames = computed(() =>
   (props.song.arrangements ?? []).map(a => a.name ?? a)
@@ -67,7 +69,7 @@ const arrNames = computed(() =>
           ? 'opacity-100 text-gold'
           : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gold'"
         :aria-label="song.favorite ? 'Remove from favorites' : 'Add to favorites'"
-        @click.stop="emit('favorite', song.filename)"
+        @click.stop="emit('favorite', song.trackId ?? song.filename)"
       >
         <Heart :size="16" :fill="song.favorite ? 'currentColor' : 'none'" stroke-width="2" />
       </button>

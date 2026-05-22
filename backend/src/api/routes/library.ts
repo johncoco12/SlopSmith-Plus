@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { LibraryQuery, SortField } from "../../domain/models/library.js";
 import type { LibraryService } from "../../services/LibraryService.js";
 import type { ScannerService } from "../../services/ScannerService.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireAuthAsync } from "../middleware/auth.js";
 
 const LibraryQuerySchema = z.object({
   q: z.string().optional(),
@@ -30,7 +30,7 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
   const library = fastify.library;
   const scanner = fastify.scanner;
 
-  fastify.get("/api/library", {preHandler: [requireAuth]}, async (req) => {
+  fastify.get("/api/library", {preHandler: [requireAuthAsync()]}, async (req) => {
     const q = LibraryQuerySchema.parse(req.query);
     const query: LibraryQuery = {
       q: q.q,
@@ -46,11 +46,13 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
       hasLyrics: q.has_lyrics === "1" ? true : q.has_lyrics === "0" ? false : undefined,
       tunings: csvList(q.tunings),
     };
+    req.log.info({ query }, "library search request");
     const result = await library.search(query);
+    req.log.info({ total: result.total }, "library search complete");
     return { songs: result.items, total: result.total, page: result.page, size: result.size };
   });
 
-  fastify.get("/api/library/artists", {preHandler: [requireAuth]}, async (req) => {
+  fastify.get("/api/library/artists", {preHandler: [requireAuthAsync()]}, async (req) => {
     const q = z.object({
       q: z.string().optional(),
       letter: z.string().max(2).optional(),
@@ -69,28 +71,28 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
     return { artists: result.items, total: result.total, page: result.page, size: result.size };
   });
 
-  fastify.get("/api/library/stats", {preHandler: [requireAuth]}, async (req) => {
+  fastify.get("/api/library/stats", {preHandler: [requireAuthAsync()]}, async (req) => {
     return library.stats();
   });
 
-  fastify.get("/api/library/tuning-names", {preHandler: [requireAuth]}, async (req) => {
+  fastify.get("/api/library/tuning-names", {preHandler: [requireAuthAsync()]}, async (req) => {
     return library.tuningNames();
   });
 
-  fastify.get("/api/scan-status", {preHandler: [requireAuth]}, async (req) => {
+  fastify.get("/api/scan-status", {preHandler: [requireAuthAsync()]}, async (req) => {
     return scanner.getStatus();
   });
-  fastify.post("/api/rescan", {preHandler: [requireAuth]}, async (req, reply) => {
+  fastify.post("/api/rescan", {preHandler: [requireAuthAsync()]}, async (req, reply) => {
     scanner.scan(false).catch(() => undefined);
     return reply.code(202).send({ ok: true });
   });
 
-  fastify.post("/api/rescan/full", {preHandler: [requireAuth]}, async (req, reply) => {
+  fastify.post("/api/rescan/full", {preHandler: [requireAuthAsync()]}, async (req, reply) => {
     scanner.scan(true).catch(() => undefined);
     return reply.code(202).send({ ok: true });
   });
 
-  fastify.get("/api/startup-status", {preHandler: [requireAuth]}, async (req) => {
+  fastify.get("/api/startup-status", async () => {
     return {
       stage: "ready",
       plugins_loaded: true,
@@ -98,7 +100,7 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
     };
   }); 
 
-  fastify.get("/api/startup-status/stream", {preHandler: [requireAuth]}, async (req, reply) => {
+  fastify.get("/api/startup-status/stream", {preHandler: [requireAuthAsync()]}, async (req, reply) => {
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",

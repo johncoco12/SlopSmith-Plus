@@ -68,6 +68,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     curl \
     megatools \
+    netcat-openbsd \
     libmpg123-0 \
     libvorbisfile3 \
     libspeex1 \
@@ -83,6 +84,9 @@ WORKDIR /app
 COPY backend/package.json backend/package-lock.json ./
 COPY backend/prisma/ ./prisma/
 RUN npm ci --omit=dev && npm install --no-save prisma && npx prisma generate
+
+COPY backend/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
 
 # Compiled backend: tsconfig outDir=dist, so src/index.ts → dist/index.js
 COPY --from=ts-builder /build/dist ./dist/
@@ -102,4 +106,4 @@ ENV LOG_PRETTY=true
 EXPOSE 8080
 
 # db push creates/updates the schema on every start (idempotent, works with PostgreSQL)
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/index.js"]
+CMD ["./docker-entrypoint.sh"]

@@ -20,7 +20,11 @@ onMounted(() => {
 })
 
 function openSong(song) {
-  router.push({ name: 'player', params: { filename: song.filename }, query: { arrangement: 0 } })
+  router.push({
+    name: 'player',
+    params: { trackId: song.trackId ?? song.filename },
+    query: { arrangement: 0 },
+  })
 }
 
 function editSong(song) {

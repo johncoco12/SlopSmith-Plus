@@ -13,6 +13,7 @@ import { SloppakLoader } from "../infrastructure/formats/SloppakLoader.js";
 import { LooseFolderReader } from "../infrastructure/formats/LooseFolderReader.js";
 import { PsarcReader } from "../infrastructure/formats/PsarcReader.js";
 import { tuningName, tuningSortKey } from "../infrastructure/formats/tunings.js";
+import { extractCoverArt } from "../infrastructure/formats/CoverArtExtractor.js";
 import { AudioConverterAsync } from "../infrastructure/audio/AudioConverterAsync.js";
 import { findCachedAudioFile } from "../infrastructure/cache/ExtractionCache.js";
 
@@ -129,13 +130,13 @@ export class ImportService {
       let audioFileStorageId: string | undefined;
 
       try {
-        const artBuffer = this.extractCoverArt(filePath, job.format);
+        const artBuffer = extractCoverArt(filePath, job.format, this.config);
         if (artBuffer) {
           const artId = `cover_${trackId}`;
           await this.storage.store(artId, artBuffer);
           coverImageStorageId = artId;
         }
-      } catch { /* non-fatal */ }
+      } catch (err) { console.log(`Failed to extract/store cover art for ${job.filename}: ${err instanceof Error ? err.message : String(err)}`); }
       job.progress = 70;
 
       try {
@@ -145,7 +146,7 @@ export class ImportService {
           await this.storage.storeFromPath(audioId, audioPath);
           audioFileStorageId = audioId;
         }
-      } catch { /* non-fatal */ }
+      } catch (err) { console.log(`Failed to extract/store audio for ${job.filename}: ${err instanceof Error ? err.message : String(err)}`); }
       job.progress = 80;
 
       await this.trackData.create(track.id, job.filename, arrangements, coverImageStorageId, audioFileStorageId);
@@ -224,31 +225,6 @@ export class ImportService {
       stemCount: Number(meta.stemCount) || 0,
       stemIds: (meta.stemIds ?? []) as string[],
     };
-  }
-
-  private extractCoverArt(filePath: string, format: ImportFormat): Buffer | null {
-    try {
-      if (format === "sloppak") {
-        const cacheDir = this.config.sloppakCacheDir;
-        const sourceDir = SloppakLoader.resolveDir(filePath, cacheDir);
-        for (const ext of [".png", ".jpg", ".jpeg"]) {
-          const artPath = path.join(sourceDir, `cover${ext}`);
-          if (fsSync.existsSync(artPath)) return fsSync.readFileSync(artPath);
-        }
-        return null;
-      }
-
-      const entries = PsarcReader.read(filePath, ["**/*album*", "**/*cover*", "**/*_256*", "**/*.png", "**/*.jpg"]);
-      let best: { name: string; data: Buffer; score: number } | null = null;
-      for (const [name, data] of entries) {
-        if (name.endsWith(".dds")) continue;
-        const score = name.includes("256") ? 3 : name.includes("128") ? 2 : 0;
-        if (!best || score > best.score) best = { name, data, score };
-      }
-      return best?.data ?? null;
-    } catch {
-      return null;
-    }
   }
 
   private async extractAndConvertAudio(
