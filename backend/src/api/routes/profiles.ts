@@ -1,7 +1,7 @@
 import fp from "fastify-plugin";
 import { z } from "zod";
 import type { ProfileService } from "../../services/ProfileService.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requirePermission } from "../middleware/auth.js";
 
 const CreateProfileSchema = z.object({
   name: z.string().min(1).max(64),
@@ -43,21 +43,19 @@ export const profileRoutes = fp(async function profileRoutes(fastify) {
     return profile;
   });
 
-  fastify.post("/api/profiles", async (req, reply) => {
+  fastify.post("/api/profiles",{preHandler: [requireAuth,requirePermission("admin")]}, async (req, reply) => {
     const input = CreateProfileSchema.parse(req.body);
     const profile = await profiles.createProfile(input);
     return reply.code(201).send(profile);
   });
 
-  fastify.patch("/api/profiles/:id", async (req) => {
-    requireAuth(req);
+  fastify.patch("/api/profiles/:id", {preHandler: [requireAuth,requirePermission("admin")]}, async (req) => {
     const { id } = z.object({ id: z.coerce.number().int() }).parse(req.params);
     const input = UpdateProfileSchema.parse(req.body);
     return profiles.updateProfile(id, input);
   });
 
-  fastify.delete("/api/profiles/:id", async (req, reply) => {
-    requireAuth(req);
+  fastify.delete("/api/profiles/:id", {preHandler: [requireAuth,requirePermission("admin")]}, async (req, reply) => {
     const { id } = z.object({ id: z.coerce.number().int() }).parse(req.params);
     await profiles.deleteProfile(id);
     return reply.code(204).send();
@@ -73,7 +71,7 @@ export const profileRoutes = fp(async function profileRoutes(fastify) {
     };
   });
 
-  fastify.post("/api/auth/logout", async (req, reply) => {
+  fastify.post("/api/auth/logout", {preHandler: [requireAuth]}, async (req, reply) => {
     const session = requireAuth(req);
     profiles.logout(session.token);
     return reply.code(204).send();
@@ -85,7 +83,7 @@ export const profileRoutes = fp(async function profileRoutes(fastify) {
     return profile;
   });
 
-  fastify.get("/api/auth/session", async (req) => {
+  fastify.get("/api/auth/session",{preHandler: [requireAuth]}, async (req) => {
     const session = requireAuth(req);
     const profile = await profiles.getProfile(session.profileId);
     return { session, profile };

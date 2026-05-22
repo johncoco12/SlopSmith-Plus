@@ -22,11 +22,11 @@ const AddProfileSchema = z.object({
 export const permissionRoutes = fp(async function permissionRoutes(fastify) {
   const perms = fastify.permissions as PermissionsService;
 
-  fastify.get("/api/permissions/groups", async () => {
+  fastify.get("/api/permissions/groups",{preHandler: [requireAuth]}, async (req) => {
     return perms.listGroups();
   });
 
-  fastify.get("/api/permissions/groups/:id", async (req) => {
+  fastify.get("/api/permissions/groups/:id", {preHandler: [requireAuth]}, async (req) => {
     const { id } = z.object({ id: z.coerce.number().int() }).parse(req.params);
     return perms.getGroup(id);
   });

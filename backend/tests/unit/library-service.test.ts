@@ -96,8 +96,8 @@ describe("LibraryService.toggleFavorite", () => {
   it("delegates to favorites repository toggle", async () => {
     const { songs, favorites } = makeRepos();
     const service = new LibraryService(songs, favorites);
-    const result = await service.toggleFavorite("song.psarc");
-    expect(favorites.toggle).toHaveBeenCalledWith("song.psarc");
+    const result = await service.toggleFavorite("song.psarc", 1);
+    expect(favorites.toggle).toHaveBeenCalledWith("song.psarc", 1);
     expect(result).toBe(true);
   });
 
@@ -107,7 +107,7 @@ describe("LibraryService.toggleFavorite", () => {
       { toggle: vi.fn(async () => false) },
     );
     const service = new LibraryService(songs, favorites);
-    const result = await service.toggleFavorite("song.psarc");
+    const result = await service.toggleFavorite("song.psarc", 1);
     expect(result).toBe(false);
   });
 });

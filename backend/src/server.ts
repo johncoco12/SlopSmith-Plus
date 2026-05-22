@@ -71,7 +71,6 @@ const pluginRegistry = new PluginRegistry();
 const storageService = container.resolve(IStorageServiceToken) as StorageService;
 
 const libraryService = new LibraryService(songRepo, favRepo);
-const scannerService = new ScannerService(importService, config);
 const settingsService = new SettingsService(config);
 const profileService = new ProfileService(profileRepo);
 const permissionsService = new PermissionsService(permissionGroupRepo);
@@ -79,6 +78,7 @@ const importService = new ImportService(
   songRepo, trackRepo, trackDataRepo, stemsRepo, stemDataRepo,
   storageService, config,
 );
+const scannerService = new ScannerService(importService, config);
 const trackService = new TrackService(
   trackRepo, trackDataRepo, stemsRepo, stemDataRepo, loopRepo, storageService,
 );
