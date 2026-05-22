@@ -105,6 +105,7 @@ model Track {
 model TrackData {
   id                    Int    @id @default(autoincrement())
   trackId               Int    @unique
+  originalFilename      String @unique
   arrangements          Json   @default("[]")
   coverImageStorageId   String?
   audioFileStorageId    String?

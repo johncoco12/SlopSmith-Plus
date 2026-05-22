@@ -22,6 +22,7 @@ export interface Track {
 export interface TrackData {
   readonly id: number;
   readonly trackId: number;
+  readonly originalFilename: string;
   readonly arrangements: readonly ArrangementData[];
   readonly coverImageStorageId: string | null;
   readonly audioFileStorageId: string | null;

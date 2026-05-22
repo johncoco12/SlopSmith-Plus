@@ -10,6 +10,7 @@
     "type-check": "vue-tsc --build --force"
   },
   "dependencies": {
+    "@tresjs/core": "^5.8.1",
     "@vueuse/core": "^11.3.0",
     "lucide-vue-next": "^1.0.0",
     "pinia": "^2.3.0",

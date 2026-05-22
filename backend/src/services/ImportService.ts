@@ -97,6 +97,16 @@ export class ImportService {
       await this.songs.upsert(job.filename, songInput);
       job.progress = 50;
 
+      const existing = await this.trackData.findByOriginalFilename(job.filename);
+      if (existing) {
+        job.trackId = String(existing.trackId);
+        job.status = "completed";
+        job.progress = 100;
+        job.completedAt = Date.now();
+        this.running--;
+        return;
+      }
+
       const track = await this.tracks.create({
         trackId,
         title: songInput.title || undefined,
@@ -138,7 +148,7 @@ export class ImportService {
       } catch { /* non-fatal */ }
       job.progress = 80;
 
-      await this.trackData.create(track.id, arrangements, coverImageStorageId, audioFileStorageId);
+      await this.trackData.create(track.id, job.filename, arrangements, coverImageStorageId, audioFileStorageId);
       job.progress = 85;
 
       const stemIds = (meta.stemIds ?? []) as string[];

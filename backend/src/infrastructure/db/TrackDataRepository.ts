@@ -6,6 +6,7 @@ import { prisma } from "./client.js";
 function rowToTrackData(row: {
   id: number;
   trackId: number;
+  originalFilename: string;
   arrangements: unknown;
   coverImageStorageId: string | null;
   audioFileStorageId: string | null;
@@ -13,6 +14,7 @@ function rowToTrackData(row: {
   return {
     id: row.id,
     trackId: row.trackId,
+    originalFilename: row.originalFilename,
     arrangements: row.arrangements as { index: number; name: string; notes: number }[],
     coverImageStorageId: row.coverImageStorageId,
     audioFileStorageId: row.audioFileStorageId,
@@ -25,10 +27,16 @@ export class TrackDataRepository implements ITrackDataRepository {
     return row ? rowToTrackData(row) : null;
   }
 
-  async create(trackId: number, arrangements: unknown, coverImageStorageId?: string, audioFileStorageId?: string): Promise<TrackData> {
+  async findByOriginalFilename(originalFilename: string): Promise<TrackData | null> {
+    const row = await prisma.trackData.findUnique({ where: { originalFilename } });
+    return row ? rowToTrackData(row) : null;
+  }
+
+  async create(trackId: number, originalFilename: string, arrangements: unknown, coverImageStorageId?: string, audioFileStorageId?: string): Promise<TrackData> {
     const row = await prisma.trackData.create({
       data: {
         trackId,
+        originalFilename,
         arrangements: arrangements as [],
         coverImageStorageId: coverImageStorageId ?? null,
         audioFileStorageId: audioFileStorageId ?? null,

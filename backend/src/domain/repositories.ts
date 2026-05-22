@@ -97,7 +97,8 @@ export interface ITrackRepository {
 
 export interface ITrackDataRepository {
   findByTrackId(trackId: number): Promise<TrackData | null>;
-  create(trackId: number, arrangements: unknown, coverImageStorageId?: string, audioFileStorageId?: string): Promise<TrackData>;
+  findByOriginalFilename(originalFilename: string): Promise<TrackData | null>;
+  create(trackId: number, originalFilename: string, arrangements: unknown, coverImageStorageId?: string, audioFileStorageId?: string): Promise<TrackData>;
   update(id: number, data: Partial<Pick<TrackData, "arrangements" | "coverImageStorageId" | "audioFileStorageId">>): Promise<TrackData>;
   delete(id: number): Promise<void>;
 }

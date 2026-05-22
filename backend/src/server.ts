@@ -24,13 +24,12 @@ import { PluginRegistry } from "./infrastructure/plugins/PluginRegistry.js";
 
 // Services
 import { LibraryService } from "./services/LibraryService.js";
-import { SongService } from "./services/SongService.js";
 import { ScannerService } from "./services/ScannerService.js";
 import { SettingsService } from "./services/SettingsService.js";
-import { LoopService } from "./services/LoopService.js";
 import { ProfileService } from "./services/ProfileService.js";
 import { PermissionsService } from "./services/PermissionsService.js";
 import { ImportService } from "./services/ImportService.js";
+import { TrackService } from "./services/TrackService.js";
 import type { StorageService } from "./services/StorageService.js";
 
 // Middleware
@@ -41,7 +40,6 @@ import { authMiddleware } from "./api/middleware/auth.js";
 
 // Routes
 import { libraryRoutes } from "./api/routes/library.js";
-import { songRoutes } from "./api/routes/songs.js";
 import { favoritesRoutes } from "./api/routes/favorites.js";
 import { settingsRoutes } from "./api/routes/settings.js";
 import { pluginRoutes } from "./api/routes/plugins.js";
@@ -51,6 +49,7 @@ import { versionRoutes } from "./api/routes/version.js";
 import { profileRoutes } from "./api/routes/profiles.js";
 import { permissionRoutes } from "./api/routes/permissions.js";
 import { importRoutes } from "./api/routes/imports.js";
+import { trackRoutes } from "./api/routes/tracks.js";
 
 // WebSocket handlers
 import { highwayWs } from "./api/ws/highway.js";
@@ -72,15 +71,16 @@ const pluginRegistry = new PluginRegistry();
 const storageService = container.resolve(IStorageServiceToken) as StorageService;
 
 const libraryService = new LibraryService(songRepo, favRepo);
-const songService = new SongService(songRepo, config);
-const scannerService = new ScannerService(songRepo, config);
+const scannerService = new ScannerService(importService, config);
 const settingsService = new SettingsService(config);
-const loopService = new LoopService(loopRepo);
 const profileService = new ProfileService(profileRepo);
 const permissionsService = new PermissionsService(permissionGroupRepo);
 const importService = new ImportService(
   songRepo, trackRepo, trackDataRepo, stemsRepo, stemDataRepo,
   storageService, config,
+);
+const trackService = new TrackService(
+  trackRepo, trackDataRepo, stemsRepo, stemDataRepo, loopRepo, storageService,
 );
 
 pluginRegistry.discover(config.pluginsBuiltinDir, config.pluginsUserDir);
@@ -96,13 +96,12 @@ export async function buildServer() {
 
   // ── Decorators (DI via Fastify instance) ──────────────────────────────────
   fastify.decorate("library", libraryService);
-  fastify.decorate("songs", songService);
   fastify.decorate("scanner", scannerService);
   fastify.decorate("settings", settingsService);
-  fastify.decorate("loops", loopService);
   fastify.decorate("profiles", profileService);
   fastify.decorate("permissions", permissionsService);
   fastify.decorate("imports", importService);
+  fastify.decorate("trackSvc", trackService);
   fastify.decorate("plugins", pluginRegistry);
   fastify.decorate("storage", storageService);
 
@@ -124,7 +123,6 @@ export async function buildServer() {
 
   // ── HTTP Routes ───────────────────────────────────────────────────────────
   await fastify.register(libraryRoutes);
-  await fastify.register(songRoutes);
   await fastify.register(favoritesRoutes);
   await fastify.register(settingsRoutes);
   await fastify.register(pluginRoutes);
@@ -134,6 +132,7 @@ export async function buildServer() {
   await fastify.register(profileRoutes);
   await fastify.register(permissionRoutes);
   await fastify.register(importRoutes);
+  await fastify.register(trackRoutes);
 
   // ── WebSocket handlers ────────────────────────────────────────────────────
   await fastify.register(highwayWs);
