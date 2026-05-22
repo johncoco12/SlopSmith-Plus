@@ -7,6 +7,20 @@ import type {
   TuningCount,
   Loop,
 } from "./models/library.js";
+import type { Profile, CreateProfileInput, UpdateProfileInput } from "./models/profile.js";
+import type {
+  Track,
+  TrackData,
+  TrackStems,
+  StemData,
+  CreateTrackInput,
+  UpdateTrackInput,
+} from "./models/track.js";
+import type {
+  PermissionGroup,
+  CreatePermissionGroupInput,
+  UpdatePermissionGroupInput,
+} from "./models/permission.js";
 
 // ─── Song repository ───────────────────────────────────────────────────────
 
@@ -43,15 +57,77 @@ export interface ISongRepository {
 // ─── Favorites repository ─────────────────────────────────────────────────
 
 export interface IFavoritesRepository {
-  isFavorite(filename: string): Promise<boolean>;
-  toggle(filename: string): Promise<boolean>;
+  isFavorite(trackId: string, profileId: number): Promise<boolean>;
+  toggle(trackId: string, profileId: number): Promise<boolean>;
   getAllFilenames(): Promise<Set<string>>;
+  getFavoritesByProfile(profileId: number): Promise<Set<string>>;
 }
 
 // ─── Loop repository ──────────────────────────────────────────────────────
 
 export interface ILoopRepository {
-  findByFilename(filename: string): Promise<Loop[]>;
-  create(filename: string, name: string, startTime: number, endTime: number): Promise<Loop>;
+  findByTrackId(trackId: number, profileId: number): Promise<Loop[]>;
+  create(trackId: number, profileId: number, name: string, startTime: number, endTime: number): Promise<Loop>;
   delete(id: number): Promise<void>;
+}
+
+// ─── Profile repository ────────────────────────────────────────────────────
+
+export interface IProfileRepository {
+  findById(id: number): Promise<Profile | null>;
+  findByName(name: string): Promise<Profile | null>;
+  findAll(): Promise<Profile[]>;
+  create(input: CreateProfileInput): Promise<Profile>;
+  update(id: number, input: UpdateProfileInput): Promise<Profile>;
+  delete(id: number): Promise<void>;
+}
+
+// ─── Track repository ──────────────────────────────────────────────────────
+
+export interface ITrackRepository {
+  findById(id: number): Promise<Track | null>;
+  findByTrackId(trackId: string): Promise<Track | null>;
+  findAll(): Promise<Track[]>;
+  create(input: CreateTrackInput): Promise<Track>;
+  update(id: number, input: UpdateTrackInput): Promise<Track>;
+  delete(id: number): Promise<void>;
+}
+
+// ─── Track data repository ─────────────────────────────────────────────────
+
+export interface ITrackDataRepository {
+  findByTrackId(trackId: number): Promise<TrackData | null>;
+  create(trackId: number, arrangements: unknown, coverImageStorageId?: string, audioFileStorageId?: string): Promise<TrackData>;
+  update(id: number, data: Partial<Pick<TrackData, "arrangements" | "coverImageStorageId" | "audioFileStorageId">>): Promise<TrackData>;
+  delete(id: number): Promise<void>;
+}
+
+// ─── Stems repository ──────────────────────────────────────────────────────
+
+export interface IStemsRepository {
+  findByTrackId(trackId: number): Promise<TrackStems | null>;
+  create(trackId: number): Promise<TrackStems>;
+  delete(id: number): Promise<void>;
+}
+
+// ─── Stem data repository ──────────────────────────────────────────────────
+
+export interface IStemDataRepository {
+  findByStemsId(stemsId: number): Promise<StemData[]>;
+  create(stemsId: number, stemIndex: number, arrangement?: string, stemAudioFileStorageId?: string): Promise<StemData>;
+  update(id: number, data: Partial<Pick<StemData, "stemIndex" | "arrangement" | "stemAudioFileStorageId">>): Promise<StemData>;
+  delete(id: number): Promise<void>;
+}
+
+// ─── Permission group repository ───────────────────────────────────────────
+
+export interface IPermissionGroupRepository {
+  findById(id: number): Promise<PermissionGroup | null>;
+  findByName(name: string): Promise<PermissionGroup | null>;
+  findAll(): Promise<PermissionGroup[]>;
+  create(input: CreatePermissionGroupInput): Promise<PermissionGroup>;
+  update(id: number, input: UpdatePermissionGroupInput): Promise<PermissionGroup>;
+  delete(id: number): Promise<void>;
+  addProfile(groupId: number, profileId: number): Promise<PermissionGroup>;
+  removeProfile(groupId: number, profileId: number): Promise<PermissionGroup>;
 }

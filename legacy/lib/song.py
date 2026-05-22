@@ -164,13 +164,13 @@ def note_to_wire(n: Note) -> dict:
     return {
         "t": round(n.time, 3), "s": n.string, "f": n.fret,
         "sus": round(n.sustain, 3),
-        "sl": n.slide_to, "slu": n.slide_unpitch_to,
+        "sl": n.slide_to, "sl2": n.slide_unpitch_to,
         "bn": round(n.bend, 1) if n.bend else 0,
         "ho": n.hammer_on, "po": n.pull_off,
         "hm": n.harmonic, "hp": n.harmonic_pinch,
-        "pm": n.palm_mute, "mt": n.mute,
+        "pm": n.palm_mute, "mu": n.mute,
         "vb": n.vibrato,
-        "tr": n.tremolo, "ac": n.accent, "tp": n.tap,
+        "tr": n.tremolo, "ac": n.accent, "tap": n.tap,
     }
 
 
@@ -196,9 +196,9 @@ def anchor_to_wire(a: Anchor) -> dict:
 
 def hand_shape_to_wire(h: HandShape) -> dict:
     return {
-        "chord_id": h.chord_id,
-        "start_time": h.start_time,
-        "end_time": h.end_time,
+        "id": h.chord_id,
+        "st": h.start_time,
+        "et": h.end_time,
         "arp": h.arpeggio,
     }
 
@@ -225,18 +225,18 @@ def note_from_wire(d: dict, time: float | None = None) -> Note:
         fret=int(d.get("f", 0)),
         sustain=float(d.get("sus", 0.0)),
         slide_to=int(d.get("sl", -1)),
-        slide_unpitch_to=int(d.get("slu", -1)),
+        slide_unpitch_to=int(d.get("sl2", d.get("slu", -1))),
         bend=float(d.get("bn", 0.0)),
         hammer_on=bool(d.get("ho", False)),
         pull_off=bool(d.get("po", False)),
         harmonic=bool(d.get("hm", False)),
         harmonic_pinch=bool(d.get("hp", False)),
         palm_mute=bool(d.get("pm", False)),
-        mute=bool(d.get("mt", False)),
+        mute=bool(d.get("mu", d.get("mt", False))),
         vibrato=bool(d.get("vb", d.get("vibrato", False))),
         tremolo=bool(d.get("tr", False)),
         accent=bool(d.get("ac", False)),
-        tap=bool(d.get("tp", False)),
+        tap=bool(d.get("tap", d.get("tp", False))),
     )
 
 
@@ -280,9 +280,9 @@ def phrase_level_from_wire(d: dict) -> PhraseLevel:
             for a in d.get("anchors", [])
         ],
         hand_shapes=[
-            HandShape(chord_id=int(h.get("chord_id", 0)),
-                      start_time=float(h.get("start_time", 0)),
-                      end_time=float(h.get("end_time", 0)),
+            HandShape(chord_id=int(h.get("id", h.get("chord_id", 0))),
+                      start_time=float(h.get("st", h.get("start_time", 0))),
+                      end_time=float(h.get("et", h.get("end_time", 0))),
                       arpeggio=bool(h.get("arp", False)))
             for h in d.get("handshapes", [])
         ],
@@ -383,7 +383,7 @@ def arrangement_to_wire(arr: Arrangement) -> dict:
         "chords": [chord_to_wire(c) for c in arr.chords],
         "anchors": [anchor_to_wire(a) for a in arr.anchors],
         "handshapes": [hand_shape_to_wire(h) for h in arr.hand_shapes],
-        "templates": [chord_template_to_wire(ct) for ct in arr.chord_templates],
+        "chord_templates": [chord_template_to_wire(ct) for ct in arr.chord_templates],
     }
     # phrases is additive — only include the key when the source had
     # multi-level data. Treat an empty list the same as None ("slider
@@ -416,9 +416,9 @@ def arrangement_from_wire(d: dict) -> Arrangement:
             for a in d.get("anchors", [])
         ],
         hand_shapes=[
-            HandShape(chord_id=int(h.get("chord_id", 0)),
-                      start_time=float(h.get("start_time", 0)),
-                      end_time=float(h.get("end_time", 0)),
+            HandShape(chord_id=int(h.get("id", h.get("chord_id", 0))),
+                      start_time=float(h.get("st", h.get("start_time", 0))),
+                      end_time=float(h.get("et", h.get("end_time", 0))),
                       arpeggio=bool(h.get("arp", False)))
             for h in d.get("handshapes", [])
         ],
@@ -428,7 +428,7 @@ def arrangement_from_wire(d: dict) -> Arrangement:
                           arpeggio=bool(ct.get("arp", False)),
                           fingers=list(ct.get("fingers", [-1] * 6)),
                           frets=list(ct.get("frets", [-1] * 6)))
-            for ct in d.get("templates", [])
+            for ct in (d["chord_templates"] if "chord_templates" in d else d.get("templates") or [])
         ],
         # `phrases` is optional — absent on single-level sources / older
         # sloppaks. Preserve None (rather than []) to preserve the

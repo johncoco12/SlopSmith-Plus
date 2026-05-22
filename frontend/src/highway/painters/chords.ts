@@ -8,7 +8,7 @@ import {
 import { stringColor, stringDim, stringBright } from '../colors.js';
 import { paintGemGlow } from './gemGlow.js';
 import { drawNote, resolveNoteState } from './notes.js';
-import { VISIBLE_SECONDS } from '../colors.js';
+import { VISIBLE_SECONDS } from '../projection.js';
 import type { DrawContext, ChartChord, ChordTemplate } from '../types.js';
 
 const FRETLINE_TARGET_OFFSET = -0.25;

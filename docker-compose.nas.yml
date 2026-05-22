@@ -1,34 +1,46 @@
+name: slopsmith-plus
+
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: slopsmith
+      POSTGRES_PASSWORD: slopsmith
+      POSTGRES_DB: slopsmith
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   web:
     build:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "8080:8080"
+      - "8085:8080"
+    depends_on:
+      - db
     volumes:
       # CDLC library folder on NAS
       - /volume1/piracy/cdlc:/dlc
-      # Persistent config, cache, database
+      # Persistent config, cache
       - slopsmith-config:/config
     environment:
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config
-      - DATABASE_URL=file:/config/web_library.db
-      - RSCLI_PATH=/opt/rscli/RsCli
-      - VGMSTREAM_CLI=/usr/local/bin/vgmstream-cli
-      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-      # Logging (optional)
-      # - LOG_LEVEL=info        # trace | debug | info | warn | error  (default: info)
-      # - LOG_FORMAT=json       # set LOG_PRETTY= to disable pretty-print
+      - DATABASE_URL=postgresql://slopsmith:slopsmith@db:5432/slopsmith
+      # Logging (optional — image defaults: LOG_LEVEL=info, LOG_PRETTY=true)
+      # - LOG_LEVEL=info
+      # - LOG_PRETTY=false
     restart: unless-stopped
 
   frontend:
     build: ./frontend
     ports:
-      - "8001:80"
+      - "8006:80"
     depends_on:
       - web
     restart: unless-stopped
 
 volumes:
+  postgres-data:
   slopsmith-config:

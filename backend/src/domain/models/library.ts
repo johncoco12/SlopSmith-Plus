@@ -113,7 +113,8 @@ export interface Settings {
 
 export interface Loop {
   readonly id: number;
-  readonly filename: string;
+  readonly profileId: number;
+  readonly trackId: number;
   readonly name: string;
   readonly startTime: number;
   readonly endTime: number;

@@ -1,25 +1,22 @@
 # Build context: repo root (set context: . in compose, dockerfile: backend/Dockerfile)
 
 # ── Stage 1: Build RsCli ─────────────────────────────────────────────────
-FROM debian:bookworm-slim AS rscli-builder
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS rscli-builder
 ARG TARGETARCH
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl git && rm -rf /var/lib/apt/lists/*
-
-RUN curl -sL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
-    && chmod +x /tmp/dotnet-install.sh \
-    && /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet \
-    && ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 RUN git clone --depth 1 https://github.com/iminashi/Rocksmith2014.NET.git /tmp/rs2014
 
-COPY rscli/RsCli.fsproj /tmp/rs2014/tools/RsCli/
-COPY rscli/Program.fs /tmp/rs2014/tools/RsCli/
+COPY backend/tools/rscli/RsCli.fsproj /tmp/rs2014/tools/RsCli/
+COPY backend/tools/rscli/Program.fs /tmp/rs2014/tools/RsCli/
 
-RUN sed -i 's|</PropertyGroup>|<NuGetAudit>false</NuGetAudit></PropertyGroup>|' /tmp/rs2014/Directory.Build.props \
+RUN find /tmp/rs2014 \( -name "*.fsproj" -o -name "*.csproj" -o -name "Directory.Build.props" \) \
+      -exec sed -i 's|net10\.0|net8.0|g' {} + \
+    && sed -i 's|</PropertyGroup>|<NuGetAudit>false</NuGetAudit></PropertyGroup>|' /tmp/rs2014/Directory.Build.props \
     && cd /tmp/rs2014/tools/RsCli \
     && arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
     && case "$arch" in \
@@ -27,14 +24,14 @@ RUN sed -i 's|</PropertyGroup>|<NuGetAudit>false</NuGetAudit></PropertyGroup>|' 
          amd64|x86_64)  RID=linux-x64  ;; \
          *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
        esac \
-    && dotnet publish -c Release -r "$RID" --self-contained -o /opt/rscli
+    && dotnet publish -c Release -r "$RID" --self-contained -o /opt/rscli -v minimal 2>&1
 
 # ── Stage 2: Build vgmstream-cli ─────────────────────────────────────────
 FROM debian:bookworm-slim AS vgmstream-builder
 ARG VGMSTREAM_REF=r2083
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake pkg-config yasm git \
+    build-essential cmake pkg-config yasm git ca-certificates \
     libmpg123-dev libvorbis-dev libspeex-dev libopus-dev \
     libavformat-dev libavcodec-dev libavutil-dev libswresample-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -87,11 +84,10 @@ COPY backend/package.json backend/package-lock.json ./
 COPY backend/prisma/ ./prisma/
 RUN npm ci --omit=dev && npm install --no-save prisma && npx prisma generate
 
-# Compiled backend (dist/src/ → /app/dist/src/, so ../../plugins = /app/plugins)
+# Compiled backend: tsconfig outDir=dist, so src/index.ts → dist/index.js
 COPY --from=ts-builder /build/dist ./dist/
 
 # Assets served by the backend
-COPY static/ ./static/
 COPY plugins/ ./plugins/
 COPY VERSION ./
 
@@ -101,10 +97,9 @@ ENV HOST=0.0.0.0
 ENV RSCLI_PATH=/opt/rscli/RsCli
 ENV VGMSTREAM_CLI=/usr/local/bin/vgmstream-cli
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-ENV DATABASE_URL=file:/config/web_library.db
 ENV LOG_PRETTY=true
 
 EXPOSE 8080
 
-# db push creates/updates the schema on every start (idempotent for SQLite)
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/src/index.js"]
+# db push creates/updates the schema on every start (idempotent, works with PostgreSQL)
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/index.js"]

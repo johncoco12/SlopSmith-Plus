@@ -46,7 +46,7 @@ export const highwayWs = fp(async function highwayWs(fastify) {
   const songService = fastify.songs as SongService;
   const settingsService = fastify.settings as SettingsService;
 
-  fastify.get("/ws/highway/:filename(*)", { websocket: true }, async (ws, req) => {
+  fastify.get("/ws/highway/:filename", { websocket: true }, async (ws, req) => {
     const { filename } = req.params as { filename: string };
     const query = req.query as Record<string, string>;
     const arrangementParam = parseInt(query.arrangement ?? "-1", 10);

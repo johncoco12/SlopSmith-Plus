@@ -35,6 +35,10 @@ export const usePlayerStore = defineStore('player', () => {
   // Pitch detection (synced with window.pitchYin via syncTime rAF)
   const pitchDetectionEnabled = ref<boolean>(false)
 
+  // Seek-in-progress guard: browser may briefly report audio.currentTime = 0
+  // during a seek. Hold the target time until the 'seeked' event confirms.
+  let _seekTarget: number | null = null
+
   // ── highway lifecycle ─────────────────────────────────────────────────────
 
   function setHighway(hw: typeof window.highway): void {
@@ -96,13 +100,16 @@ export const usePlayerStore = defineStore('player', () => {
   function seekBy(seconds: number): void {
     const audio = highway.value?.getAudioElement()
     if (!audio) return
-    audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + seconds))
+    _seekTarget = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + seconds))
+    audio.currentTime = _seekTarget
   }
 
   function seekTo(time: number): void {
     const audio = highway.value?.getAudioElement()
-    if (!audio || !isFinite(time)) return
-    audio.currentTime = Math.max(0, Math.min(audio.duration || 0, time))
+    if (!audio || !isFinite(time) || !duration.value) return
+    const clamped = Math.max(0, Math.min(duration.value, time))
+    _seekTarget = clamped
+    audio.currentTime = clamped
   }
 
   function setSpeed(v: number): void {
@@ -267,10 +274,19 @@ export const usePlayerStore = defineStore('player', () => {
     if (!highway.value) return
     const audio = highway.value.getAudioElement?.()
     if (audio) {
-      // Drive the highway render position — equivalent to the 60fps setInterval
-      // in app.js that the vanilla frontend runs.  Without this the note highway
-      // never scrolls and the seek bar stays at 0.
-      highway.value.setTime?.(audio.currentTime)
+      // While a seek is in-flight the browser may briefly report
+      // audio.currentTime = 0 (Chromium artifact).  Use the intended
+      // seek target until the audio element confirms by reaching it.
+      const t = (_seekTarget !== null && Math.abs(audio.currentTime - _seekTarget) > 0.5)
+        ? _seekTarget
+        : audio.currentTime
+      if (_seekTarget !== null && Math.abs(audio.currentTime - _seekTarget) < 0.5) {
+        _seekTarget = null
+      }
+      if (audio.readyState === 0) {
+        console.warn('[syncTime] audio src was reset', { readyState: audio.readyState, src: audio.src, currentTime: audio.currentTime })
+      }
+      highway.value.setTime?.(t)
       duration.value = audio.duration || 0
     }
     currentTime.value = highway.value.getTime?.() ?? 0

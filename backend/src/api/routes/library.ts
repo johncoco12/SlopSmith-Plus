@@ -3,10 +3,11 @@ import { z } from "zod";
 import type { LibraryQuery, SortField } from "../../domain/models/library.js";
 import type { LibraryService } from "../../services/LibraryService.js";
 import type { ScannerService } from "../../services/ScannerService.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const LibraryQuerySchema = z.object({
   q: z.string().optional(),
-  page: z.coerce.number().int().min(1).default(1),
+      page: z.coerce.number().int().min(0).default(1),
   size: z.coerce.number().int().min(1).max(200).default(50),
   sort: z
     .enum(["artist", "artist-desc", "title", "title-desc", "recent", "tuning", "year", "year-desc"])
@@ -30,10 +31,11 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
   const scanner = fastify.scanner;
 
   fastify.get("/api/library", async (req) => {
+    requireAuth(req);
     const q = LibraryQuerySchema.parse(req.query);
     const query: LibraryQuery = {
       q: q.q,
-      page: q.page,
+      page: q.page || 1,
       size: q.size,
       sort: q.sort as SortField,
       favoritesOnly: q.favorites,
@@ -50,10 +52,11 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
   });
 
   fastify.get("/api/library/artists", async (req) => {
+    requireAuth(req);
     const q = z.object({
       q: z.string().optional(),
       letter: z.string().max(2).optional(),
-      page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(0).default(1),
       size: z.coerce.number().int().min(1).max(50).default(20),
       favorites: z.coerce.number().int().transform(Boolean).default(0),
     }).parse(req.query);
@@ -68,29 +71,43 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
     return { artists: result.items, total: result.total, page: result.page, size: result.size };
   });
 
-  fastify.get("/api/library/stats", async () => library.stats());
+  fastify.get("/api/library/stats", async (req) => {
+    requireAuth(req);
+    return library.stats();
+  });
 
-  fastify.get("/api/library/tuning-names", async () => library.tuningNames());
+  fastify.get("/api/library/tuning-names", async (req) => {
+    requireAuth(req);
+    return library.tuningNames();
+  });
 
-  fastify.get("/api/scan-status", async () => scanner.getStatus());
-
-  fastify.post("/api/rescan", async (_req, reply) => {
+  fastify.get("/api/scan-status", async (req) => {
+    requireAuth(req);
+    return scanner.getStatus();
+  });
+  fastify.post("/api/rescan", async (req, reply) => {
+    requireAuth(req);
     scanner.scan(false).catch(() => undefined);
     return reply.code(202).send({ ok: true });
   });
 
-  fastify.post("/api/rescan/full", async (_req, reply) => {
+  fastify.post("/api/rescan/full", async (req, reply) => {
+    requireAuth(req);
     scanner.scan(true).catch(() => undefined);
     return reply.code(202).send({ ok: true });
   });
 
-  fastify.get("/api/startup-status", async () => ({
-    stage: "ready",
-    plugins_loaded: true,
-    scan_running: scanner.getStatus().running,
-  }));
+  fastify.get("/api/startup-status", async (req) => {
+    requireAuth(req);
+    return {
+      stage: "ready",
+      plugins_loaded: true,
+      scan_running: scanner.getStatus().running,
+    };
+  }); 
 
   fastify.get("/api/startup-status/stream", async (req, reply) => {
+    requireAuth(req);
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",

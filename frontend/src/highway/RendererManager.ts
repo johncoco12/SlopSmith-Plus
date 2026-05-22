@@ -1,7 +1,7 @@
 // Manages the active renderer lifecycle: install, canvas context-type swapping,
 // failure auto-revert, visibility tracking, and the rAF draw loop.
 
-import type { Renderer, RenderBundle, DrawHook } from './types.js';
+import type { Renderer, DrawHook } from './types.js';
 import { DefaultRenderer } from './DefaultRenderer.js';
 
 const MAX_DRAW_FAILURES = 3;
@@ -72,9 +72,9 @@ export class RendererManager {
       if (!this.canvas || !this.renderer) return;
       this._checkVisibility();
       if (this.lastVisible === false) return;
-      const bundle = this.isDefault() ? undefined : makeBundle();
+      const bundle = makeBundle();
       try {
-        this.renderer.draw(bundle as RenderBundle);
+        this.renderer.draw(bundle);
         this.drawFailures = 0;
       } catch (e) {
         this.drawFailures++;
@@ -159,7 +159,7 @@ export class RendererManager {
     let ok = typeof r.init !== 'function';
     if (typeof r.init === 'function') {
       try {
-        r.init(this.canvas, undefined as unknown as RenderBundle);
+        r.init(this.canvas);
         ok = true;
       } catch (e) {
         console.error('[RendererManager] init error:', e);

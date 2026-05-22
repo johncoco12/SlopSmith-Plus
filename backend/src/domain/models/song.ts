@@ -292,48 +292,54 @@ export function toWirePhrase(p: Phrase): WirePhrase {
 
 // ─── Deserialization from wire format (for sloppak JSON) ──────────────────
 
-export function noteFromWire(d: WireNote): Note {
+function valOr<T>(a: T | undefined, b: T | undefined, fallback: T): T {
+  if (a !== undefined) return a;
+  if (b !== undefined) return b;
+  return fallback;
+}
+
+export function noteFromWire(d: Record<string, unknown>): Note {
   return {
-    time: d.t,
-    string: d.s,
-    fret: d.f,
-    sustain: d.sus ?? 0,
-    slideTo: d.sl ?? -1,
-    slideUnpitchTo: d.sl2 ?? -1,
-    bend: d.bn ?? 0,
-    hammerOn: d.ho === true,
-    pullOff: d.po === true,
-    harmonic: d.hm === true,
-    harmonicPinch: d.hp === true,
-    palmMute: d.pm === true,
-    mute: d.mu === true,
-    vibrato: d.vb === true,
-    tremolo: d.tr === true,
-    accent: d.ac === true,
-    linkNext: d.ln === true,
-    tap: d.tap === true,
+    time: d.t as number,
+    string: d.s as number,
+    fret: d.f as number,
+    sustain: (d.sus as number) ?? 0,
+    slideTo: (d.sl as number) ?? -1,
+    slideUnpitchTo: valOr(d.sl2 as number | undefined, d.slu as number | undefined, -1),
+    bend: (d.bn as number) ?? 0,
+    hammerOn: (d.ho ?? false) === true,
+    pullOff: (d.po ?? false) === true,
+    harmonic: (d.hm ?? false) === true,
+    harmonicPinch: (d.hp ?? false) === true,
+    palmMute: (d.pm ?? false) === true,
+    mute: valOr(d.mu as boolean | undefined, d.mt as boolean | undefined, false) === true,
+    vibrato: (d.vb ?? false) === true,
+    tremolo: (d.tr ?? false) === true,
+    accent: (d.ac ?? false) === true,
+    linkNext: (d.ln ?? false) === true,
+    tap: valOr(d.tap as boolean | undefined, d.tp as boolean | undefined, false) === true,
   };
 }
 
-export function chordNoteFromWire(d: WireChordNote, chordTime: number): ChordNote {
+export function chordNoteFromWire(d: Record<string, unknown>, chordTime: number): ChordNote {
   return {
-    string: d.s,
-    fret: d.f,
-    sustain: d.sus ?? 0,
-    slideTo: d.sl ?? -1,
-    slideUnpitchTo: d.sl2 ?? -1,
-    bend: d.bn ?? 0,
-    hammerOn: d.ho === true,
-    pullOff: d.po === true,
+    string: d.s as number,
+    fret: d.f as number,
+    sustain: (d.sus as number) ?? 0,
+    slideTo: (d.sl as number) ?? -1,
+    slideUnpitchTo: valOr(d.sl2 as number | undefined, d.slu as number | undefined, -1),
+    bend: (d.bn as number) ?? 0,
+    hammerOn: (d.ho ?? false) === true,
+    pullOff: (d.po ?? false) === true,
     harmonic: false,
     harmonicPinch: false,
-    palmMute: d.pm === true,
-    mute: d.mu === true,
-    vibrato: d.vb === true,
-    tremolo: d.tr === true,
-    accent: d.ac === true,
-    linkNext: d.ln === true,
-    tap: d.tap === true,
+    palmMute: (d.pm ?? false) === true,
+    mute: valOr(d.mu as boolean | undefined, d.mt as boolean | undefined, false) === true,
+    vibrato: (d.vb ?? false) === true,
+    tremolo: (d.tr ?? false) === true,
+    accent: (d.ac ?? false) === true,
+    linkNext: (d.ln ?? false) === true,
+    tap: valOr(d.tap as boolean | undefined, d.tp as boolean | undefined, false) === true,
   };
 }
 

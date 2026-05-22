@@ -55,10 +55,11 @@ export class ScannerService {
         )
       );
 
+      const relFiles = new Set(files.map((f) => path.relative(dlcDir, f)));
       if (full) {
-        await this.songs.deleteStale(new Set(files));
+        await this.songs.deleteStale(relFiles);
       } else {
-        await this.songs.deleteStale(new Set(files));
+        await this.songs.deleteStale(relFiles);
       }
 
       this.setStatus({ stage: "complete", running: false, isFirstScan: false });
@@ -88,15 +89,17 @@ export class ScannerService {
   }
 
   private async processFile(filePath: string): Promise<void> {
+    const dlcDir = this.config.dlcDir;
     const stat = fs.statSync(filePath);
     const mtime = stat.mtimeMs / 1000;
     const size = stat.size;
+    const relPath = dlcDir ? path.relative(dlcDir, filePath) : filePath;
 
-    const cached = await this.songs.findCached(filePath, mtime, size);
+    const cached = await this.songs.findCached(relPath, mtime, size);
     if (cached) return;
 
     const meta = this.extractMeta(filePath);
-    await this.songs.upsert(filePath, {
+    await this.songs.upsert(relPath, {
       mtime,
       size,
       title: String(meta.title ?? ""),

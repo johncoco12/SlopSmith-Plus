@@ -1,4 +1,5 @@
-import type { Song as PrismaSong, Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import type { Song as PrismaSong } from "@prisma/client";
 import type {
   ISongRepository,
   SongInput,
@@ -26,11 +27,11 @@ function rowToMeta(row: PrismaSong, favorites: Set<string>): SongMeta {
     tuning: row.tuning,
     tuningName: row.tuningName,
     tuningSortKey: row.tuningSortKey,
-    arrangements: JSON.parse(row.arrangements) as ArrangementMeta[],
+    arrangements: row.arrangements as unknown as ArrangementMeta[],
     hasLyrics: row.hasLyrics,
     format: row.format as SongMeta["format"],
     stemCount: row.stemCount,
-    stemIds: JSON.parse(row.stemIds) as string[],
+    stemIds: row.stemIds as unknown as string[],
     mtime: row.mtime,
     favorite: favorites.has(row.filename),
   };
@@ -86,9 +87,9 @@ function buildWhere(query: LibraryQuery, favorites: Set<string>): WhereClause {
 
 function matchesPostFilters(row: PrismaSong, query: LibraryQuery): boolean {
   const arrNames: string[] = (
-    JSON.parse(row.arrangements) as ArrangementMeta[]
+    row.arrangements as unknown as ArrangementMeta[]
   ).map((a) => a.name.toLowerCase());
-  const stemIds: string[] = JSON.parse(row.stemIds);
+  const stemIds: string[] = row.stemIds as unknown as string[];
 
   for (const name of query.arrangementsHas) {
     if (!arrNames.some((a) => a.includes(name.toLowerCase()))) return false;
@@ -113,8 +114,8 @@ const hasPostFilters = (q: LibraryQuery) =>
 
 export class SongRepository implements ISongRepository {
   private async getFavorites(): Promise<Set<string>> {
-    const rows = await prisma.favorite.findMany({ select: { filename: true } });
-    return new Set(rows.map((r) => r.filename));
+    const rows = await prisma.favorite.findMany({ select: { trackId: true } });
+    return new Set(rows.map((r) => r.trackId));
   }
 
   async search(query: LibraryQuery): Promise<PageResult<SongMeta>> {
@@ -249,11 +250,11 @@ export class SongRepository implements ISongRepository {
       tuning: input.tuning,
       tuningName: input.tuningName,
       tuningSortKey: input.tuningSortKey,
-      arrangements: JSON.stringify(input.arrangements),
+      arrangements: input.arrangements as unknown as Prisma.InputJsonValue,
       hasLyrics: input.hasLyrics,
       format: input.format,
       stemCount: input.stemCount,
-      stemIds: JSON.stringify(input.stemIds),
+      stemIds: input.stemIds as unknown as Prisma.InputJsonValue,
     };
 
     await prisma.song.upsert({

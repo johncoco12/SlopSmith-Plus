@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid } from 'lucide-vue-next'
+import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid, Settings } from 'lucide-vue-next'
 import { useSettingsStore } from '@/stores/settings'
 import { usePluginsStore } from '@/stores/plugins'
 import MobileMenu from './MobileMenu.vue'
@@ -23,6 +23,7 @@ const navLinks = computed(() => [
     label:  p.nav.label,
     icon:   LayoutGrid,
   })),
+  { name: 'gear',      label: 'Your Gear', icon: Settings  },
   { name: 'settings',  label: 'Settings',  icon: Settings2 },
 ])
 
@@ -54,8 +55,8 @@ async function handleUpload(e: Event): Promise<void> {
     <!-- Logo — SVG guitar slides in through text mask on hover -->
     <router-link :to="{ name: 'library' }" class="logo-link shrink-0">
       <span class="logo-wrap">
-        <span class="logo-base">Slopsmith</span>
-        <span class="logo-svg" aria-hidden="true">Slopsmith</span>
+        <span class="logo-base">Slopsmith+</span>
+        <span class="logo-svg" aria-hidden="true">Slopsmith+</span>
       </span>
     </router-link>
 

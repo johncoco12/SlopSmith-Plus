@@ -1,29 +1,40 @@
+name: slopsmith-plus
+
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: slopsmith
+      POSTGRES_PASSWORD: slopsmith
+      POSTGRES_DB: slopsmith
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
   web:
     build:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "8080:8080"
+      - "8085:8080"
+    depends_on:
+      - db
     volumes:
-      # Mount your Rocksmith DLC folder (adjust path for your system)
       - ${DLC_PATH:-~/.local/share/Steam/steamapps/common/Rocksmith2014/dlc}:/dlc
-      # Persistent config, cache, database
       - rocksmith-config:/config
-      # Live-reload source mounts for development
+      # Dev: comment these out for production (assets are baked into the image)
       - ./plugins:/app/plugins
       - ./static:/app/static
       - ./VERSION:/app/VERSION
     environment:
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config
-      - DATABASE_URL=file:/config/web_library.db
-      - RSCLI_PATH=/opt/rscli/RsCli
-      - VGMSTREAM_CLI=/usr/local/bin/vgmstream-cli
-      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-      # Logging (optional)
-      # - LOG_LEVEL=debug       # trace | debug | info | warn | error  (default: info)
-      # - LOG_PRETTY=true       # human-readable pino output  (default: true)
+      - DATABASE_URL=postgresql://slopsmith:slopsmith@db:5432/slopsmith
+      # Logging (optional — image defaults: LOG_LEVEL=info, LOG_PRETTY=true)
+      # - LOG_LEVEL=debug
+      # - LOG_PRETTY=false
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -31,10 +42,11 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "8001:80"
+      - "8006:80"
     depends_on:
       - web
 
 volumes:
+  postgres-data:
   rocksmith-config:
 

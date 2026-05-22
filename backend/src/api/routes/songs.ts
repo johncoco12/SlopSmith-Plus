@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import fp from "fastify-plugin";
 import type { SongService } from "../../services/SongService.js";
 
@@ -18,6 +20,22 @@ function stripSuffix(raw: string, suffix: string): string {
 
 export const songRoutes = fp(async function songRoutes(fastify) {
   const songs = fastify.songs as SongService;
+
+  // POST /api/songs/upload — upload song files to DLC directory
+  fastify.post("/api/songs/upload", async (req, reply) => {
+    const dlcDir = process.env.DLC_DIR || "/dlc";
+    const allFiles: string[] = [];
+    for await (const file of req.files()) {
+      const buffer = await file.toBuffer();
+      const safeName = path.basename(file.filename);
+      const targetPath = path.join(dlcDir, safeName);
+      fs.writeFileSync(targetPath, buffer);
+      allFiles.push(safeName);
+    }
+    if (allFiles.length === 0) return reply.code(400).send({ error: "No file provided" });
+    return { ok: true, files: allFiles };
+  });
+
 
   // GET /api/song/<filename>
   // GET /api/song/<filename>/art

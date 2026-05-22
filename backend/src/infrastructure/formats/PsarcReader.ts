@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { inflateSync } from "node:zlib";
 import { minimatch } from "minimatch";
+import { tuningName, tuningSortKey } from "./tunings.js";
 
 // Rocksmith 2014 PSARC archive format constants
 const PSARC_MAGIC = Buffer.from("PSAR");
@@ -28,7 +29,7 @@ interface ParsedToc {
 }
 
 export class PsarcReader {
-  static read(filePath: string, patterns?: string[]): Map<string, Buffer> {
+  static read(filePath: string, patterns?: string[], maxEntrySize = 50 * 1024 * 1024): Map<string, Buffer> {
     const result = new Map<string, Buffer>();
     const fd = fs.openSync(filePath, "r");
     try {
@@ -39,8 +40,10 @@ export class PsarcReader {
         if (patterns && !patterns.some((p) => minimatch(filename.toLowerCase(), p.toLowerCase()))) {
           continue;
         }
+        const entry = toc.entries[i + 1];
+        if (entry.length > maxEntrySize) continue;
         try {
-          result.set(filename, PsarcReader.extractEntry(fd, toc.entries[i + 1], toc.blockSizes, toc.blockSize));
+          result.set(filename, PsarcReader.extractEntry(fd, entry, toc.blockSizes, toc.blockSize));
         } catch {
           // skip unreadable entries
         }
@@ -76,38 +79,88 @@ export class PsarcReader {
   }
 
   static extractQuickMeta(filePath: string): Record<string, unknown> {
-    const entries = PsarcReader.read(filePath, ["*.json"]);
+    const entries = PsarcReader.read(filePath, ["**/*.json"]);
+    let title = "", artist = "", album = "", year = "";
+    let duration = 0;
+    let tuning = "E Standard";
+    let tuningOffsets: number[] = [0, 0, 0, 0, 0, 0];
+    let hasGuitarTuning = false;
+    const arrangements: { index: number; name: string; notes: number }[] = [];
+    let seenArrNames = new Set<string>();
+
     for (const [key, buf] of entries) {
-      if (!key.includes("manifest")) continue;
+      if (!key.endsWith(".json")) continue;
       try {
         const raw = JSON.parse(buf.toString("utf8")) as Record<string, unknown>;
-        const entryValues = Object.values(raw["Entries"] as Record<string, unknown> ?? {}) as Record<string, unknown>[];
-        const attrs = entryValues[0]?.["Attributes"] as Record<string, unknown> | undefined;
-        if (!attrs?.["SongName"]) continue;
+        const entriesDict = raw["Entries"] as Record<string, unknown> | undefined;
+        if (!entriesDict) continue;
+        const entryValues = Object.values(entriesDict) as Record<string, unknown>[];
 
-        const arrangements = entryValues
-          .map((e) => (e["Attributes"] as Record<string, unknown>))
-          .filter(Boolean)
-          .map((a, idx) => ({
-            index: idx,
-            name: String(a["ArrangementName"] ?? "Lead"),
-            notes: 0,
-          }));
+        for (const entry of entryValues) {
+          const attrs = entry["Attributes"] as Record<string, unknown> | undefined;
+          if (!attrs) continue;
 
-        return {
-          title: String(attrs["SongName"] ?? ""),
-          artist: String(attrs["ArtistName"] ?? ""),
-          album: String(attrs["AlbumName"] ?? ""),
-          year: String(attrs["SongYear"] ?? ""),
-          duration: Number(attrs["SongLength"] ?? 0),
-          tuning: String(attrs["Tuning"] ?? ""),
-          arrangements,
-          hasLyrics: false,
-          format: "psarc",
-        };
+          const arrName = String(attrs["ArrangementName"] ?? "");
+          if (["Vocals", "ShowLights", "JVocals"].includes(arrName)) continue;
+
+          if (!title) {
+            title = String(attrs["SongName"] ?? "");
+            artist = String(attrs["ArtistName"] ?? "");
+            album = String(attrs["AlbumName"] ?? "");
+            year = String(attrs["SongYear"] ?? "");
+            const sl = attrs["SongLength"];
+            if (sl) duration = Number(sl) || 0;
+          }
+
+          if (arrName && !seenArrNames.has(arrName)) {
+            seenArrNames.add(arrName);
+            const tuningRaw = attrs["Tuning"];
+            if (tuningRaw && typeof tuningRaw === "object" && !Array.isArray(tuningRaw)) {
+              const obj = tuningRaw as Record<string, unknown>;
+              const offsets: number[] = [];
+              for (let i = 0; i < 6; i++) {
+                const v = obj[`string${i}`];
+                if (v === undefined) break;
+                offsets.push(typeof v === "number" ? v : Number(v) || 0);
+              }
+              if (offsets.length > 0) {
+                const name = tuningName(offsets);
+                const isGuitar = arrName === "Lead" || arrName === "Rhythm" || arrName === "Combo";
+                if (tuning === "E Standard" || (isGuitar && !hasGuitarTuning)) {
+                  tuning = name;
+                  tuningOffsets = offsets;
+                  if (isGuitar) hasGuitarTuning = true;
+                }
+              }
+            }
+            const notesHard = Number(attrs["NotesHard"]) || 0;
+            const notesMedium = Number(attrs["NotesMedium"]) || 0;
+            const notesEasy = Number(attrs["NotesEasy"]) || 0;
+            const notes = notesHard || notesMedium || notesEasy || 0;
+            arrangements.push({ index: 0, name: arrName, notes });
+          }
+        }
       } catch {
-        // try next entry
+        // skip unparseable files
       }
+    }
+
+    if (title) {
+      const priority: Record<string, number> = {Lead: 0, Combo: 1, Rhythm: 2, Bass: 3};
+      arrangements.sort((a, b) => (priority[a.name] ?? 99) - (priority[b.name] ?? 99));
+      for (let i = 0; i < arrangements.length; i++) {
+        arrangements[i].index = i;
+      }
+
+      return {
+        title, artist, album, year, duration,
+        tuning,
+        tuningName: tuning,
+        tuningSortKey: tuningSortKey(tuningOffsets),
+        arrangements,
+        hasLyrics: false,
+        format: "psarc",
+      };
     }
     return { format: "psarc" };
   }
@@ -122,11 +175,25 @@ export class PsarcReader {
       throw new Error("Not a PSARC file");
     }
 
-    const tocLength = header.readUInt32BE(8);
-    const tocEntrySize = header.readUInt32BE(12);
-    const tocEntryCount = header.readUInt32BE(16);
-    const blockSize = header.readUInt32BE(20);
-    const archiveFlags = header.readUInt32BE(24);
+    // PSARC header layout (32 bytes):
+    //   0-3: magic "PSAR"
+    //   4-5: version
+    //   6-7: compression type
+    //   8-11: compression name (e.g. "zlib")
+    //  12-15: TOC length
+    //  16-19: TOC entry size
+    //  20-23: TOC entry count
+    //  24-27: block size
+    //  28-31: archive flags
+    const tocLength = header.readUInt32BE(12);
+    const tocEntrySize = header.readUInt32BE(16);
+    const tocEntryCount = header.readUInt32BE(20);
+    const blockSize = header.readUInt32BE(24);
+    const archiveFlags = header.readUInt32BE(28);
+
+    if (tocEntryCount > 100000 || tocEntrySize < 20 || tocEntrySize > 100) {
+      throw new Error("Invalid PSARC header");
+    }
 
     const tocRegionSize = tocLength - 32;
     const tocRaw = Buffer.alloc(tocRegionSize);

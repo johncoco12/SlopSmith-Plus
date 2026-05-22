@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -17,11 +17,11 @@ model Song {
   year         String @default("")
   duration     Float  @default(0)
   tuning       String @default("")
-  arrangements String @default("[]") // JSON array
+  arrangements Json @default("[]")
   hasLyrics    Boolean @default(false)
   format       String  @default("psarc") // psarc | sloppak | loose
   stemCount    Int     @default(0)
-  stemIds      String  @default("[]") // JSON array
+  stemIds      Json    @default("[]")
   tuningName   String  @default("")
   tuningSortKey Int    @default(0)
 
@@ -32,17 +32,100 @@ model Song {
   @@index([year])
 }
 
-model Favorite {
-  filename String @id
+
+model Profile {
+  id       Int    @id @default(autoincrement())
+  name    String   @unique
+  avatarId Int?
+  pinCode String
+  pinSalt String
+  recoveryPhrase String
+  recoveryPhraseSalt String
+  recoveryPhraseHint String
+  locked Boolean @default(false)
+  profileSettings Json @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Loop {
+model Favorite {
+  trackId String @id
+  profileId Int 
+  createdAt DateTime @default(now())
+  modifiedAt DateTime @updatedAt
+}
+
+model TrackLoop {
   id        Int      @id @default(autoincrement())
-  filename  String
+  profileId Int
+  trackId   Int
   name      String
   startTime Float
   endTime   Float
   createdAt DateTime @default(now())
-
-  @@index([filename])
+  @@index([profileId])
+  @@index([trackId])
 }
+
+model PermissionGroup {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  profileIds Int[] // List of profile IDs that belong to this permission group
+  permissions String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model Track {
+  id            Int      @id @default(autoincrement())
+  trackId       String   @unique
+  createdAt     DateTime @default(now())
+  modifiedAt    DateTime @updatedAt
+  trackData     TrackData?
+  stems         Stems?
+  artist        String   @default("")
+  title         String   @default("")
+  album         String   @default("")
+  year          String   @default("")
+  duration      Float    @default(0)
+  tuning        String   @default("")
+  hasLyrics     Boolean  @default(false)
+  format        String   @default("psarc") // psarc | sloppak | loose
+  tuningName    String   @default("")
+  tuningSortKey Int      @default(0)
+  @@index([artist])
+  @@index([title])
+  @@index([tuningName])
+  @@index([tuningSortKey])
+  @@index([year])
+  @@index([trackId])
+}
+
+model TrackData {
+  id                    Int    @id @default(autoincrement())
+  trackId               Int    @unique
+  arrangements          Json   @default("[]")
+  coverImageStorageId   String?
+  audioFileStorageId    String?
+  track                 Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+}
+
+model Stems {
+  id      Int       @id @default(autoincrement())
+  trackId Int       @unique
+  track   Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  items   StemData[]
+  @@index([trackId])
+}
+
+model StemData {
+  id                    Int     @id @default(autoincrement())
+  stemsId               Int
+  stemIndex             Int
+  arrangement           String?
+  stemAudioFileStorageId String?
+  stems                 Stems   @relation(fields: [stemsId], references: [id], onDelete: Cascade)
+  @@index([stemsId])
+}
+

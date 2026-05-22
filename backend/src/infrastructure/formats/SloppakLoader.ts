@@ -2,9 +2,9 @@ import AdmZip from "adm-zip";
 import yaml from "js-yaml";
 import fs from "node:fs";
 import path from "node:path";
-import type { Song } from "../../domain/models/song.js";
+import type { Beat, Section, Song } from "../../domain/models/song.js";
 import type { LyricWord } from "../../domain/models/song.js";
-import { arrangementFromWireJson, parseLyricsXml } from "./ArrangementParser.js";
+import { arrangementFromWireJson, parseLyricsXml, sortArrangementsByPriority } from "./ArrangementParser.js";
 import { tuningName, tuningSortKey } from "./tunings.js";
 
 export interface SloppakManifest {
@@ -52,9 +52,25 @@ export class SloppakLoader {
     if (stat.isDirectory()) return filePath;
 
     const outDir = path.join(cacheDir, path.basename(filePath));
-    if (!fs.existsSync(path.join(outDir, "manifest.yaml"))) {
+    const stampFile = path.join(outDir, ".sloppak_stamp");
+
+    let needsExtract = !fs.existsSync(path.join(outDir, "manifest.yaml"));
+    if (!needsExtract && fs.existsSync(stampFile)) {
+      try {
+        const [stampMtime, stampSize] = JSON.parse(fs.readFileSync(stampFile, "utf8")) as [number, number];
+        if (stampMtime !== stat.mtimeMs || stampSize !== stat.size) {
+          needsExtract = true;
+        }
+      } catch {
+        needsExtract = true;
+      }
+    }
+
+    if (needsExtract) {
+      if (fs.existsSync(outDir)) fs.rmSync(outDir, { recursive: true });
       fs.mkdirSync(outDir, { recursive: true });
       new AdmZip(filePath).extractAllTo(outDir, true);
+      fs.writeFileSync(stampFile, JSON.stringify([stat.mtimeMs, stat.size]));
     }
     return outDir;
   }
@@ -68,12 +84,37 @@ export class SloppakLoader {
     const sourceDir = SloppakLoader.resolveDir(filePath, cacheDir);
     const manifest = SloppakLoader.readManifest(sourceDir);
 
+    let songBeats: Beat[] = [];
+    let songSections: Section[] = [];
     const arrangements = (manifest.arrangements ?? []).flatMap((arrMeta) => {
       const arrFile = path.join(sourceDir, "arrangements", arrMeta.file);
       if (!fs.existsSync(arrFile)) return [];
       try {
         const raw = JSON.parse(fs.readFileSync(arrFile, "utf8")) as Record<string, unknown>;
         const arr = arrangementFromWireJson(raw);
+
+        // Beats/sections can live on the arrangement JSON in the wire format.
+        // Pull them onto the song from the first arrangement that has them.
+        if (songBeats.length === 0) {
+          const beatsRaw = raw["beats"] as unknown[] | undefined;
+          if (beatsRaw) {
+            songBeats = (beatsRaw as Record<string, unknown>[]).map((b) => ({
+              time: (b.time as number) ?? 0,
+              measure: (b.measure as number) ?? -1,
+            } satisfies Beat));
+          }
+        }
+        if (songSections.length === 0) {
+          const sectionsRaw = raw["sections"] as unknown[] | undefined;
+          if (sectionsRaw) {
+            songSections = (sectionsRaw as Record<string, unknown>[]).map((s) => ({
+              name: (s.name as string) ?? "",
+              number: (s.number as number) ?? 0,
+              startTime: ((s.time ?? s.start_time) as number) ?? 0,
+            } satisfies Section));
+          }
+        }
+
         // Override with manifest-level metadata
         return [{
           ...arr,
@@ -101,9 +142,9 @@ export class SloppakLoader {
       year: Number(manifest.year) || 0,
       songLength: manifest.duration ?? 0,
       offset: 0,
-      beats: [],
-      sections: [],
-      arrangements,
+      beats: songBeats,
+      sections: songSections,
+      arrangements: sortArrangementsByPriority(arrangements),
       lyrics,
     };
 

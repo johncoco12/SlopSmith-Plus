@@ -58,12 +58,12 @@ def test_note_link_next_is_not_round_tripped():
     n = Note(time=0.0, string=0, fret=0, link_next=True)
     assert note_to_wire(n) == {
         "t": 0.0, "s": 0, "f": 0, "sus": 0.0,
-        "sl": -1, "slu": -1, "bn": 0,
+        "sl": -1, "sl2": -1, "bn": 0,
         "ho": False, "po": False,
         "hm": False, "hp": False,
-        "pm": False, "mt": False,
+        "pm": False, "mu": False,
         "vb": False,
-        "tr": False, "ac": False, "tp": False,
+        "tr": False, "ac": False, "tap": False,
     }
     assert note_from_wire(note_to_wire(n)).link_next is False
 

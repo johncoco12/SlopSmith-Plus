@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -72,7 +73,7 @@ export class SongService {
     }
 
     if (LooseFolderReader.isLooseFolder(filePath)) {
-      const song = await loadSongFromDirectory(filePath);
+      const song = await loadSongFromDirectory(filePath, this.config.rscliPath);
       const entry = { song, extractedDir: filePath, format: "loose" as const, stems: [] };
       this.cache.set(filename, entry);
       return entry;
@@ -81,7 +82,7 @@ export class SongService {
     // PSARC — extract to temp dir
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "slopsmith-"));
     PsarcReader.unpack(filePath, tmpDir);
-    const song = await loadSongFromDirectory(tmpDir);
+    const song = await loadSongFromDirectory(tmpDir, this.config.rscliPath);
     const entry = { song, extractedDir: tmpDir, format: "psarc" as const, stems: [] };
     this.cache.set(filename, entry);
     return entry;
@@ -118,12 +119,30 @@ export class SongService {
 
     try {
       const filePath = this.resolveDlcPath(filename);
-      const entries = PsarcReader.read(filePath, ["**/*.png", "**/*.jpg"]);
+      const entries = PsarcReader.read(filePath, ["**/*.png", "**/*.jpg", "**/*.dds"]);
+
+      // Pick the highest-resolution album art (prefer 256 > 128 > 64 > any)
+      let best: { name: string; data: Buffer; score: number } | null = null;
       for (const [name, data] of entries) {
-        if (name.includes("album") || name.includes("cover") || name.includes("256")) {
-          fs.mkdirSync(this.config.artCacheDir, { recursive: true });
-          fs.writeFileSync(artPath, data);
-          return data;
+        if (!(name.includes("album") || name.includes("cover") || name.includes("art"))) continue;
+        const score = name.includes("256") ? 3 : name.includes("128") ? 2 : name.includes("64") ? 1 : 0;
+        if (!best || score > best.score) best = { name, data, score };
+      }
+
+      if (best) {
+        fs.mkdirSync(this.config.artCacheDir, { recursive: true });
+        if (best.name.endsWith(".dds")) {
+          const tmpDds = path.join(this.config.artCacheDir, `${escaped}.dds`);
+          fs.writeFileSync(tmpDds, best.data);
+          try {
+            execSync(`ffmpeg -y -i "${tmpDds}" "${artPath}" 2>/dev/null`);
+            if (fs.existsSync(artPath)) return fs.readFileSync(artPath);
+          } finally {
+            try { fs.unlinkSync(tmpDds); } catch { /* ignore */ }
+          }
+        } else {
+          fs.writeFileSync(artPath, best.data);
+          return best.data;
         }
       }
     } catch {

@@ -5,7 +5,7 @@ import { Heart, Play, Pencil } from 'lucide-vue-next'
 import type { Song } from '@/types'
 
 const props = defineProps<{
-  song: Song & { mtime?: number; favorite?: boolean; tuning_name?: string }
+  song: Song & { mtime?: number; favorite?: boolean; tuningName?: string }
   selected?: boolean
 }>()
 const emit = defineEmits<{
@@ -103,9 +103,9 @@ const arrNames = computed(() =>
         >{{ name }}</span>
 
         <span
-          v-if="song.tuning_name"
+          v-if="song.tuningName"
           class="px-2 py-0.5 rounded-md text-xs bg-dark-500 text-teal-400 border border-teal-700/40"
-        >{{ song.tuning_name }}</span>
+        >{{ song.tuningName }}</span>
       </div>
     </div>
   </article>

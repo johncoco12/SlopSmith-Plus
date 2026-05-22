@@ -1,4 +1,5 @@
-import { BG, VISIBLE_SECONDS } from '../colors.js';
+import { VISIBLE_SECONDS } from '../projection.js';
+import { BG } from '../colors.js';
 import type { DrawContext } from '../types.js';
 
 const STRIPS = 40;

@@ -1,4 +1,4 @@
-import { VISIBLE_SECONDS } from '../colors.js';
+import { VISIBLE_SECONDS } from '../projection.js';
 import type { DrawContext } from '../types.js';
 
 export function drawFretLines(cx: DrawContext): void {

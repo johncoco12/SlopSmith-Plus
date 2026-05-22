@@ -49,3 +49,27 @@ export class DemoModeError extends AppError {
     super("Demo mode: write operations are disabled", 403);
   }
 }
+
+export class AuthenticationError extends AppError {
+  constructor(message: string = "Authentication required") {
+    super(message, 401);
+  }
+}
+
+export class InvalidCredentialsError extends AppError {
+  constructor(message: string = "Invalid credentials") {
+    super(message, 401);
+  }
+}
+
+export class AccountLockedError extends AppError {
+  constructor(message: string = "Account is locked") {
+    super(message, 423);
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message: string = "Insufficient permissions") {
+    super(message, 403);
+  }
+}

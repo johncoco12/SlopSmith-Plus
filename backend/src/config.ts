@@ -21,6 +21,13 @@ const EnvSchema = z.object({
     .default("https://github.com/byrongamatos/slopsmith"),
   APP_LICENSE_URL: z.string().url().optional(),
   DATABASE_URL: z.string().optional(),
+
+  MINIO_ENDPOINT: z.string().optional(),
+  MINIO_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+  MINIO_ACCESS_KEY: z.string().optional(),
+  MINIO_SECRET_KEY: z.string().optional(),
+  MINIO_BUCKET: z.string().default("slopsmith"),
+  MINIO_USE_SSL: z.string().transform((v) => v === "true" || v === "1").default("false"),
 });
 
 function parseEnv(): z.infer<typeof EnvSchema> {
@@ -33,9 +40,11 @@ function parseEnv(): z.infer<typeof EnvSchema> {
 }
 
 function readVersion(): string {
+  // Compiled to dist/config.js → import.meta.dirname = /app/dist
+  // So ../VERSION = /app/VERSION (Docker), ../../VERSION = dev fallback
   const candidates = [
+    path.resolve(import.meta.dirname, "../VERSION"),
     path.resolve(import.meta.dirname, "../../VERSION"),
-    path.resolve(import.meta.dirname, "../../../VERSION"),
   ];
   for (const p of candidates) {
     try {
@@ -67,16 +76,23 @@ export const config = {
 
   // Derived paths
   configDir,
-  databaseUrl: env.DATABASE_URL ?? `file:${path.join(configDir, "web_library.db")}`,
+  minioEndpoint: env.MINIO_ENDPOINT,
+  minioPort: env.MINIO_PORT,
+  minioAccessKey: env.MINIO_ACCESS_KEY,
+  minioSecretKey: env.MINIO_SECRET_KEY,
+  minioBucket: env.MINIO_BUCKET,
+  minioUseSSL: env.MINIO_USE_SSL,
+
+  databaseUrl: env.DATABASE_URL ?? "postgresql://slopsmith:slopsmith@localhost:5432/slopsmith",
   settingsPath: path.join(configDir, "config.json"),
   audioCacheDir: path.join(configDir, "audio_cache"),
   artCacheDir: path.join(configDir, "art_cache"),
   sloppakCacheDir: path.join(configDir, "sloppak_cache"),
 
-  // Plugin directories (resolved at startup relative to this file)
-  pluginsBuiltinDir: path.resolve(import.meta.dirname, "../../plugins"),
+  // Plugin directories — dist/config.js → /app/dist → ../plugins = /app/plugins
+  pluginsBuiltinDir: path.resolve(import.meta.dirname, "../plugins"),
   pluginsUserDir: env.SLOPSMITH_PLUGINS_DIR,
-  staticDir: path.resolve(import.meta.dirname, "../../static"),
+  staticDir: path.resolve(import.meta.dirname, "../static"),
 } as const;
 
 export type Config = typeof config;

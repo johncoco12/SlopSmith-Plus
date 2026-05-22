@@ -1,5 +1,9 @@
+import "reflect-metadata";
+import { registerContainer } from "./container.js";
 import { buildServer } from "./server.js";
 import { config } from "./config.js";
+
+registerContainer();
 
 const fastify = await buildServer();
 

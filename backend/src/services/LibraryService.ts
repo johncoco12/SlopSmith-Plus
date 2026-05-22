@@ -39,7 +39,7 @@ export class LibraryService {
     return this.songs.tuningNames();
   }
 
-  toggleFavorite(filename: string): Promise<boolean> {
-    return this.favorites.toggle(filename);
+  toggleFavorite(trackId: string, profileId: number): Promise<boolean> {
+    return this.favorites.toggle(trackId, profileId);
   }
 }

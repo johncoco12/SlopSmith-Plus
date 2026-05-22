@@ -3,7 +3,7 @@
 import { stringColor, stringDim, stringBright, stringColor as sc } from '../colors.js';
 import { paintGemGlow } from './gemGlow.js';
 import type { DrawContext, ChartNote, NoteState } from '../types.js';
-import { VISIBLE_SECONDS } from '../colors.js';
+import { VISIBLE_SECONDS } from '../projection.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

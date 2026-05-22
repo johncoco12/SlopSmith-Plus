@@ -16,4 +16,6 @@ RUN npm run build
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint.d/20-resolve-backend.sh /docker-entrypoint.d/20-resolve-backend.sh
+RUN chmod +x /docker-entrypoint.d/20-resolve-backend.sh
 EXPOSE 80
