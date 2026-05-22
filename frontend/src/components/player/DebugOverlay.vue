@@ -54,7 +54,8 @@ function _update(): void {
     nextNote.value = `s${bestStr + 1} f${bestFret} in ${dt >= 1 ? dt.toFixed(2) : (dt * 1000).toFixed(0) + 'ms'}`
   }
 
-  const acc = (window as any).pitchYin?.getLastHitAccuracy?.()
+  const hd = (window as any).highway?.hitDetector
+  const acc = hd?.getLastHitAccuracy?.()
   if (acc) {
     const label = acc.ms >= 0 ? `+${acc.ms}ms late` : `${acc.ms}ms early`
     hitTiming.value = label
@@ -69,9 +70,9 @@ function _update(): void {
     detectedHz.value = '---'
   }
 
-  const hm = (window as any).pitchYin?.getHitMapEntries?.()
+  const hm = hd?.getHitMapEntries?.()
   if (hm && hm.length > 0) {
-    const matchHz = (window as any).pitchYin?.getLastMatchHz?.() ?? 0
+    const matchHz = hd?.getLastMatchHz?.() ?? 0
     hitMapCount.value = `♯${hm.length} ${matchHz > 0 ? matchHz.toFixed(1) + 'Hz' : ''}`
   } else {
     hitMapCount.value = ''
@@ -95,7 +96,7 @@ onUnmounted(() => { if (_timer) clearInterval(_timer) })
       >HM{{ debugHitMap ? ' ON' : ' OFF' }}</button>
       <button
         class="px-1 rounded pointer-events-auto bg-white/10 text-white/70 hover:bg-white/20 text-[9px]"
-        @click="(window as any).pitchYin?.dumpHitDebug?.()"
+        @click="(window as any).highway?.hitDetector?.dumpHitDebug?.()"
       >Dump</button>
     </div>
   </div>

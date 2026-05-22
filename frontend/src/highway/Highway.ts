@@ -6,6 +6,7 @@
 
 import { ChartClock } from './clock.js';
 import { ChartState } from './chartState.js';
+import { HitDetector } from './hitDetection.js';
 import { MasteryFilter } from './masteryFilter.js';
 import { ProjectionHelper, VISIBLE_SECONDS } from './projection.js';
 import { RendererManager } from './RendererManager.js';
@@ -44,6 +45,7 @@ export class Highway implements HighwayApi {
   private lyricsVisible = localStorage.getItem('showLyrics') !== 'false';
   private onLyricsChange: ((v: boolean) => void) | null = null;
 
+  readonly hitDetector: HitDetector;
   private noteStateProvider: NoteStateProvider | null = null;
   private drawHooks: DrawHook[] = [];
   private connectOpts: ConnectOptions = {};
@@ -56,6 +58,7 @@ export class Highway implements HighwayApi {
   _onReady: (() => void | Promise<void>) | null = null;
 
   constructor() {
+    this.hitDetector = new HitDetector(this);
     this.rendererMgr = new RendererManager(slopsmithEmit);
     this.restClient = new HighwayRestClient(
       this.state,
@@ -69,6 +72,7 @@ export class Highway implements HighwayApi {
   // ── Initialisation ────────────────────────────────────────────────────────
 
   init(canvas: HTMLCanvasElement, container?: Element | null): void {
+    this.hitDetector.setup();
     this.resizeContainer = container ?? null;
     this.rendererMgr.setCanvas(canvas);
     this.resize();
@@ -100,6 +104,7 @@ export class Highway implements HighwayApi {
   }
 
   stop(): void {
+    this.hitDetector.teardown();
     this.rendererMgr.stopLoop();
     this.restClient.abort();
     this._clearLoopInterval();
