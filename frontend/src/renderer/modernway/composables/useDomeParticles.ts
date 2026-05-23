@@ -1,14 +1,13 @@
 // Modernway — Ambient dome particles (upper hemisphere point cloud).
-// 320 points on a hemisphere with slow rotation and audio-reactive size/opacity.
-// Since we don't have FFT analyser bands here, we simulate gentle idle motion
-// and pulse slightly on note activity.
+// 680 points on a hemisphere with per-particle sinusoidal drift, slow rotation,
+// and audio-reactive size/opacity.
 
 import * as THREE from 'three';
 import { K, AHEAD, lowerBoundT } from '../constants';
 import type { RenderBundle } from '@/player/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const POINT_COUNT = 320;
+const POINT_COUNT = 680;
 const DOME_RADIUS = 420 * K;
 const BASE_COLOUR = 0xaaccff;
 const BASE_SIZE = K * 2.8;
@@ -16,6 +15,10 @@ const MAX_SIZE = K * 4.8;
 const BASE_OPACITY = 0.40;
 const MAX_OPACITY = 0.72;
 const ROTATION_SPEED = 0.00035;
+const DRIFT_AMP_MIN = 5 * K;
+const DRIFT_AMP_MAX = 14 * K;
+const DRIFT_SPEED_MIN = 0.04;
+const DRIFT_SPEED_MAX = 0.18;
 
 // ── Dome Particles ────────────────────────────────────────────────────────────
 export interface DomeParticlePool {
@@ -29,15 +32,34 @@ export function createDomeParticles(): DomeParticlePool {
 
   // Generate hemisphere points (uniform distribution via rejection)
   const positions = new Float32Array(POINT_COUNT * 3);
+  const basePos   = new Float32Array(POINT_COUNT * 3); // fixed home positions
+  // Per-particle drift: phase[i*3..+2] and speed[i*3..+2] for x/y/z independently
+  const driftPhase = new Float32Array(POINT_COUNT * 3);
+  const driftSpeed = new Float32Array(POINT_COUNT * 3);
+  const driftAmp   = new Float32Array(POINT_COUNT);
+
   for (let i = 0; i < POINT_COUNT; i++) {
-    // Uniform hemisphere: spherical coordinates
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(Math.random()); // 0..PI/2 for upper hemisphere
     const r = DOME_RADIUS * (0.85 + Math.random() * 0.15);
 
-    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = r * Math.cos(phi); // Y is up
-    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    const x = r * Math.sin(phi) * Math.cos(theta);
+    const y = r * Math.cos(phi);
+    const z = r * Math.sin(phi) * Math.sin(theta);
+
+    basePos[i * 3]     = positions[i * 3]     = x;
+    basePos[i * 3 + 1] = positions[i * 3 + 1] = y;
+    basePos[i * 3 + 2] = positions[i * 3 + 2] = z;
+
+    driftPhase[i * 3]     = Math.random() * Math.PI * 2;
+    driftPhase[i * 3 + 1] = Math.random() * Math.PI * 2;
+    driftPhase[i * 3 + 2] = Math.random() * Math.PI * 2;
+
+    driftSpeed[i * 3]     = DRIFT_SPEED_MIN + Math.random() * (DRIFT_SPEED_MAX - DRIFT_SPEED_MIN);
+    driftSpeed[i * 3 + 1] = DRIFT_SPEED_MIN + Math.random() * (DRIFT_SPEED_MAX - DRIFT_SPEED_MIN);
+    driftSpeed[i * 3 + 2] = DRIFT_SPEED_MIN + Math.random() * (DRIFT_SPEED_MAX - DRIFT_SPEED_MIN);
+
+    driftAmp[i] = DRIFT_AMP_MIN + Math.random() * (DRIFT_AMP_MAX - DRIFT_AMP_MIN);
   }
 
   const geo = new THREE.BufferGeometry();
@@ -121,6 +143,16 @@ export function createDomeParticles(): DomeParticlePool {
     // Audio-reactive size and opacity (simulated from note density)
     mat.size = BASE_SIZE + noteEnergy * (MAX_SIZE - BASE_SIZE);
     mat.opacity = BASE_OPACITY + noteEnergy * (MAX_OPACITY - BASE_OPACITY) * 0.5;
+
+    // Per-particle sinusoidal drift — boost amplitude on note energy
+    const energyMul = 1 + noteEnergy * 0.5;
+    for (let i = 0; i < POINT_COUNT; i++) {
+      const amp = driftAmp[i] * energyMul;
+      positions[i * 3]     = basePos[i * 3]     + Math.sin(elapsed * driftSpeed[i * 3]     + driftPhase[i * 3])     * amp;
+      positions[i * 3 + 1] = basePos[i * 3 + 1] + Math.sin(elapsed * driftSpeed[i * 3 + 1] + driftPhase[i * 3 + 1]) * amp * 0.45;
+      positions[i * 3 + 2] = basePos[i * 3 + 2] + Math.sin(elapsed * driftSpeed[i * 3 + 2] + driftPhase[i * 3 + 2]) * amp;
+    }
+    (geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
   }
 
   function dispose() {

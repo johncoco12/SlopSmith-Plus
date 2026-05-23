@@ -141,8 +141,8 @@ export function createNoteMeshPool(): NoteMeshPool {
     }
 
     // Sustain trail
-    if (hasSus && dt < 0.1) {
-      const susStart = Math.max(0, dZ(Math.max(dt, 0)));
+    if (hasSus && dt < AHEAD) {
+      const susStart = Math.min(0, dZ(Math.max(dt, 0)));
       const susEndZ = dZ(Math.min(susEnd - now, AHEAD));
       const length = Math.abs(susEndZ - susStart);
       if (length > 0.001) {
@@ -151,13 +151,13 @@ export function createNoteMeshPool(): NoteMeshPool {
         // Outline trail (slightly larger, bright)
         const trailOutline = getSusMesh();
         trailOutline.material = mOutline!;
-        trailOutline.position.set(x, y, -trailZ);
+        trailOutline.position.set(x, y, trailZ);
         trailOutline.scale.set(NW * 0.85 + 0.4 * K, NH * 0.12 + 0.4 * K, length);
 
         // Core trail (string-coloured)
         const trail = getSusMesh();
         trail.material = hit ? mGlow[s] : mSus[s];
-        trail.position.set(x, y, -trailZ + 0.001);
+        trail.position.set(x, y, trailZ + 0.001);
         trail.scale.set(NW * 0.85, NH * 0.12, length);
       }
     }

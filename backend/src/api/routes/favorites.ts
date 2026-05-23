@@ -1,6 +1,7 @@
 import fp from "fastify-plugin";
 import { z } from "zod";
 import type { LibraryService } from "../../services/LibraryService.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const ToggleFavoriteSchema = z.object({
   trackId: z.string().min(1),
@@ -10,7 +11,7 @@ const ToggleFavoriteSchema = z.object({
 export const favoritesRoutes = fp(async function favoritesRoutes(fastify) {
   const library = fastify.library;
 
-  fastify.post("/api/favorites/toggle", async (req) => {
+  fastify.post("/api/favorites/toggle",{preHandler: [requireAuth]}, async (req) => {
     const { trackId, profileId } = ToggleFavoriteSchema.parse(req.body);
     const isFavorite = await library.toggleFavorite(trackId, profileId);
     return { trackId, favorite: isFavorite };

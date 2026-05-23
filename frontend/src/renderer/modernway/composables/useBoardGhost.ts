@@ -210,7 +210,7 @@ export function createBoardGhost(): BoardGhostPool {
       ringMat.emissive = undefined as any; // basic material has no emissive
 
       ring.position.set(x, y, 0.02 * K); // just above board at hit line
-      ring.rotation.set(Math.PI / 2, 0, 0); // lie flat on XZ plane
+      ring.rotation.set(0, 0, 0);
 
       // Scale up as note approaches
       const ringScale = 0.6 + projFactor * 0.4;
@@ -230,7 +230,7 @@ export function createBoardGhost(): BoardGhostPool {
 
       // Position slightly in front of the ring (toward camera)
       digit.position.set(x, y, 0.04 * K);
-      digit.rotation.set(Math.PI / 2, 0, 0); // lie flat facing up
+      digit.rotation.set(0, 0, 0);
 
       const digitScale = NH * 2.0;
       digit.scale.set(digitScale, digitScale, 1);

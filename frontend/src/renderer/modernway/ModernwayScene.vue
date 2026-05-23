@@ -36,6 +36,7 @@ import { createSectionLabels } from './composables/useSectionLabels'
 import { createNutHeadstock } from './composables/useNutHeadstock'
 import { createDomeParticles } from './composables/useDomeParticles'
 import { createNoteDetectFeedback } from './composables/useNoteDetect'
+import { createHitImpact } from './composables/useHitImpact'
 
 // ── Inject reactive bundle from player layer ──────────────────────────────────
 const bundle = inject<ShallowRef<RenderBundle | null>>('render-bundle')!
@@ -68,6 +69,7 @@ const sectionLabels = createSectionLabels()
 const nutHeadstock = createNutHeadstock()
 const domeParticles = createDomeParticles()
 const noteDetect = createNoteDetectFeedback()
+const hitImpact = createHitImpact()
 
 // Expose Three.js Groups for <TresPrimitive> binding
 const noteGroup = notePool.group
@@ -90,6 +92,7 @@ const sectionLabelGroup = sectionLabels.group
 const nutHeadstockGroup = nutHeadstock.group
 const domeParticleGroup = domeParticles.group
 const noteDetectGroup = noteDetect.group
+const hitImpactGroup = hitImpact.group
 
 // ── Camera state ──────────────────────────────────────────────────────────────
 let curX = 0
@@ -206,6 +209,7 @@ onBeforeRender(() => {
   nutHeadstock.update(b)
   domeParticles.update(b)
   noteDetect.update(b)
+  hitImpact.update(b)
 })
 </script>
 
@@ -245,6 +249,7 @@ onBeforeRender(() => {
   <primitive :object="nutHeadstockGroup" />
   <primitive :object="domeParticleGroup" />
   <primitive :object="noteDetectGroup" />
+  <primitive :object="hitImpactGroup" />
   <primitive :object="beatGroup" />
   <primitive :object="laneGroup" />
 </template>

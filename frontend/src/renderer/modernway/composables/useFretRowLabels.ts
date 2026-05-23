@@ -113,7 +113,9 @@ export function createFretRowLabels(): FretRowLabelsPool {
     }
 
     // ── Decay all heat ──────────────────────────────────────────────────────
-    const dt = lastTime > 0 ? Math.min(currentTime - lastTime, 0.1) : 0.016;
+    const rawDt = currentTime - lastTime;
+    if (rawDt < -0.05) fretHeat.fill(0); // seek backwards — clear stale heat immediately
+    const dt = lastTime > 0 ? Math.min(Math.max(rawDt, 0), 0.1) : 0.016;
     lastTime = currentTime;
 
     for (let f = 1; f <= NFRETS; f++) {
