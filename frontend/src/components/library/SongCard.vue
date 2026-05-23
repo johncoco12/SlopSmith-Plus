@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Heart, Play, Pencil } from 'lucide-vue-next'
 
 import type { Song } from '@/types'
@@ -12,6 +13,7 @@ const emit = defineEmits<{
   open: [song: Song]
   favorite: [trackId: string]
   edit: [song: Song]
+  'filter-artist': [artist: string]
 }>()
 
 const FORMAT_COLOR = {
@@ -28,6 +30,8 @@ const artUrl = computed(() =>
 const arrNames = computed(() =>
   (props.song.arrangements ?? []).map(a => a.name ?? a)
 )
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -68,7 +72,7 @@ const arrNames = computed(() =>
         :class="song.favorite
           ? 'opacity-100 text-gold'
           : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gold'"
-        :aria-label="song.favorite ? 'Remove from favorites' : 'Add to favorites'"
+        :aria-label="song.favorite ? $t('library.song.removeFavorite') : $t('library.song.addFavorite')"
         @click.stop="emit('favorite', song.trackId ?? song.filename)"
       >
         <Heart :size="16" :fill="song.favorite ? 'currentColor' : 'none'" stroke-width="2" />
@@ -82,14 +86,20 @@ const arrNames = computed(() =>
         <p class="flex-1 text-sm font-medium text-gray-100 truncate leading-snug">{{ song.title }}</p>
         <button
           class="shrink-0 p-1.5 -mt-0.5 -mr-1 rounded-md text-gray-500 opacity-0 group-hover:opacity-100 hover:text-gray-100 hover:bg-white/[.08] transition-all"
-          title="Edit song"
+          :title="$t('library.song.edit')"
           @click.stop="emit('edit', song)"
         >
           <Pencil :size="14" />
         </button>
       </div>
 
-      <p class="t-caption truncate">{{ song.artist }}</p>
+      <p class="t-caption truncate">
+        <button
+          class="hover:text-gray-200 hover:underline underline-offset-2 transition-colors text-left"
+          :title="$t('library.song.filterByArtist', { artist: song.artist })"
+          @click.stop="emit('filter-artist', song.artist)"
+        >{{ song.artist }}</button>
+      </p>
 
       <div class="flex items-center flex-wrap gap-1.5 pt-2">
         <span

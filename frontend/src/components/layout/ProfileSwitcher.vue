@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronDown, Settings, AudioWaveform, Users, LogOut } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+import { ChevronDown, Settings, AudioWaveform, Users, LogOut, Shield } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { listProfiles } from '@/api/profiles'
 import type { SafeProfile } from '@/types'
@@ -9,6 +10,7 @@ import PinDialog from '@/components/profile/PinDialog.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
+const { t } = useI18n()
 const menuOpen = ref(false)
 const profiles = ref<SafeProfile[]>([])
 const pendingProfile = ref<SafeProfile | null>(null)
@@ -114,12 +116,12 @@ function logout() {
           </div>
           <div class="min-w-0">
             <p class="text-sm font-semibold text-white truncate">{{ auth.profile?.name }}</p>
-            <p class="text-xs text-gray-400">Active profile</p>
+            <p class="text-xs text-gray-400">{{ $t('profileSwitcher.activeProfile') }}</p>
           </div>
         </div>
 
         <div v-if="otherProfiles.length > 0" class="px-2 py-2 border-b border-white/[.06]">
-          <p class="px-1 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-500">Switch to</p>
+          <p class="px-1 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-500">{{ $t('profileSwitcher.switchTo') }}</p>
           <button
             v-for="p in otherProfiles"
             :key="p.id"
@@ -148,28 +150,36 @@ function logout() {
             class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-dark-600 transition-colors"
           >
             <Settings :size="15" class="shrink-0" />
-            <span>Settings</span>
+            <span>{{ $t('profileSwitcher.settings') }}</span>
+          </button>
+          <button
+            v-if="auth.isAdmin"
+            @click="router.push({ name: 'admin' }); menuOpen = false"
+            class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-dark-600 transition-colors"
+          >
+            <Shield :size="15" class="shrink-0" />
+            <span>{{ $t('profileSwitcher.admin') }}</span>
           </button>
           <button
             @click="router.push({ name: 'audio-settings' }); menuOpen = false"
             class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-dark-600 transition-colors"
           >
             <AudioWaveform :size="15" class="shrink-0" />
-            <span>Audio</span>
+            <span>{{ $t('profileSwitcher.audio') }}</span>
           </button>
           <button
             @click="router.push({ name: 'profiles' }); menuOpen = false"
             class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-dark-600 transition-colors"
           >
             <Users :size="15" class="shrink-0" />
-            <span>Manage Profiles</span>
+            <span>{{ $t('profileSwitcher.manageProfiles') }}</span>
           </button>
           <button
             @click="logout()"
             class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-red-400 hover:text-red-300 hover:bg-dark-600 transition-colors"
           >
             <LogOut :size="15" class="shrink-0" />
-            <span>Sign Out</span>
+            <span>{{ $t('profileSwitcher.signOut') }}</span>
           </button>
         </div>
       </div>

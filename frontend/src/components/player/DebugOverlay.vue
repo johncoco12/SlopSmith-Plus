@@ -5,6 +5,8 @@ const nextNote = ref<string>('---')
 const hitTiming = ref<string>('---')
 const detectedHz = ref<string>('---')
 const hitMapCount = ref<string>('')
+const renderTime = ref<string>('---')
+const audioRawTime = ref<string>('---')
 const debugHitMap = ref(false)
 
 function toggleDebugHitMap(): void {
@@ -26,6 +28,12 @@ function _update(): void {
     return
   }
   const now = hw.getTime?.() ?? 0
+
+  // Render time (interpolated + avOffset) & raw audio.currentTime
+  const avOff = (hw.getAvOffset?.() ?? 0) / 1000
+  renderTime.value = (now + avOff).toFixed(3) + 's'
+  const audio = document.getElementById('audio') as HTMLAudioElement | null
+  audioRawTime.value = audio ? audio.currentTime.toFixed(3) + 's' : 'n/a'
   const notes: any[] = hw.getNotes?.() ?? []
   const chords: any[] = hw.getChords?.() ?? []
 
@@ -87,6 +95,8 @@ onUnmounted(() => { if (_timer) clearInterval(_timer) })
     <div>Next: {{ nextNote }}</div>
     <div>Hit: {{ hitTiming }}</div>
     <div>YIN: {{ detectedHz }}</div>
+    <div>Render T: {{ renderTime }}</div>
+    <div>Audio T: {{ audioRawTime }}</div>
     <div v-if="hitMapCount">HM: {{ hitMapCount }}</div>
     <div class="mt-0.5 flex gap-1">
       <button

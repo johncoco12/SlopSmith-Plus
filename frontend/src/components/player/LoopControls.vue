@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import { formatTime } from '@/utils/format'
 import { BookmarkPlus, X, Trash2 } from 'lucide-vue-next'
 
 const player = usePlayerStore()
+const { t } = useI18n()
 
 const loopLabel = computed(() => {
   if (player.loopA !== null && player.loopB !== null)
@@ -35,7 +37,7 @@ async function deleteLoop(): Promise<void> {
     <button
       class="player-btn font-bold text-[11px] tracking-wide"
       :class="{ active: player.loopA !== null }"
-      title="Set loop start (A)"
+      :title="$t('player.loop.setStartTitle')"
       @click="player.setLoopA()"
     >A</button>
 
@@ -43,7 +45,7 @@ async function deleteLoop(): Promise<void> {
     <button
       class="player-btn font-bold text-[11px] tracking-wide"
       :class="{ active: player.loopB !== null }"
-      title="Set loop end (B)"
+      :title="$t('player.loop.setEndTitle')"
       @click="player.setLoopB()"
     >B</button>
 
@@ -57,7 +59,7 @@ async function deleteLoop(): Promise<void> {
     <button
       v-if="player.loopA !== null && player.loopB !== null"
       class="player-btn"
-      title="Save loop"
+      :title="$t('player.loop.saveTitle')"
       @click="player.saveLoop()"
     >
       <BookmarkPlus :size="13" />
@@ -67,7 +69,7 @@ async function deleteLoop(): Promise<void> {
     <button
       v-if="hasLoop"
       class="player-btn"
-      title="Clear loop"
+      :title="$t('player.loop.clearTitle')"
       @click="player.clearLoop()"
     >
       <X :size="13" />
@@ -80,13 +82,13 @@ async function deleteLoop(): Promise<void> {
         class="ctrl-select"
         @change="loadLoop($event.target.value)"
       >
-        <option value="">Saved</option>
+        <option value="">{{ $t('player.loop.saved') }}</option>
         <option v-for="l in player.savedLoops" :key="l.id" :value="l.id">{{ l.name }}</option>
       </select>
       <button
         v-if="selectedLoop"
         class="player-btn text-red-400 hover:!text-red-300"
-        title="Delete loop"
+        :title="$t('player.loop.deleteTitle')"
         @click="deleteLoop"
       >
         <Trash2 :size="13" />

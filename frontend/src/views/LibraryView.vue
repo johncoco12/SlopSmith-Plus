@@ -37,9 +37,9 @@ function editSong(song) {
 
     <!-- Hero header -->
     <div class="px-6 pt-8 pb-5">
-      <h1 class="text-3xl font-bold tracking-tight text-gray-50">Library</h1>
+      <h1 class="text-3xl font-bold tracking-tight text-gray-50">{{ $t('library.title') }}</h1>
       <p v-if="library.total" class="t-caption mt-1">
-        {{ library.total.toLocaleString() }} songs
+        {{ $t('library.songCount', { count: library.total.toLocaleString() }) }}
       </p>
     </div>
 
@@ -76,6 +76,7 @@ function editSong(song) {
       @favorite="library.toggleFavorite"
       @edit="editSong"
       @load-more="library.loadMore"
+      @filter-artist="library.setSearch"
     />
     <SongTree
       v-else

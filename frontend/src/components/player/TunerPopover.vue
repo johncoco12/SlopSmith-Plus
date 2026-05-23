@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 
+const { t } = useI18n()
 const player = usePlayerStore()
 
 // ── Tuning helpers (mirrors tunings.py + highway_3d's _baseOpenStringMidis) ──
@@ -149,9 +151,9 @@ const needlePct = computed(() => {
 
     <!-- Header: tuning name + capo -->
     <div class="flex items-center justify-between mb-3">
-      <p class="text-xs font-medium text-gray-400">Tune to song</p>
+      <p class="text-xs font-medium text-gray-400">{{ $t('player.tuner.title') }}</p>
       <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold text-accent">{{ tuningLabel || 'E Standard' }}</span>
+        <span class="text-xs font-semibold text-accent">{{ tuningLabel || $t('player.tuner.eStandard') }}</span>
         <span v-if="capoLabel" class="text-[10px] text-gray-500">{{ capoLabel }}</span>
       </div>
     </div>
@@ -179,13 +181,13 @@ const needlePct = computed(() => {
       </div>
     </div>
 
-    <div v-else class="text-xs text-gray-500 mb-3 py-1">Load a song to see target notes</div>
+    <div v-else class="text-xs text-gray-500 mb-3 py-1">{{ $t('player.tuner.noSong') }}</div>
 
     <!-- Live chromatic tuner display -->
     <div class="border-t border-white/[.04] pt-2.5">
       <!-- Detected note label -->
       <div class="flex items-center justify-between mb-2">
-        <span class="text-[10px] text-gray-500">Detected</span>
+        <span class="text-[10px] text-gray-500">{{ $t('player.tuner.detected') }}</span>
         <Transition
           enter-active-class="transition-all duration-75"
           enter-from-class="opacity-0 scale-90"

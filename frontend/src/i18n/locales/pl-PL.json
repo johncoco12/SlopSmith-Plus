@@ -1,0 +1,382 @@
+{
+  "app": {
+    "name": "Slopsmith+"
+  },
+  "common": {
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "saving": "Zapisywanie…",
+    "delete": "Usuń",
+    "loading": "Ładowanie…",
+    "optional": "(opcjonalne)",
+    "confirm": "Potwierdź",
+    "retry": "Spróbuj ponownie",
+    "done": "Gotowe",
+    "error": "Błąd",
+    "none": "Brak"
+  },
+  "nav": {
+    "library": "Biblioteka",
+    "favorites": "Ulubione",
+    "gear": "Twój sprzęt",
+    "settings": "Ustawienia",
+    "upload": "Prześlij",
+    "uploading": "Przesyłanie…",
+    "processing": "Przetwarzanie…",
+    "uploadDone": "Gotowe",
+    "uploadInvalid": "Nie przesłano prawidłowych plików",
+    "uploadError": "Błąd",
+    "uploadFailed": "Nie udało się: {message}",
+    "uploadSongs": "Prześlij piosenki"
+  },
+  "profiles": {
+    "selectTitle": "Wybierz profil",
+    "selectSubtitle": "Wybierz, kto gra dzisiaj"
+  },
+  "profileSwitcher": {
+    "activeProfile": "Aktywny profil",
+    "switchTo": "Przełącz na",
+    "settings": "Ustawienia",
+    "admin": "Administrator",
+    "audio": "Audio",
+    "manageProfiles": "Zarządzaj profilami",
+    "signOut": "Wyloguj się"
+  },
+  "profile": {
+    "pin": {
+      "instruction": "Wprowadź PIN, aby się przełączyć",
+      "error": "Nieprawidłowy PIN",
+      "forgotLink": "Zapomniałeś PIN? Użyj frazy odzyskiwania"
+    },
+    "recovery": {
+      "instruction": "Wprowadź frazę odzyskiwania",
+      "placeholder": "Fraza odzyskiwania",
+      "error": "Nieprawidłowa fraza odzyskiwania",
+      "confirm": "Potwierdź",
+      "backToPin": "Powrót do wprowadzania PIN"
+    }
+  },
+  "setup": {
+    "title": "Witaj",
+    "subtitle": "Utwórz swój profil administratora, aby zacząć.",
+    "nameLabel": "Nazwa profilu",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "Potwierdź PIN",
+    "recoveryLabel": "Fraza odzyskiwania",
+    "creating": "Tworzenie...",
+    "submit": "Utwórz profil i zacznij",
+    "errors": {
+      "nameRequired": "Nazwa jest wymagana",
+      "pinTooShort": "PIN musi mieć co najmniej 4 znaki",
+      "pinMismatch": "PINy się nie zgadzają",
+      "recoveryTooShort": "Fraza odzyskiwania musi mieć co najmniej 4 znaki",
+      "failed": "Konfiguracja nie powiodła się"
+    }
+  },
+  "admin": {
+    "title": "Administrator",
+    "loadError": "Nie udało się załadować danych",
+    "tabs": {
+      "profiles": "Profile",
+      "groups": "Grupy uprawnień"
+    },
+    "permissions": {
+      "admin": "Administrator",
+      "upload": "Przesyłanie",
+      "editTracks": "Edytuj ścieżki",
+      "deleteTracks": "Usuń ścieżki",
+      "manageProfiles": "Zarządzaj profilami",
+      "managePermissions": "Zarządzaj uprawnieniami",
+      "manageSettings": "Zarządzaj ustawieniami"
+    },
+    "profiles": {
+      "editTitle": "Edytuj profil",
+      "createTitle": "Utwórz profil",
+      "nameLabel": "Nazwa",
+      "namePlaceholder": "Nazwa profilu",
+      "newPinLabel": "Nowy PIN (pozostaw pusty, aby zachować)",
+      "pinLabel": "PIN",
+      "pinPlaceholder": "••••",
+      "recoveryLabel": "Fraza odzyskiwania",
+      "recoveryPlaceholder": "Tajne hasło",
+      "recoveryHintLabel": "Wskazówka odzyskiwania",
+      "recoveryHintPlaceholder": "Wskazówka wyświetlana na ekranie odzyskiwania",
+      "deleteConfirm": "Usunąć ten profil? Tego nie można cofnąć.",
+      "newButton": "Nowy profil",
+      "locked": "Zablokowany",
+      "you": "Ty",
+      "createdAt": "Utworzono {date}",
+      "empty": "Brak profili.",
+      "saveError": "Nie udało się zapisać profilu",
+      "updateError": "Nie udało się zaktualizować profilu",
+      "deleteError": "Nie udało się usunąć profilu"
+    },
+    "groups": {
+      "editTitle": "Edytuj grupę",
+      "createTitle": "Utwórz grupę uprawnień",
+      "nameLabel": "Nazwa grupy",
+      "namePlaceholder": "np. Goście",
+      "permissionsLabel": "Uprawnienia",
+      "assignProfilesLabel": "Przypisz profile",
+      "noProfiles": "Brak dostępnych profili.",
+      "deleteConfirm": "Usunąć tę grupę uprawnień? Tego nie można cofnąć.",
+      "newButton": "Nowa grupa",
+      "noPermissions": "Brak uprawnień",
+      "members": "Członkowie:",
+      "noMembers": "Brak",
+      "empty": "Brak grup uprawnień.",
+      "saveError": "Nie udało się zapisać grupy",
+      "deleteError": "Nie udało się usunąć grupy"
+    }
+  },
+  "library": {
+    "title": "Biblioteka",
+    "songCount": "{count} piosenek",
+    "empty": "Nie znaleziono piosenek",
+    "loadingMore": "Ładowanie więcej…",
+    "search": {
+      "placeholder": "Szukaj piosenek, artystów, albumów…",
+      "placeholderWithCount": "Szukaj wśród {count} piosenek…"
+    },
+    "format": {
+      "all": "Wszystkie",
+      "psarc": "PSARC",
+      "sloppak": "Sloppak",
+      "folder": "Folder"
+    },
+    "sort": {
+      "artistAsc": "Artysta A–Z",
+      "artistDesc": "Artysta Z–A",
+      "titleAsc": "Tytuł A–Z",
+      "titleDesc": "Tytuł Z–A",
+      "recent": "Ostatnio dodane",
+      "yearDesc": "Najnowszy rok",
+      "yearAsc": "Najstarszy rok",
+      "tuning": "Strój"
+    },
+    "filters": {
+      "button": "Filtry",
+      "title": "Filtry",
+      "hint": "+ wymagaj · − wyklucz · kliknij ponownie, aby wyczyścić",
+      "arrangements": "Aranżacje",
+      "lead": "Lead",
+      "rhythm": "Rytm",
+      "bass": "Bas",
+      "activeCount": "{count} aktywne",
+      "stems": "Stems",
+      "sloppakOnly": "Tylko Sloppak",
+      "stemGuitar": "gitara",
+      "stemBass": "bas",
+      "stemDrums": "perkusja",
+      "stemVocals": "wokal",
+      "stemPiano": "fortepian",
+      "stemOther": "inne",
+      "lyrics": "Tekst",
+      "hasLyrics": "Ma tekst",
+      "noLyrics": "Bez tekstu",
+      "tuning": "Strój",
+      "selectedCount": "{count} zaznaczone",
+      "clearAll": "Wyczyść wszystko",
+      "apply": "Zastosuj"
+    },
+    "chips": {
+      "arrangement": "Arr: {name}",
+      "noArrangement": "Bez {name}",
+      "stem": "Stem: {name}",
+      "noStem": "Bez stem: {name}",
+      "hasLyrics": "Ma tekst",
+      "noLyrics": "Bez tekstu",
+      "tuning": "Strój: {name}",
+      "clearAll": "Wyczyść wszystko"
+    },
+    "song": {
+      "removeFavorite": "Usuń z ulubionych",
+      "addFavorite": "Dodaj do ulubionych",
+      "edit": "Edytuj piosenkę",
+      "filterByArtist": "Filtruj według {artist}"
+    },
+    "tree": {
+      "unknownArtist": "Nieznany artysta",
+      "unknownAlbum": "Nieznany album"
+    }
+  },
+  "favorites": {
+    "title": "Ulubione",
+    "songCount": "{count} piosenek",
+    "empty": "Brak ulubionych"
+  },
+  "gear": {
+    "title": "Twój sprzęt",
+    "placeholder": "Twoje presety sprzętu i urządzenia pojawią się tutaj."
+  },
+  "player": {
+    "loadingTrack": "Ładowanie ścieżki…",
+    "calibration": {
+      "prompt": "Skalibruj opóźnienie audio i wejścia dla dokładnego akompaniamentu",
+      "button": "Kalibruj"
+    },
+    "controls": {
+      "backTitle": "Powrót do biblioteki (Esc)",
+      "seekBackTitle": "Przewiń −5s (←)",
+      "pauseTitle": "Pauza (Spacja)",
+      "playTitle": "Odtwarzaj (Spacja)",
+      "seekForwardTitle": "Przewiń +5s (→)",
+      "arrangementTitle": "Aranżacja",
+      "micTitle": "Przełącz mikrofon (M)",
+      "lyricsTitle": "Przełącz tekst (\\)",
+      "tunerTitle": "Nastraj instrument do stroju piosenki",
+      "mixerTitle": "Mikser"
+    },
+    "renderer": {
+      "title": "Renderer (V)"
+    },
+    "viz": {
+      "auto": "Auto",
+      "default": "Domyślny",
+      "title": "Wizualizacja"
+    },
+    "loop": {
+      "setStartTitle": "Ustaw początek pętli (A)",
+      "setEndTitle": "Ustaw koniec pętli (B)",
+      "saveTitle": "Zapisz pętlę",
+      "clearTitle": "Wyczyść pętlę",
+      "saved": "Zapisano",
+      "deleteTitle": "Usuń pętlę"
+    },
+    "mixer": {
+      "title": "Mikser",
+      "master": "Master",
+      "song": "Piosenka",
+      "monitor": "Monitor"
+    },
+    "tuner": {
+      "title": "Nastraj do piosenki",
+      "eStandard": "E Standard",
+      "noSong": "Załaduj piosenkę, aby zobaczyć docelowe nuty",
+      "detected": "Wykryto"
+    },
+    "latency": {
+      "title": "Kalibracja opóźnienia",
+      "audioLabel": "Opóźnienie wyjścia audio",
+      "audioDesc": "Naciśnij przy każdym kliknięciu metronomu. Mierzy opóźnienie głośnika → ustawia przesunięcie A/V.",
+      "inputLabel": "Opóźnienie wykrywania wejścia",
+      "inputDesc": "Szarpnij otwartą strunę E przy 5 wolnych kliknięciach. Mierzy opóźnienie potoku mic→YIN → centruje okno trafień.",
+      "avOffset": "Przesunięcie A/V:",
+      "inputLatency": "Opóźnienie wejścia:",
+      "uncalibrated": "nieskalibrowane",
+      "startTap": "Start — Krok 1: Test stukania",
+      "countdownGuitar": "Graj na gitarze przy każdym kliknięciu…",
+      "countdownTap": "Naciśnij gdy usłyszysz każde kliknięcie…",
+      "tapInstruction": "Naciśnij gdy usłyszysz każde kliknięcie",
+      "tap": "NACIŚNIJ",
+      "audioResult": "Opóźnienie wyjścia audio",
+      "guitarInstruction": "Szarpnij otwartą strunę E przy każdym kliknięciu",
+      "startGuitar": "Krok 2: Test gitary",
+      "micUnavailable": "Wtyczka mikrofonu nie załadowana — test opóźnienia gitary niedostępny.",
+      "skipGuitar": "Pomiń — zastosuj tylko przesunięcie audio",
+      "detected": "wykryto ✓",
+      "waiting": "oczekiwanie…",
+      "resultAudio": "Wyjście audio",
+      "resultAvTarget": "→ Przesunięcie A/V",
+      "resultInput": "Potok wejściowy",
+      "resultHitTarget": "→ Okno trafień",
+      "negativeWarning": "Ujemne opóźnienie wejścia sugeruje błąd pomiaru — spróbuj ponownie.",
+      "poorConsistency": "Spójność gitary była słaba — wyniki mogą być niedokładne.",
+      "retry": "Spróbuj ponownie",
+      "applyBoth": "Zastosuj oba"
+    },
+    "debug": {
+      "next": "Następny:",
+      "hit": "Trafienie:",
+      "yin": "YIN:",
+      "renderTime": "Render T:",
+      "audioTime": "Audio T:",
+      "hitMap": "HM:",
+      "dump": "Dump"
+    }
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "language": {
+      "title": "Język",
+      "label": "Język wyświetlania"
+    },
+    "playback": {
+      "title": "Odtwarzanie",
+      "lefty": "Tryb leworęczny",
+      "defaultArrangement": "Domyślna aranżacja",
+      "arrangementAuto": "Auto",
+      "arrangementLead": "Lead",
+      "arrangementRhythm": "Rytm",
+      "arrangementBass": "Bas",
+      "psarcPlatform": "Filtr platformy PSARC",
+      "platformAll": "Wszystkie",
+      "platformPc": "Tylko PC (_p.psarc)",
+      "platformMac": "Tylko Mac (_m.psarc)",
+      "demucsUrl": "URL serwera Demucs",
+      "demucsPlaceholder": "http://..."
+    },
+    "about": {
+      "title": "O programie",
+      "version": "Wersja:",
+      "license": "Licencja AGPL v3.0",
+      "sourceCode": "Kod źródłowy",
+      "licenseNotice": "Slopsmith jest wolnym oprogramowaniem. Możesz je rozprowadzać i modyfikować na warunkach licencji AGPL. Jeśli uruchamiasz zmodyfikowaną wersję, która współdziała z użytkownikami przez sieć, musisz udostępnić tym użytkownikom zmodyfikowany kod źródłowy."
+    },
+    "audio": {
+      "title": "Audio",
+      "micLabel": "Mikrofon",
+      "micDefault": "Domyślny mikrofon",
+      "micRefresh": "Odśwież",
+      "livePreview": "Podgląd na żywo",
+      "testMic": "Testuj mikrofon",
+      "stop": "Zatrzymaj",
+      "startPrompt": "Rozpocznij test, aby zobaczyć wysokość na żywo",
+      "clarityLabel": "Próg klarowności",
+      "clarityHint": "Niżej = więcej detekcji (w tym niepewnych). Wyżej = tylko bardzo czyste dźwięki przechodzą.",
+      "monitorLabel": "Głośność monitora",
+      "monitorHint": "Przekazuje surowy sygnał mikrofonu do głośników, abyś słyszał siebie podczas gry. Zaczyna od 0, aby uniknąć sprzężenia — zwiększ tylko przy słuchawkach. Dostępne też w mikserze odtwarzacza.",
+      "monitorWarning": "⚠ Zwiększ powyżej 0 tylko przy słuchawkach — głośniki spowodują sprzężenie."
+    },
+    "scan": {
+      "title": "Biblioteka",
+      "scanning": "Skanowanie…",
+      "rescan": "Skanuj ponownie",
+      "fullRescan": "Pełne skanowanie"
+    },
+    "diagnostics": {
+      "title": "Diagnostyka",
+      "systemInfo": "Informacje o systemie",
+      "consoleLogs": "Dzienniki konsoli",
+      "pluginData": "Dane wtyczki",
+      "redact": "Ukryj ścieżki i nazwy hostów",
+      "exporting": "Eksportowanie…",
+      "export": "Eksportuj diagnostykę",
+      "exported": "Diagnostyka wyeksportowana",
+      "exportFailed": "Eksport nie powiódł się: {message}"
+    },
+    "backup": {
+      "title": "Kopia zapasowa",
+      "export": "Eksportuj ustawienia",
+      "importing": "Importowanie…",
+      "import": "Importuj ustawienia",
+      "importComplete": "Import zakończony — przeładuj, aby zastosować",
+      "importFailed": "Import nie powiódł się: {message}"
+    },
+    "dlc": {
+      "label": "Ścieżka folderu DLC",
+      "placeholder": "/ścieżka/do/dlc",
+      "browse": "Przeglądaj",
+      "saved": "✓ Zapisano"
+    },
+    "plugins": {
+      "bundled": "dołączone",
+      "checkUpdates": "Sprawdź aktualizacje",
+      "updating": "Aktualizowanie…",
+      "updateTo": "Aktualizuj do {version}"
+    }
+  },
+  "plugin": {
+    "notFound": "Wtyczka nie znaleziona"
+  }
+}

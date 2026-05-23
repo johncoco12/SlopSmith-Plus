@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { SafeProfile } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { recoverProfile } from '@/api/auth'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   profile: SafeProfile
@@ -57,7 +60,7 @@ async function submitPin(pin: string) {
     await auth.login(props.profile.name, pin)
     props.onSuccess()
   } catch (e: any) {
-    pinError.value = e?.message || 'Incorrect PIN'
+    pinError.value = e?.message || t('profile.pin.error')
     triggerShake()
     digits.value = ['', '', '', '']
     setTimeout(() => refs.value[0]?.focus(), 50)
@@ -78,7 +81,7 @@ async function submitRecovery(e: Event) {
     props.onSuccess()
   } catch (e: any) {
     recoveryError.value = 'yes'
-    recoveryErrorMsg.value = e?.message || 'Incorrect recovery phrase'
+    recoveryErrorMsg.value = e?.message || t('profile.recovery.error')
     recoveryInput.value = ''
     setTimeout(() => { recoveryError.value = '' }, 1500)
   } finally {
@@ -108,7 +111,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
         <div class="text-center">
           <p class="text-white font-semibold text-lg">{{ profile.name }}</p>
           <p class="text-gray-400 text-sm">
-            {{ mode === 'pin' ? 'Enter PIN to switch' : 'Enter recovery phrase' }}
+            {{ mode === 'pin' ? $t('profile.pin.instruction') : $t('profile.recovery.instruction') }}
           </p>
         </div>
       </div>
@@ -138,7 +141,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
             class="text-sm text-gray-400 hover:text-accent transition-colors"
             @click="mode = 'recovery'"
           >
-            Forgot PIN? Use recovery phrase
+            {{ $t('profile.pin.forgotLink') }}
           </button>
         </div>
       </template>
@@ -150,24 +153,24 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
               v-model="recoveryInput"
               ref="recoveryRef"
               type="text"
-              placeholder="Recovery phrase"
+              :placeholder="$t('profile.recovery.placeholder')"
               :disabled="loading"
               class="w-full bg-dark-700 border rounded-xl px-4 py-3 text-white text-sm
                      focus:outline-none focus:border-accent transition-colors"
               :class="recoveryError ? 'border-red-500' : 'border-dark-500'"
             />
-            <p v-if="recoveryError" class="text-red-400 text-xs mt-1.5">{{ recoveryErrorMsg || 'Incorrect recovery phrase' }}</p>
+            <p v-if="recoveryError" class="text-red-400 text-xs mt-1.5">{{ recoveryErrorMsg || $t('profile.recovery.error') }}</p>
           </div>
           <button
             type="submit"
             :disabled="!recoveryInput.trim() || loading"
             class="w-full py-2.5 rounded-xl bg-accent hover:bg-accent/80 disabled:opacity-40 text-white font-medium text-sm transition-colors"
           >
-            Confirm
+            {{ $t('profile.recovery.confirm') }}
           </button>
           <div class="text-center">
             <button type="button" class="text-sm text-gray-400 hover:text-accent transition-colors" @click="mode = 'pin'">
-              Back to PIN entry
+              {{ $t('profile.recovery.backToPin') }}
             </button>
           </div>
         </form>
@@ -175,7 +178,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
 
       <div class="mt-6 text-center">
         <button type="button" class="text-xs text-gray-500 hover:text-gray-300 transition-colors" @click="onCancel">
-          Cancel
+          {{ $t('common.cancel') }}
         </button>
       </div>
     </div>

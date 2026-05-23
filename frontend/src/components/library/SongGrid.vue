@@ -16,6 +16,7 @@ const emit = defineEmits<{
   favorite: [filename: string]
   edit: [song: Song]
   'load-more': []
+  'filter-artist': [artist: string]
 }>()
 
 const selected = ref<string | null>(null)
@@ -61,7 +62,7 @@ function selectCard(song: Song): void {
       class="flex flex-col items-center justify-center py-32 gap-4 text-gray-500"
     >
       <span class="text-6xl opacity-40">🎸</span>
-      <p class="t-body">No songs found</p>
+      <p class="t-body">{{ $t('library.empty') }}</p>
     </div>
 
     <!-- Grid -->
@@ -77,6 +78,7 @@ function selectCard(song: Song): void {
         @open="selectCard"
         @favorite="emit('favorite', $event)"
         @edit="emit('edit', $event)"
+        @filter-artist="emit('filter-artist', $event)"
       />
     </div>
 

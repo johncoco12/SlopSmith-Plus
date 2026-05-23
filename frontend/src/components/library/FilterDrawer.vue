@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { X, Plus, Minus, Music2 } from 'lucide-vue-next'
 import AppCheckbox from '@/components/common/AppCheckbox.vue'
 
@@ -65,6 +66,8 @@ function clear() {
   })
   emit('clear')
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -96,7 +99,7 @@ function clear() {
         <!-- ── Header ── -->
         <div class="flex items-center justify-between px-5 py-4 border-b border-white/[.05] shrink-0">
           <div class="flex items-center gap-2.5">
-            <h2 class="text-base font-semibold text-gray-100">Filters</h2>
+            <h2 class="text-base font-semibold text-gray-100">{{ $t('library.filters.title') }}</h2>
             <Transition
               enter-active-class="transition-all duration-150"
               enter-from-class="scale-75 opacity-0" enter-to-class="scale-100 opacity-100"
@@ -131,9 +134,9 @@ function clear() {
           <!-- ── Arrangements ── -->
           <section>
             <div class="flex items-center justify-between mb-3">
-              <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Arrangements</p>
+              <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{{ $t('library.filters.arrangements') }}</p>
               <span v-if="sectionCount('arrangements') > 0" class="text-[10px] font-semibold text-accent">
-                {{ sectionCount('arrangements') }} active
+                {{ sectionCount('arrangements') }} {{ $t('library.filters.activeCount', { count: sectionCount('arrangements') }) }}
               </span>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -185,11 +188,11 @@ function clear() {
           <section>
             <div class="flex items-center justify-between mb-3">
               <div>
-                <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Stems</p>
-                <p class="text-[10px] text-gray-600 mt-0.5">Sloppak only</p>
+                <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{{ $t('library.filters.stems') }}</p>
+                <p class="text-[10px] text-gray-600 mt-0.5">{{ $t('library.filters.sloppakOnly') }}</p>
               </div>
               <span v-if="sectionCount('stems') > 0" class="text-[10px] font-semibold text-accent">
-                {{ sectionCount('stems') }} active
+                {{ sectionCount('stems') }} {{ $t('library.filters.activeCount', { count: sectionCount('stems') }) }}
               </span>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -236,7 +239,7 @@ function clear() {
           <!-- ── Lyrics ── -->
           <section>
             <div class="flex items-center justify-between mb-3">
-              <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Lyrics</p>
+              <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{{ $t('library.filters.lyrics') }}</p>
               <span v-if="local.lyrics !== null" class="text-[10px] font-semibold text-accent">1 active</span>
             </div>
             <div class="flex gap-2">
@@ -246,14 +249,14 @@ function clear() {
                   ? 'bg-green-900/25 border-green-600/40 text-green-300'
                   : 'bg-dark-600 border-white/[.08] text-gray-400 hover:text-gray-200 hover:border-white/15'"
                 @click="local.lyrics = local.lyrics === true ? null : true"
-              >Has lyrics</button>
+              >{{ $t('library.filters.hasLyrics') }}</button>
               <button
                 class="flex-1 py-2 rounded-lg text-xs font-medium border transition-all"
                 :class="local.lyrics === false
                   ? 'bg-red-900/25 border-red-600/40 text-red-300'
                   : 'bg-dark-600 border-white/[.08] text-gray-400 hover:text-gray-200 hover:border-white/15'"
                 @click="local.lyrics = local.lyrics === false ? null : false"
-              >No lyrics</button>
+              >{{ $t('library.filters.noLyrics') }}</button>
             </div>
           </section>
 
@@ -263,7 +266,7 @@ function clear() {
 
             <section>
               <div class="flex items-center justify-between mb-3">
-                <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Tuning</p>
+                <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{{ $t('library.filters.tuning') }}</p>
                 <span v-if="local.tunings.length > 0" class="text-[10px] font-semibold text-accent">
                   {{ local.tunings.length }} selected
                 </span>
@@ -287,11 +290,11 @@ function clear() {
           <button
             class="flex-1 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-200 transition-colors"
             @click="clear"
-          >Clear all</button>
+          >{{ $t('library.filters.clearAll') }}</button>
           <button
             class="flex-1 py-2 rounded-lg text-sm font-semibold bg-accent hover:bg-accent/90 text-white transition-colors shadow-sm shadow-accent/20"
             @click="apply"
-          >Apply</button>
+          >{{ $t('library.filters.apply') }}</button>
         </div>
       </div>
     </Transition>

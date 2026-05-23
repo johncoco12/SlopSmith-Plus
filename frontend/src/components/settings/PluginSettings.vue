@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { checkPluginUpdates, updatePlugin } from '@/api/plugins'
 
 import type { Plugin } from '@/types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   plugin: Plugin
@@ -64,7 +67,7 @@ watch(open, async (isOpen) => {
     >
       <span>{{ plugin.name }}</span>
       <div class="flex items-center gap-2">
-        <span v-if="plugin.bundled" class="text-[10px] font-mono text-gray-600">bundled</span>
+        <span v-if="plugin.bundled" class="text-[10px] font-mono text-gray-600">{{ $t('settings.plugins.bundled') }}</span>
         <span v-if="plugin.version" class="text-[10px] font-mono text-gray-500">v{{ plugin.version }}</span>
         <svg
           class="w-4 h-4 text-gray-500 transition-transform"
@@ -87,13 +90,13 @@ watch(open, async (isOpen) => {
 
       <!-- Update controls -->
       <div class="flex items-center gap-2">
-        <button class="settings-btn text-xs" @click="checkUpdate">Check for updates</button>
+        <button class="settings-btn text-xs" @click="checkUpdate">{{ $t('settings.plugins.checkUpdates') }}</button>
         <button
           v-if="updateAvail"
           class="settings-btn primary text-xs"
           :disabled="updating"
           @click="doUpdate"
-        >{{ updating ? 'Updating…' : `Update to ${updateAvail.version ?? 'latest'}` }}</button>
+        >{{ updating ? $t('settings.plugins.updating') : $t('settings.plugins.updateTo', { version: updateAvail.version ?? 'latest' }) }}</button>
       </div>
     </div>
   </section>

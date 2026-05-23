@@ -22,14 +22,19 @@ export const usePlayerStore = defineStore('player', () => {
   // Playback state
   const playing     = ref<boolean>(false)
   const currentTime = ref<number>(0)
+  const loading     = ref<boolean>(false)
 
   // Persisted settings
   const avOffsetMs    = useLocalStorage('avOffset', 0)
   const mastery       = useLocalStorage('masterDifficulty', 100)
   const vizSelection  = useLocalStorage('vizSelection', 'auto')
+  const rendererSelection = useLocalStorage('rendererSelection', 'highway-2d')
   const showLyrics    = useLocalStorage('showLyrics', true)
   const masterVolume  = useLocalStorage('volume', 100)
   const songVolume    = useLocalStorage('songVolume', 100)
+
+  // Renderer registry (populated by PlayerCanvas)
+  const availableRenderers = ref<{ id: string; name: string }[]>([])
 
   // Session
   const speed = ref<number>(1.0)
@@ -62,6 +67,7 @@ export const usePlayerStore = defineStore('player', () => {
     arrangement.value = arrIdx
     playing.value = false
     currentTime.value = 0
+    loading.value = true
     loopA.value = null
     loopB.value = null
 
@@ -75,12 +81,23 @@ export const usePlayerStore = defineStore('player', () => {
       _applyViz()
     }
 
-    // Set audio source from track API
+    // Set audio source from track API (skip if already pointing to same track)
     const audio = document.getElementById('audio') as HTMLAudioElement | null
     if (audio) {
-      audio.src = `/api/tracks/${encodeURIComponent(tkId)}/audio`
-      audio.load()
+      const newSrc = `/api/tracks/${encodeURIComponent(tkId)}/audio`
+      if (!audio.src.endsWith(newSrc)) {
+        audio.src = newSrc
+        audio.load()
+      }
+      // Wait for audio to be ready before marking as loaded
+      await new Promise<void>(resolve => {
+        if (audio.readyState >= 2) { resolve(); return }
+        const onReady = () => { audio.removeEventListener('canplay', onReady); resolve() }
+        audio.addEventListener('canplay', onReady)
+      })
     }
+
+    loading.value = false
 
     try {
       const profileId = auth.profile?.id ?? 0
@@ -320,7 +337,7 @@ export const usePlayerStore = defineStore('player', () => {
 
   return {
     highway, filename, trackIdRef, arrangement, songInfo, arrangements, duration,
-    playing, currentTime,
+    playing, currentTime, loading,
     avOffsetMs, mastery, vizSelection, showLyrics, masterVolume, songVolume,
     speed, loopA, loopB, savedLoops,
     pitchDetectionEnabled,
@@ -330,5 +347,6 @@ export const usePlayerStore = defineStore('player', () => {
     togglePitchDetection,
     setLoopA, setLoopB, clearLoop, saveLoop, loadLoop, deleteLoop,
     syncTime,
+    rendererSelection, availableRenderers,
   }
 })

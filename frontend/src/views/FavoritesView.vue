@@ -37,11 +37,11 @@ function editSong(song) {
 
     <!-- Hero header -->
     <div class="px-6 pt-8 pb-5">
-      <h1 class="text-3xl font-bold tracking-tight text-gray-50">Favorites</h1>
+      <h1 class="text-3xl font-bold tracking-tight text-gray-50">{{ $t('favorites.title') }}</h1>
       <p v-if="favorites.total" class="t-caption mt-1">
-        {{ favorites.total.toLocaleString() }} songs
+        {{ $t('favorites.songCount', { count: favorites.total.toLocaleString() }) }}
       </p>
-      <p v-else-if="!favorites.loading" class="t-caption mt-1">No favorites yet</p>
+      <p v-else-if="!favorites.loading" class="t-caption mt-1">{{ $t('favorites.empty') }}</p>
     </div>
 
     <!-- Sticky toolbar -->

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { loadWasm, start as pitchStart, stop as pitchStop, setMonitorVolume, isRunning as isPitchRunning } from '@/services/pitchDetection'
+
+const { t } = useI18n()
 
 const LS_DEVICE   = 'pitch_yin.deviceId'
 const LS_CLARITY  = 'pitch_yin.clarityThreshold'
@@ -56,7 +59,7 @@ function drawCanvas() {
     ctx.fillText('—', W / 2, H * 0.30)
     ctx.font = '11px system-ui,sans-serif'
     ctx.fillStyle = '#374151'
-    ctx.fillText('Start test to see live pitch', W / 2, H * 0.58)
+    ctx.fillText(t('settings.audio.startPrompt'), W / 2, H * 0.58)
     drawBars(ctx, W, H, 0, 0, 0, false)
     return
   }
@@ -234,7 +237,7 @@ async function startTest() {
   _processor.connect(_audioCtx.destination)
 
   testing.value = true
-  testBtnLabel.value = 'Stop'
+  testBtnLabel.value = t('settings.audio.stop')
   drawLoop()
 }
 
@@ -246,7 +249,7 @@ function stopTest() {
   _stream?.getTracks().forEach(t => t.stop())
   _audioCtx?.close()
   _audioCtx = _processor = _source = _stream as any
-  testBtnLabel.value = 'Test mic'
+  testBtnLabel.value = t('settings.audio.testMic')
   stopDrawLoop()
 }
 
@@ -298,18 +301,21 @@ onUnmounted(() => {
 
 <template>
   <section class="settings-section">
-    <h2 class="text-sm font-semibold text-gray-200 mb-3">Audio</h2>
+    <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-3">
+      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+      Audio
+    </h2>
 
     <!-- Microphone selector -->
     <div class="mb-4">
-      <label class="settings-label">Microphone</label>
+      <label class="settings-label">{{ $t('settings.audio.micLabel') }}</label>
       <div class="flex items-center gap-2">
         <select
           class="settings-input flex-1"
           :value="selectedMic"
           @change="selectMic(($event.target as HTMLSelectElement).value)"
         >
-          <option value="">Default microphone</option>
+          <option value="">{{ $t('settings.audio.micDefault') }}</option>
           <option
             v-for="d in micDevices"
             :key="d.deviceId"
@@ -319,7 +325,7 @@ onUnmounted(() => {
         <button
           class="text-[10px] text-gray-500 hover:text-gray-300 px-2 py-1 rounded border border-gray-700 hover:border-gray-500 transition"
           @click="enumerateMics"
-        >Refresh</button>
+        >{{ $t('settings.audio.micRefresh') }}</button>
       </div>
       <p v-if="micError" class="text-xs text-red-400 mt-1">{{ micError }}</p>
     </div>
@@ -327,7 +333,7 @@ onUnmounted(() => {
     <!-- Live tuner preview -->
     <div class="mb-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-xs font-medium text-gray-400">Live preview</span>
+        <span class="text-xs font-medium text-gray-400">{{ $t('settings.audio.livePreview') }}</span>
         <button
           class="text-xs px-3 py-1 rounded transition"
           :class="testing
@@ -348,7 +354,7 @@ onUnmounted(() => {
     <!-- Clarity threshold -->
     <div class="mb-4">
       <label class="settings-label flex justify-between">
-        <span>Clarity threshold</span>
+        <span>{{ $t('settings.audio.clarityLabel') }}</span>
         <span class="text-gray-300">{{ clarityVal.toFixed(2) }}</span>
       </label>
       <input
@@ -361,15 +367,14 @@ onUnmounted(() => {
         @input="setClarity(($event.target as HTMLInputElement).value)"
       >
       <p class="text-[10px] text-gray-500 mt-1">
-        Lower = more detections (including uncertain ones).
-        Higher = only very clean pitches get through.
+        {{ $t('settings.audio.clarityHint') }}
       </p>
     </div>
 
     <!-- Monitor volume -->
     <div>
       <label class="settings-label flex justify-between">
-        <span>Monitor volume</span>
+        <span>{{ $t('settings.audio.monitorLabel') }}</span>
         <span class="text-gray-300">{{ monitorVal.toFixed(2) }}</span>
       </label>
       <input
@@ -382,12 +387,10 @@ onUnmounted(() => {
         @input="setMonitor(($event.target as HTMLInputElement).value)"
       >
       <p class="text-[10px] text-gray-500 mt-1">
-        Passes the raw mic signal through to your speakers so you can hear yourself play.
-        Starts at 0 to avoid feedback — raise it only when using headphones.
-        Also adjustable in the player's Mixer popover while playing.
+        {{ $t('settings.audio.monitorHint') }}
       </p>
       <p class="text-[10px] text-yellow-400/70 mt-1">
-        ⚠ Raise above 0 only when using headphones — speakers will cause feedback.
+        {{ $t('settings.audio.monitorWarning') }}
       </p>
     </div>
   </section>

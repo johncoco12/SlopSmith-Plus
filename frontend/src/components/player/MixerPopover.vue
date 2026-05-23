@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import { getMonitorVolume, setMonitorVolume } from '@/services/pitchDetection'
 import type { FaderDescriptor } from '@/types'
 
 const player = usePlayerStore()
+const { t } = useI18n()
 const faders = ref<FaderDescriptor[]>([])
 const monitorVol = ref(getMonitorVolume())
 
@@ -36,12 +38,12 @@ function onMonitorInput(v: number): void {
 
 <template>
   <div class="flex flex-col bg-dark-700 border border-white/[.06] rounded-xl shadow-2xl p-3 min-w-[240px] max-w-[480px]">
-    <p class="text-xs font-medium text-gray-400 mb-3">Mixer</p>
+    <p class="text-xs font-medium text-gray-400 mb-3">{{ $t('player.mixer.title') }}</p>
 
     <div class="flex gap-2 overflow-x-auto pb-1">
       <!-- Master -->
       <div class="mixer-strip shrink-0">
-        <label>Master</label>
+        <label>{{ $t('player.mixer.master') }}</label>
         <input
           type="range"
           :value="player.masterVolume"
@@ -55,7 +57,7 @@ function onMonitorInput(v: number): void {
 
       <!-- Song -->
       <div class="mixer-strip shrink-0">
-        <label>Song</label>
+        <label>{{ $t('player.mixer.song') }}</label>
         <input
           type="range"
           :value="player.songVolume"
@@ -69,7 +71,7 @@ function onMonitorInput(v: number): void {
 
       <!-- Monitor -->
       <div class="mixer-strip shrink-0">
-        <label>Monitor</label>
+        <label>{{ $t('player.mixer.monitor') }}</label>
         <input
           type="range"
           :value="monitorVol"

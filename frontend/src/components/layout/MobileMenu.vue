@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
+const { t } = useI18n()
 const route = useRoute()
 
 interface NavLink {
@@ -52,7 +54,7 @@ function isActive(link: NavLink): boolean {
       <button
         class="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-dark-600 transition"
         @click="emit('upload'); emit('close')"
-      >Upload songs</button>
+      >{{ $t('nav.uploadSongs') }}</button>
     </div>
   </Transition>
 </template>

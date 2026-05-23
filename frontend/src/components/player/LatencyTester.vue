@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import { X, Mic, MousePointer2 } from 'lucide-vue-next'
 import { start as pitchStart, isRunning as isPitchRunning } from '@/services/pitchDetection'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   guided?: boolean
@@ -336,7 +339,7 @@ function _sign(n) { return n > 0 ? '+' : '' }
 
       <!-- Header -->
       <div class="flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-white">Latency Calibration</h2>
+        <h2 class="text-sm font-semibold text-white">{{ $t('player.latency.title') }}</h2>
         <button class="player-btn" @click="emit('close')"><X :size="14" /></button>
       </div>
 
@@ -346,29 +349,29 @@ function _sign(n) { return n > 0 ? '+' : '' }
           <div class="flex gap-3 items-start">
             <span class="mt-0.5 shrink-0 text-accent font-semibold w-5 text-right">1</span>
             <div>
-              <p class="font-medium text-gray-300">Audio output latency</p>
-              <p class="text-gray-500 mt-0.5">Tap when you <em>hear</em> each metronome click. Measures speaker delay → sets A/V offset.</p>
+              <p class="font-medium text-gray-300">{{ $t('player.latency.audioLabel') }}</p>
+              <p class="text-gray-500 mt-0.5">{{ $t('player.latency.audioDesc') }}</p>
             </div>
           </div>
           <div class="flex gap-3 items-start">
             <span class="mt-0.5 shrink-0 text-accent font-semibold w-5 text-right">2</span>
             <div>
-              <p class="font-medium text-gray-300">Input detection latency</p>
-              <p class="text-gray-500 mt-0.5">Pluck your open E string on 5 slow clicks. Measures mic→YIN pipeline delay → centers the hit window.</p>
+              <p class="font-medium text-gray-300">{{ $t('player.latency.inputLabel') }}</p>
+              <p class="text-gray-500 mt-0.5">{{ $t('player.latency.inputDesc') }}</p>
             </div>
           </div>
         </div>
 
         <div class="border-t border-white/[.04] pt-3 flex flex-col gap-1 text-[10px] text-gray-500">
-          <span>A/V offset: <span :class="player.avOffsetMs !== 0 ? 'text-yellow-400' : 'text-gray-500'">{{ player.avOffsetMs > 0 ? '+' : '' }}{{ player.avOffsetMs }} ms</span></span>
-          <span>Input latency: <span class="text-gray-400">{{ storedInputLatency ?? 'uncalibrated' }}{{ storedInputLatency != null ? ' ms' : '' }}</span></span>
+          <span>{{ $t('player.latency.avOffset') }} <span :class="player.avOffsetMs !== 0 ? 'text-yellow-400' : 'text-gray-500'">{{ player.avOffsetMs > 0 ? '+' : '' }}{{ player.avOffsetMs }} ms</span></span>
+          <span>{{ $t('player.latency.inputLatency') }} <span class="text-gray-400">{{ storedInputLatency ?? $t('player.latency.uncalibrated') }}{{ storedInputLatency != null ? ' ms' : '' }}</span></span>
         </div>
 
         <button
           class="w-full py-2.5 rounded-lg bg-accent hover:bg-accent/80 text-white text-sm font-semibold transition-colors"
           @click="startAudioTest"
         >
-          Start — Step 1: Tap test
+          {{ $t('player.latency.startTap') }}
         </button>
       </template>
 
@@ -376,7 +379,7 @@ function _sign(n) { return n > 0 ? '+' : '' }
       <template v-else-if="phase === 'counting' || phase === 'counting2'">
         <div class="flex flex-col items-center gap-2 py-6">
           <p class="text-xs text-gray-400">
-            {{ phase === 'counting2' ? 'Play guitar with each click…' : 'Tap when you hear each click…' }}
+            {{ phase === 'counting2' ? $t('player.latency.countdownGuitar') : $t('player.latency.countdownTap') }}
           </p>
           <span class="text-7xl font-black tabular-nums text-white">{{ countdown }}</span>
         </div>
@@ -384,7 +387,7 @@ function _sign(n) { return n > 0 ? '+' : '' }
 
       <!-- ── RUNNING AUDIO ──────────────────────────────────────────────────── -->
       <template v-else-if="phase === 'running-audio'">
-        <p class="text-xs text-gray-400 text-center">Tap when you <em>hear</em> each click</p>
+        <p class="text-xs text-gray-400 text-center">{{ $t('player.latency.tapInstruction') }}</p>
 
         <div class="flex justify-center">
           <div class="w-16 h-16 rounded-full transition-all duration-75"
@@ -396,7 +399,7 @@ function _sign(n) { return n > 0 ? '+' : '' }
           :class="beatFlash ? 'bg-accent' : 'bg-dark-600 hover:bg-dark-500'"
           @click="tap" @touchstart.prevent="tap"
         >
-          <MousePointer2 :size="18" class="inline-block mr-1.5 -mt-0.5" /> TAP
+          <MousePointer2 :size="18" class="inline-block mr-1.5 -mt-0.5" /> {{ $t('player.latency.tap') }}
         </button>
 
         <div class="flex flex-col gap-1">
@@ -406,7 +409,7 @@ function _sign(n) { return n > 0 ? '+' : '' }
           <span class="text-[10px] text-gray-500 text-right tabular-nums">{{ tapCount }} / {{ TOTAL_TAPS }}</span>
         </div>
 
-        <button class="text-xs text-gray-500 hover:text-gray-300 text-center" @click="reset">Cancel</button>
+        <button class="text-xs text-gray-500 hover:text-gray-300 text-center" @click="reset">{{ $t('common.cancel') }}</button>
       </template>
 
       <!-- ── AUDIO DONE ─────────────────────────────────────────────────────── -->
@@ -414,7 +417,7 @@ function _sign(n) { return n > 0 ? '+' : '' }
         <!-- Phase 1 result -->
         <div class="flex items-center justify-between rounded-lg bg-dark-600 px-3 py-2.5">
           <div>
-            <p class="text-[10px] text-gray-500">Audio output latency</p>
+            <p class="text-[10px] text-gray-500">{{ $t('player.latency.audioLabel') }}</p>
             <p class="text-xl font-black tabular-nums" :class="audioMs !== 0 ? 'text-yellow-400' : 'text-green-400'">
               {{ _sign(audioMs) }}{{ audioMs }} ms
             </p>
@@ -427,18 +430,17 @@ function _sign(n) { return n > 0 ? '+' : '' }
 
         <div v-if="micAvailable" class="flex flex-col gap-2">
           <p class="text-xs text-gray-400">
-            Now measure input pipeline latency. Pluck your open <strong class="text-white">E string</strong>
-            on each click — 5 reps, one every 2 seconds.
+            {{ $t('player.latency.guitarInstruction') }}
           </p>
           <button
             class="w-full py-2.5 rounded-lg bg-accent hover:bg-accent/80 text-white text-sm font-semibold transition-colors"
             @click="startGuitarTest"
           >
-            <Mic :size="13" class="inline-block mr-1.5 -mt-0.5" /> Step 2: Guitar test
+            <Mic :size="13" class="inline-block mr-1.5 -mt-0.5" /> {{ $t('player.latency.startGuitar') }}
           </button>
         </div>
         <div v-else class="text-xs text-yellow-600/80">
-          Mic plugin not loaded — guitar latency test unavailable.
+          {{ $t('player.latency.micUnavailable') }}
         </div>
 
         <button
@@ -446,13 +448,13 @@ function _sign(n) { return n > 0 ? '+' : '' }
           class="text-xs text-gray-500 hover:text-gray-300 text-center"
           @click="applyAudioOnly"
         >
-          Skip — apply audio offset only
+          {{ $t('player.latency.skipGuitar') }}
         </button>
       </template>
 
       <!-- ── RUNNING GUITAR ─────────────────────────────────────────────────── -->
       <template v-else-if="phase === 'running-guitar'">
-        <p class="text-xs text-gray-400 text-center">Pluck your open <strong class="text-white">E string</strong> on each click</p>
+        <p class="text-xs text-gray-400 text-center">{{ $t('player.latency.guitarInstruction') }}</p>
 
         <!-- Beat flash + big E label -->
         <div class="flex items-center justify-center gap-4">
@@ -465,7 +467,7 @@ function _sign(n) { return n > 0 ? '+' : '' }
             </span>
             <span class="text-[10px] mt-1"
                   :class="lastNote ? 'text-green-500' : 'text-gray-600'">
-              {{ lastNote ? 'detected ✓' : 'waiting…' }}
+              {{ lastNote ? $t('player.latency.detected') : $t('player.latency.waiting') }}
             </span>
           </div>
         </div>
@@ -480,7 +482,7 @@ function _sign(n) { return n > 0 ? '+' : '' }
           </span>
         </div>
 
-        <button class="text-xs text-gray-500 hover:text-gray-300 text-center" @click="reset">Cancel</button>
+        <button class="text-xs text-gray-500 hover:text-gray-300 text-center" @click="reset">{{ $t('common.cancel') }}</button>
       </template>
 
       <!-- ── DONE ───────────────────────────────────────────────────────────── -->
@@ -489,27 +491,27 @@ function _sign(n) { return n > 0 ? '+' : '' }
         <div class="flex flex-col gap-1.5">
           <div class="flex items-center justify-between rounded-lg bg-dark-600 px-3 py-2">
             <div>
-              <p class="text-[10px] text-gray-500">Audio output</p>
+              <p class="text-[10px] text-gray-500">{{ $t('player.latency.resultAudio') }}</p>
               <p class="text-sm font-bold tabular-nums text-yellow-400">{{ _sign(audioMs) }}{{ audioMs }} ms</p>
             </div>
-            <p class="text-[10px] text-gray-500">→ A/V offset</p>
+            <p class="text-[10px] text-gray-500">{{ $t('player.latency.resultAvTarget') }}</p>
           </div>
           <div class="flex items-center justify-between rounded-lg bg-dark-600 px-3 py-2">
             <div>
-              <p class="text-[10px] text-gray-500">Input pipeline</p>
+              <p class="text-[10px] text-gray-500">{{ $t('player.latency.resultInput') }}</p>
               <p class="text-sm font-bold tabular-nums"
                  :class="inputMs !== null && inputMs < 0 ? 'text-red-400' : 'text-green-400'">
                 {{ inputMs !== null ? inputMs : '?' }} ms
               </p>
             </div>
-            <p class="text-[10px] text-gray-500">→ hit window</p>
+            <p class="text-[10px] text-gray-500">{{ $t('player.latency.resultHitTarget') }}</p>
           </div>
 
           <p v-if="inputMs !== null && inputMs < 0" class="text-[10px] text-red-400 px-1">
-            Negative input latency suggests measurement error — try again.
+            {{ $t('player.latency.negativeWarning') }}
           </p>
           <p v-if="guitarConsistency === 'poor — retry'" class="text-[10px] text-red-400 px-1">
-            Guitar consistency was poor — results may be inaccurate.
+            {{ $t('player.latency.poorConsistency') }}
           </p>
         </div>
 
@@ -518,14 +520,14 @@ function _sign(n) { return n > 0 ? '+' : '' }
             class="flex-1 py-2 rounded-lg bg-dark-600 hover:bg-dark-500 text-gray-300 text-xs font-semibold transition-colors"
             @click="reset"
           >
-            Retry
+            {{ $t('player.latency.retry') }}
           </button>
           <button
             class="flex-1 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-semibold transition-colors"
             :disabled="inputMs !== null && inputMs < 0"
             @click="applyAll"
           >
-            Apply both
+            {{ $t('player.latency.applyBoth') }}
           </button>
         </div>
       </template>

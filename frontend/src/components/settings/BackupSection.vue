@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 
+const { t } = useI18n()
 const settings = useSettingsStore()
 const importing = ref<boolean>(false)
 const status    = ref<string>('')
@@ -17,9 +19,9 @@ async function doImport(e: Event): Promise<void> {
   status.value = ''
   try {
     await settings.import(file)
-    status.value = 'Import complete — reload to apply'
+    status.value = t('settings.backup.importComplete')
   } catch (err) {
-    status.value = `Import failed: ${(err as Error).message}`
+    status.value = t('settings.backup.importFailed', { message: (err as Error).message })
   } finally {
     importing.value = false
     ;(e.target as HTMLInputElement).value = ''
@@ -29,12 +31,12 @@ async function doImport(e: Event): Promise<void> {
 
 <template>
   <section class="settings-section">
-    <h2 class="text-sm font-semibold text-gray-200 mb-3">Backup</h2>
+    <h2 class="text-sm font-semibold text-gray-200 mb-3">{{ $t('settings.backup.title') }}</h2>
 
     <div class="flex gap-2 flex-wrap">
-      <button class="settings-btn" @click="doExport">Export settings</button>
+      <button class="settings-btn" @click="doExport">{{ $t('settings.backup.export') }}</button>
       <label class="settings-btn cursor-pointer">
-        {{ importing ? 'Importing…' : 'Import settings' }}
+        {{ importing ? $t('settings.backup.importing') : $t('settings.backup.import') }}
         <input type="file" accept=".json" class="hidden" @change="doImport" />
       </label>
     </div>

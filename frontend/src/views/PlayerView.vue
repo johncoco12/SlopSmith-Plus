@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import { useShortcuts } from '@/composables/useShortcuts'
-import HighwayCanvas from '@/components/player/HighwayCanvas.vue'
+import PlayerCanvas from '@/components/player/PlayerCanvas.vue'
 import PlayerHud from '@/components/player/PlayerHud.vue'
 import PlayerControls from '@/components/player/PlayerControls.vue'
 import DebugOverlay from '@/components/player/DebugOverlay.vue'
@@ -15,22 +15,10 @@ const player = usePlayerStore()
 const trackId     = computed(() => route.params.trackId as string)
 const arrangement = computed(() => Number(route.query.arrangement ?? 0))
 
-// Time sync loop — updates player.currentTime each frame
-let _rafId: number | null = null
-function _syncLoop() {
-  player.syncTime()
-  _rafId = requestAnimationFrame(_syncLoop)
-}
-
-onMounted(() => {
-  _rafId = requestAnimationFrame(_syncLoop)
-})
-
-onUnmounted(() => {
-  if (_rafId !== null) cancelAnimationFrame(_rafId)
-})
+const playerCanvas = ref<InstanceType<typeof PlayerCanvas> | null>(null)
 
 // Load song whenever trackId/arrangement changes
+// (usePlayer inside PlayerCanvas handles frame loop & timing)
 watch(
   [trackId, arrangement],
   async ([tid, arr]) => {
@@ -49,6 +37,10 @@ register(']',          e  => player.nudgeAvOffset(e.shiftKey ?  50 :  10))
 register('0',          () => player.setAvOffset(0))
 register('\\',         () => player.toggleLyrics())
 register('Escape',     () => router.back())
+// Toggle renderer with 'v' key
+register('v',          () => {
+  playerCanvas.value?.cycleRenderer()
+})
 
 function handleBack() {
   router.back()
@@ -56,9 +48,6 @@ function handleBack() {
 </script>
 
 <template>
-  <!-- highway.js writes to these elements in its song_info / song:ready handlers.
-       All must exist before any WebSocket message arrives or the handler throws
-       before it reaches audio.src, preventing audio from loading at all. -->
   <audio id="audio" preload="auto" class="hidden" />
   <span   id="hud-artist"      class="hidden" aria-hidden="true" />
   <span   id="hud-title"       class="hidden" aria-hidden="true" />
@@ -66,9 +55,25 @@ function handleBack() {
   <select id="arr-select"      class="hidden" aria-hidden="true" />
 
   <div class="fixed inset-0 bg-dark-800 flex flex-col z-50 overflow-hidden">
-    <!-- Highway + HUD wrapper — flex-col so canvas's flex-1 works -->
+    <!-- Loading overlay -->
+    <Transition name="fade">
+      <div
+        v-if="player.loading"
+        class="absolute inset-0 z-50 flex items-center justify-center bg-dark-800/80 backdrop-blur-sm"
+      >
+        <div class="flex flex-col items-center gap-4">
+          <svg class="animate-spin h-10 w-10 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span class="text-sm text-gray-400">{{ $t('player.loadingTrack') }}</span>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Canvas + HUD wrapper -->
     <div class="relative flex-1 min-h-0 flex flex-col">
-      <HighwayCanvas />
+      <PlayerCanvas ref="playerCanvas" />
       <PlayerHud />
       <!-- Bottom gradient bleed into controls -->
       <div
@@ -81,3 +86,14 @@ function handleBack() {
     <DebugOverlay />
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

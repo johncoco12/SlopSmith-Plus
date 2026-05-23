@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/player'
 import {
   ArrowLeft, SkipBack, Play, Pause, SkipForward,
@@ -7,6 +8,7 @@ import {
 } from 'lucide-vue-next'
 import SeekBar from './SeekBar.vue'
 import VizPicker from './VizPicker.vue'
+import RendererPicker from './RendererPicker.vue'
 import LoopControls from './LoopControls.vue'
 import MixerPopover from './MixerPopover.vue'
 import TunerPopover from './TunerPopover.vue'
@@ -15,6 +17,7 @@ import LatencyTester from './LatencyTester.vue'
 const emit = defineEmits<{
   back: []
 }>()
+const { t } = useI18n()
 const player = usePlayerStore()
 
 const mixerOpen         = ref<boolean>(false)
@@ -69,14 +72,14 @@ function dismissPrompt(): void {
         class="flex items-center gap-2.5 px-3 py-1.5 bg-accent/10 border-b border-accent/20 text-[11px]"
       >
         <Timer :size="12" class="text-accent shrink-0" />
-        <span class="text-gray-300 flex-1">Calibrate audio &amp; input latency for accurate play-along</span>
+        <span class="text-gray-300 flex-1">{{ $t('player.calibration.prompt') }}</span>
         <button
           class="px-2 py-0.5 rounded bg-accent hover:bg-accent/80 text-white font-semibold transition-colors"
           @click="openCalibration(true)"
         >
-          Calibrate
+          {{ $t('player.calibration.button') }}
         </button>
-        <button class="text-gray-500 hover:text-gray-300 transition-colors" title="Dismiss" @click="dismissPrompt">
+        <button class="text-gray-500 hover:text-gray-300 transition-colors" :title="$t('player.controls.dismiss')" @click="dismissPrompt">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
@@ -88,7 +91,7 @@ function dismissPrompt(): void {
     <div class="flex items-center gap-2 px-3 py-2 border-b border-white/[.04]">
 
       <!-- Back -->
-      <button class="player-btn" title="Back to library (Esc)" @click="emit('back')">
+      <button class="player-btn" :title="$t('player.controls.backTitle')" @click="emit('back')">
         <ArrowLeft :size="16" />
       </button>
 
@@ -96,18 +99,18 @@ function dismissPrompt(): void {
 
       <!-- Transport -->
       <div class="flex items-center gap-0.5">
-        <button class="player-btn" title="Seek −5s (←)" @click="player.seekBy(-5)">
+        <button class="player-btn" :title="$t('player.controls.seekBackTitle')" @click="player.seekBy(-5)">
           <SkipBack :size="15" />
         </button>
         <button
           class="player-btn-play"
-          :title="player.playing ? 'Pause (Space)' : 'Play (Space)'"
+          :title="player.playing ? $t('player.controls.pauseTitle') : $t('player.controls.playTitle')"
           @click="player.togglePlay()"
         >
           <Pause v-if="player.playing" :size="18" />
           <Play v-else :size="18" class="translate-x-px" />
         </button>
-        <button class="player-btn" title="Seek +5s (→)" @click="player.seekBy(5)">
+        <button class="player-btn" :title="$t('player.controls.seekForwardTitle')" @click="player.seekBy(5)">
           <SkipForward :size="15" />
         </button>
       </div>
@@ -119,7 +122,7 @@ function dismissPrompt(): void {
         v-if="arrangements.length > 1"
         :value="player.arrangement"
         class="ctrl-select"
-        title="Arrangement"
+        :title="$t('player.controls.arrangementTitle')"
         @change="player.changeArrangement(Number($event.target.value))"
       >
         <option v-for="(arr, i) in arrangements" :key="i" :value="i">{{ arr.name ?? arr }}</option>
@@ -131,7 +134,7 @@ function dismissPrompt(): void {
       <button
         class="player-btn"
         :class="{ active: player.pitchDetectionEnabled }"
-        title="Toggle play-along mic (M)"
+        :title="$t('player.controls.micTitle')"
         @click="player.togglePitchDetection()"
       >
         <Guitar :size="15" />
@@ -141,7 +144,7 @@ function dismissPrompt(): void {
       <button
         class="player-btn"
         :class="{ active: player.showLyrics }"
-        title="Toggle lyrics (\)"
+        :title="$t('player.controls.lyricsTitle')"
         @click="player.toggleLyrics()"
       >
         <Mic2 :size="15" />
@@ -150,6 +153,7 @@ function dismissPrompt(): void {
       <!-- Visualization picker -->
       <div class="flex items-center gap-1.5">
         <Monitor :size="12" class="text-gray-600 shrink-0" />
+        <RendererPicker />
         <VizPicker />
       </div>
 
@@ -158,7 +162,7 @@ function dismissPrompt(): void {
         <button
           class="player-btn"
           :class="{ active: tunerOpen }"
-          title="Tune instrument to song tuning"
+          :title="$t('player.controls.tunerTitle')"
           @click="tunerOpen = !tunerOpen; mixerOpen = false"
         >
           <Gauge :size="15" />
@@ -182,7 +186,7 @@ function dismissPrompt(): void {
         <button
           class="player-btn"
           :class="{ active: mixerOpen }"
-          title="Mixer"
+          :title="$t('player.controls.mixerTitle')"
           @click="mixerOpen = !mixerOpen; tunerOpen = false"
         >
           <SlidersHorizontal :size="15" />
@@ -208,7 +212,7 @@ function dismissPrompt(): void {
         <button
           class="player-btn-xs rounded px-0.5"
           :class="{ 'text-accent': latencyTesterOpen }"
-          title="Measure audio latency"
+          :title="$t('player.controls.latencyTitle')"
           @click="openCalibration(false)"
         >
           <Timer :size="12" />
@@ -216,11 +220,11 @@ function dismissPrompt(): void {
         <span
           class="text-[10px] font-mono tabular-nums min-w-[46px] text-right cursor-default"
           :class="player.avOffsetMs !== 0 ? 'text-yellow-400/80' : 'text-gray-600'"
-          title="A/V sync offset — double-click to reset"
+          :title="$t('player.controls.avSyncTitle')"
           @dblclick="player.setAvOffset(0)"
         >{{ player.avOffsetMs > 0 ? '+' : '' }}{{ player.avOffsetMs }}ms</span>
-        <button class="player-btn-xs" title="A/V −10ms ([)" @click="player.nudgeAvOffset(-10)">−</button>
-        <button class="player-btn-xs" title="A/V +10ms (])" @click="player.nudgeAvOffset(10)">+</button>
+        <button class="player-btn-xs" :title="$t('player.controls.avMinus')" @click="player.nudgeAvOffset(-10)">−</button>
+        <button class="player-btn-xs" :title="$t('player.controls.avPlus')" @click="player.nudgeAvOffset(10)">+</button>
       </div>
     </div>
 
@@ -229,13 +233,13 @@ function dismissPrompt(): void {
 
       <!-- Speed -->
       <div class="ctrl-slider-group">
-        <span class="ctrl-slider-label">Speed</span>
+        <span class="ctrl-slider-label">{{ $t('player.controls.speed') }}</span>
         <input
           type="range"
           :value="player.speed"
           min="0.25" max="1.5" step="0.05"
           class="ctrl-range w-20"
-          title="Playback speed"
+          :title="$t('player.controls.speedTitle')"
           @input="player.setSpeed(Number($event.target.value))"
         />
         <span class="ctrl-slider-val w-9">{{ Math.round(player.speed * 100) }}%</span>
@@ -243,13 +247,13 @@ function dismissPrompt(): void {
 
       <!-- Mastery -->
       <div class="ctrl-slider-group">
-        <span class="ctrl-slider-label">Mastery</span>
+        <span class="ctrl-slider-label">{{ $t('player.controls.mastery') }}</span>
         <input
           type="range"
           :value="player.mastery"
           min="0" max="100" step="1"
           class="ctrl-range w-20"
-          title="Difficulty filter"
+          :title="$t('player.controls.masteryTitle')"
           @input="player.setMastery(Number($event.target.value))"
         />
         <span class="ctrl-slider-val w-8">{{ player.mastery }}%</span>

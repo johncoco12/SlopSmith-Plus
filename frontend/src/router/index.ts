@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('@/views/PlayerView.vue'),
     },
     {
+      path: '/modernway/:trackId',
+      name: 'modernway',
+      component: () => import('@/views/ModernwayPlayerView.vue'),
+    },
+    {
       path: '/gear',
       name: 'gear',
       component: () => import('@/views/GearView.vue'),
@@ -46,16 +51,15 @@ const router = createRouter({
       meta: { public: true },
     },
     {
-      path: '/login',
-      name: 'login',
-      component: () => import('@/views/LoginView.vue'),
-      meta: { public: true },
-    },
-    {
       path: '/profiles',
       name: 'profiles',
       component: () => import('@/views/ProfileSelectorView.vue'),
       meta: { public: true },
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/views/AdminView.vue'),
     },
   ],
 })
@@ -65,7 +69,7 @@ router.beforeEach(async (to) => {
 
   // Allow public routes
   if (to.meta.public) {
-    // Redirect away from setup/login if already done
+    // Redirect away from setup if already done
     if (to.name === 'setup' && auth.isSetupDone === true) {
       return { name: 'profiles' }
     }

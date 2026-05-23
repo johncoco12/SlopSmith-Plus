@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid, Settings } from 'lucide-vue-next'
 import { useSettingsStore } from '@/stores/settings'
 import { usePluginsStore } from '@/stores/plugins'
 import { useAuthStore } from '@/stores/auth'
 import MobileMenu from './MobileMenu.vue'
 import ProfileSwitcher from './ProfileSwitcher.vue'
+
+const { t } = useI18n()
 
 const route    = useRoute()
 const settings = useSettingsStore()
@@ -20,16 +23,16 @@ const uploading      = ref(false)
 const uploadProgress = ref(0)
 
 const navLinks = computed(() => [
-  { name: 'library',   label: 'Library',   icon: Library   },
-  { name: 'favorites', label: 'Favorites', icon: Heart     },
+  { name: 'library',   label: t('nav.library'),   icon: Library   },
+  { name: 'favorites', label: t('nav.favorites'), icon: Heart     },
   ...plugins.navPlugins.map(p => ({
     name:   'plugin',
     params: { id: p.id },
     label:  p.nav.label,
     icon:   LayoutGrid,
   })),
-  { name: 'gear',      label: 'Your Gear', icon: Settings  },
-  { name: 'settings',  label: 'Settings',  icon: Settings2 },
+  { name: 'gear',      label: t('nav.gear'),      icon: Settings  },
+  { name: 'settings',  label: t('nav.settings'),  icon: Settings2 },
 ])
 
 function isActive(link: { name: string; params?: { id: string } }): boolean {
@@ -71,7 +74,7 @@ async function handleUpload(e: Event): Promise<void> {
   if (!files?.length) return
   uploading.value = true
   uploadProgress.value = 0
-  uploadStatus.value = 'Uploading…'
+  uploadStatus.value = t('nav.uploading')
   const form = new FormData()
   for (const f of files) form.append('files', f)
   try {
@@ -88,17 +91,17 @@ async function handleUpload(e: Event): Promise<void> {
     const data = await res.json()
     const jobs: { jobId: string }[] = data.jobs ?? (data.jobId ? [{ jobId: data.jobId }] : [])
     if (jobs.length === 0) {
-      uploadStatus.value = 'No valid files uploaded'
+      uploadStatus.value = t('nav.uploadInvalid')
       return
     }
-    uploadStatus.value = `Processing ${jobs.length} file${jobs.length > 1 ? 's' : ''}…`
+    uploadStatus.value = t('nav.processing')
     const polls = jobs.map(j => pollJob(j.jobId))
     await Promise.all(polls)
-    if (uploadStatus.value.startsWith('Processing') || uploadStatus.value === 'Done') {
-      uploadStatus.value = 'Done'
+    if (uploadStatus.value.startsWith(t('nav.processing')) || uploadStatus.value === t('nav.uploadDone')) {
+      uploadStatus.value = t('nav.uploadDone')
     }
   } catch {
-    uploadStatus.value = 'Error'
+    uploadStatus.value = t('nav.uploadError')
   } finally {
     uploading.value = false
     setTimeout(() => { uploadStatus.value = ''; uploadProgress.value = 0 }, 3000)
@@ -156,7 +159,7 @@ async function handleUpload(e: Event): Promise<void> {
         @click="fileInput?.click()"
       >
         <Upload :size="13" />
-        Upload
+        {{ $t('nav.upload') }}
       </button>
       <input
         ref="fileInput"

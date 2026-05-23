@@ -54,9 +54,6 @@ services:
       - ./plugins:/app/plugins
       - ./static:/app/static
       - ./VERSION:/app/VERSION
-    extra_hosts:
-      - "db:host-gateway"
-      - "minio:host-gateway"
     environment:
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config

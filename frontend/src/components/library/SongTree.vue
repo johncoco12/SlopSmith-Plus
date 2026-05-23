@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ChevronRight, Heart, Music2 } from 'lucide-vue-next'
 
 import type { Song } from '@/types'
@@ -15,14 +16,15 @@ const emit = defineEmits<{
 
 const expanded = ref(new Set<string>())
 const selected = ref<string | null>(null)
+const { t } = useI18n()
 
 interface ArtistEntry { name: string; albums: Record<string, Song[]> }
 
 const tree = computed((): ArtistEntry[] => {
   const map: Record<string, ArtistEntry> = {}
   for (const song of props.songs) {
-    const artist = song.artist || 'Unknown Artist'
-    const album  = song.album  || 'Unknown Album'
+    const artist = song.artist || t('library.tree.unknownArtist')
+    const album  = song.album  || t('library.tree.unknownAlbum')
     if (!map[artist]) map[artist] = { name: artist, albums: {} }
     if (!map[artist].albums[album]) map[artist].albums[album] = []
     map[artist].albums[album].push(song)
@@ -57,7 +59,7 @@ function artUrl(song: Song & { mtime?: number }): string {
     <!-- Empty -->
     <div v-else-if="!songs.length" class="flex flex-col items-center justify-center py-32 gap-4 text-gray-500">
       <span class="text-6xl opacity-40">🎸</span>
-      <p class="t-body">No songs found</p>
+      <p class="t-body">{{ $t('library.empty') }}</p>
     </div>
 
     <!-- Tree -->
@@ -131,7 +133,7 @@ function artUrl(song: Song & { mtime?: number }): string {
                   :class="song.favorite
                     ? 'opacity-100 text-gold'
                     : 'opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gold'"
-                  :aria-label="song.favorite ? 'Remove from favorites' : 'Add to favorites'"
+                  :aria-label="song.favorite ? $t('library.song.removeFavorite') : $t('library.song.addFavorite')"
                   @click.stop="emit('favorite', song.trackId ?? song.filename)"
                 >
                   <Heart :size="13" :fill="song.favorite ? 'currentColor' : 'none'" stroke-width="2" />

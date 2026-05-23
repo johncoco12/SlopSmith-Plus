@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { LayoutGrid, List, Search, SlidersHorizontal } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   viewMode: string
@@ -18,10 +21,10 @@ const emit = defineEmits<{
 }>()
 
 const FORMATS = [
-  { value: '',        label: 'All'     },
-  { value: 'psarc',   label: 'PSARC'   },
-  { value: 'sloppak', label: 'Sloppak' },
-  { value: 'loose',   label: 'Folder'  },
+  { value: '',        label: t('library.format.all')     },
+  { value: 'psarc',   label: t('library.format.psarc')   },
+  { value: 'sloppak', label: t('library.format.sloppak') },
+  { value: 'loose',   label: t('library.format.folder')  },
 ]
 
 let _debounce: ReturnType<typeof setTimeout> | null = null
@@ -42,7 +45,7 @@ function onSearch(e: Event): void {
       <input
         type="search"
         :value="search"
-        :placeholder="total ? `Search ${total.toLocaleString()} songs…` : 'Search songs, artists, albums…'"
+        :placeholder="total ? $t('library.search.placeholderWithCount', { count: total.toLocaleString() }) : $t('library.search.placeholder')"
         class="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm
                bg-dark-600 border border-white/[.06] text-gray-100 placeholder-gray-500
                focus:outline-none focus:ring-2 focus:ring-accent/35 focus:border-accent/30 transition"
@@ -96,14 +99,14 @@ function onSearch(e: Event): void {
                text-gray-400 focus:outline-none focus:ring-1 focus:ring-accent/40 shrink-0 cursor-pointer"
         @change="emit('set-sort', $event.target.value)"
       >
-        <option value="artist">Artist A–Z</option>
-        <option value="artist-desc">Artist Z–A</option>
-        <option value="title">Title A–Z</option>
-        <option value="title-desc">Title Z–A</option>
-        <option value="recent">Recently added</option>
-        <option value="year-desc">Newest year</option>
-        <option value="year">Oldest year</option>
-        <option value="tuning">Tuning</option>
+        <option value="artist">{{ $t('library.sort.artistAsc') }}</option>
+        <option value="artist-desc">{{ $t('library.sort.artistDesc') }}</option>
+        <option value="title">{{ $t('library.sort.titleAsc') }}</option>
+        <option value="title-desc">{{ $t('library.sort.titleDesc') }}</option>
+        <option value="recent">{{ $t('library.sort.recent') }}</option>
+        <option value="year-desc">{{ $t('library.sort.yearDesc') }}</option>
+        <option value="year">{{ $t('library.sort.yearAsc') }}</option>
+        <option value="tuning">{{ $t('library.sort.tuning') }}</option>
       </select>
 
       <!-- Filter button -->
@@ -115,7 +118,7 @@ function onSearch(e: Event): void {
         @click="emit('toggle-filters')"
       >
         <SlidersHorizontal :size="13" />
-        Filters
+        {{ $t('library.filters.button') }}
         <span
           v-if="filterCount > 0"
           class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-accent text-white

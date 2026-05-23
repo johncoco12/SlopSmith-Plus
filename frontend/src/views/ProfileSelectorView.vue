@@ -52,8 +52,8 @@ function profileColor(id: number) {
         </span>
       </router-link>
       <div>
-        <h1 class="text-lg font-semibold text-white mb-1">Select a profile</h1>
-        <p class="text-gray-400 text-sm">Choose who's playing today</p>
+        <h1 class="text-lg font-semibold text-white mb-1">{{ $t('profiles.selectTitle') }}</h1>
+        <p class="text-gray-400 text-sm">{{ $t('profiles.selectSubtitle') }}</p>
       </div>
     </div>
 

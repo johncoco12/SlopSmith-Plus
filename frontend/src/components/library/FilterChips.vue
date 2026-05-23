@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { X } from 'lucide-vue-next'
 
 import type { LibraryFilters } from '@/types'
@@ -12,16 +13,18 @@ const emit = defineEmits<{
   update: [filters: LibraryFilters]
 }>()
 
+const { t } = useI18n()
+
 const chips = computed(() => {
   const f = props.filters
   const out = []
-  f.arrangements.has.forEach(a   => out.push({ key: `arr-has-${a}`,  label: `Arr: ${a}`,      remove: () => remove('arrangements', 'has', a)   }))
-  f.arrangements.lacks.forEach(a => out.push({ key: `arr-lk-${a}`,   label: `No ${a}`,         remove: () => remove('arrangements', 'lacks', a) }))
-  f.stems.has.forEach(s          => out.push({ key: `stem-has-${s}`,  label: `Stem: ${s}`,      remove: () => remove('stems', 'has', s)          }))
-  f.stems.lacks.forEach(s        => out.push({ key: `stem-lk-${s}`,   label: `No stem: ${s}`,   remove: () => remove('stems', 'lacks', s)        }))
-  if (f.lyrics === true)           out.push({ key: 'lyr-y',           label: 'Has lyrics',       remove: () => setLyrics(null)                   })
-  if (f.lyrics === false)          out.push({ key: 'lyr-n',           label: 'No lyrics',        remove: () => setLyrics(null)                   })
-  f.tunings.forEach(t            => out.push({ key: `tun-${t}`,       label: `Tuning: ${t}`,     remove: () => remove('tunings', null, t)         }))
+  f.arrangements.has.forEach(a   => out.push({ key: `arr-has-${a}`,  label: t('library.chips.arrangement', { name: a }),      remove: () => remove('arrangements', 'has', a)   }))
+  f.arrangements.lacks.forEach(a => out.push({ key: `arr-lk-${a}`,   label: t('library.chips.noArrangement', { name: a }),         remove: () => remove('arrangements', 'lacks', a) }))
+  f.stems.has.forEach(s          => out.push({ key: `stem-has-${s}`,  label: t('library.chips.stem', { name: s }),      remove: () => remove('stems', 'has', s)          }))
+  f.stems.lacks.forEach(s        => out.push({ key: `stem-lk-${s}`,   label: t('library.chips.noStem', { name: s }),   remove: () => remove('stems', 'lacks', s)        }))
+  if (f.lyrics === true)           out.push({ key: 'lyr-y',           label: t('library.chips.hasLyrics'),       remove: () => setLyrics(null)                   })
+  if (f.lyrics === false)          out.push({ key: 'lyr-n',           label: t('library.chips.noLyrics'),        remove: () => setLyrics(null)                   })
+  f.tunings.forEach(tu           => out.push({ key: `tun-${tu}`,       label: t('library.chips.tuning', { name: tu }),     remove: () => remove('tunings', null, tu)         }))
   return out
 })
 
@@ -53,6 +56,6 @@ function setLyrics(val: boolean | null): void {
     <button
       class="t-caption hover:text-gray-300 transition ml-1"
       @click="emit('clear')"
-    >Clear all</button>
+    >{{ $t('library.chips.clearAll') }}</button>
   </div>
 </template>

@@ -22,15 +22,22 @@ async function apiFetch(path: string, options: FetchOptions = {}): Promise<unkno
 
   const res = await fetch(path, { ...rest, headers })
   if (res.status === 401) {
-    if (!path.startsWith('/api/setup') && !path.startsWith('/api/startup-status')) {
+    const isAuthEndpoint = path.startsWith('/api/auth/login') || path.startsWith('/api/auth/recover')
+    if (!isAuthEndpoint && !path.startsWith('/api/setup') && !path.startsWith('/api/startup-status')) {
       setToken(null)
-      window.location.hash = '#/login'
+      window.location.hash = '#/profiles'
+      throw new Error('Session expired')
     }
-    throw new Error('Session expired')
   }
   if (!res.ok) {
-    const msg = await res.text().catch(() => res.statusText)
-    throw new Error(`API ${res.status}: ${msg}`)
+    const text = await res.text().catch(() => res.statusText)
+    let msg = text
+    try {
+      const json = JSON.parse(text)
+      if (json?.error) msg = json.error
+      else if (json?.message) msg = json.message
+    } catch { /* not JSON, use raw text */ }
+    throw new Error(msg)
   }
   return json ? res.json() : res
 }
