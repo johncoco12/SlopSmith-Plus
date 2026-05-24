@@ -55,8 +55,8 @@ export const DDOTS = new Set([12, 24]);
 // Lane
 export const HWY_LANE_STRIPE_ODD_HEX = 0x3d739e;
 export const HWY_LANE_STRIPE_EVEN_HEX = 0x62a5d8;
-export const HWY_LANE_STRIPE_OP_BASE = 0.12;
-export const HWY_LANE_STRIPE_OP_INT = 0.24;
+export const HWY_LANE_STRIPE_OP_BASE = 0.18;
+export const HWY_LANE_STRIPE_OP_INT = 0.20;
 
 // Note hit detection
 export const CHORD_HWY_LINGER_S = 0.48;

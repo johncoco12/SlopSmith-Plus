@@ -14,7 +14,7 @@ const NUT_H = 3.5 * K;
 const NUT_D = 1.5 * K;
 const HEADSTOCK_COLOUR = 0x2a1a0a; // dark wood
 const HEADSTOCK_H = 12 * K;
-const HEADSTOCK_D = 8 * K;
+const HEADSTOCK_D = 2 * K;
 const HEADSTOCK_Z_OFFSET = 6 * K; // behind the nut
 
 // ── Nut & Headstock Pool ──────────────────────────────────────────────────────
@@ -81,50 +81,6 @@ export function createNutHeadstock(): NutHeadstockPool {
       groove.renderOrder = 51;
       group.add(groove);
     }
-
-    // ── Crown (rounded top of nut) ──────────────────────────────────────────
-    const crownGeo = new THREE.CylinderGeometry(
-      NUT_D * 0.45, NUT_D * 0.45, nutLen, 8, 1, false, 0, Math.PI
-    );
-    const crownMat = new THREE.MeshStandardMaterial({
-      color: NUT_COLOUR,
-      roughness: 0.5,
-      metalness: 0.05,
-      transparent: true,
-      opacity: 0.85,
-    });
-    const crownMesh = new THREE.Mesh(crownGeo, crownMat);
-    crownMesh.rotation.set(0, 0, Math.PI / 2);
-    crownMesh.position.set(nutX - NUT_D / 2, nutCenterY, NUT_H / 2);
-    crownMesh.renderOrder = 50;
-    group.add(crownMesh);
-    disposables.push(crownGeo);
-    matDisposables.push(crownMat);
-
-    // ── Headstock body (dark slab behind the nut) ───────────────────────────
-    const hsWidth = nutLen * 1.15;
-    const hsGeo = new THREE.BoxGeometry(HEADSTOCK_D, hsWidth, HEADSTOCK_H);
-    const hsMat = new THREE.MeshStandardMaterial({
-      color: HEADSTOCK_COLOUR,
-      roughness: 0.85,
-      metalness: 0.02,
-      transparent: true,
-      opacity: 0.75,
-    });
-    const hsMesh = new THREE.Mesh(hsGeo, hsMat);
-    hsMesh.position.set(
-      nutX - NUT_D - HEADSTOCK_D / 2 - K,
-      nutCenterY,
-      HEADSTOCK_Z_OFFSET,
-    );
-    hsMesh.renderOrder = 49;
-    group.add(hsMesh);
-    disposables.push(hsGeo);
-    matDisposables.push(hsMat);
-
-    built = true;
-    lastStringCount = stringCount;
-    lastInverted = inverted;
   }
 
   function update(bundle: RenderBundle) {

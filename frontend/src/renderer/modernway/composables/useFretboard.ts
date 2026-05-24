@@ -39,10 +39,37 @@ export function createFretboard(): FretboardState {
     // Board center X
     const centerX = fretX(NFRETS) / 2;
 
-    // Dark fretboard plane
-    const planeGeo = new THREE.PlaneGeometry(boardWidth, boardLength);
+    // Dark fretboard plane — expanded so edge fade doesn't clip the playfield
+    const planeW = boardWidth  * 1.35;
+    const planeL = boardLength * 1.30;
+    const planeGeo = new THREE.PlaneGeometry(planeW, planeL);
+
+    // Alpha map: opaque centre, smooth fade to transparent on all four edges
+    const AMS = 128;
+    const amCanvas = document.createElement('canvas');
+    amCanvas.width  = AMS;
+    amCanvas.height = AMS;
+    const amCtx = amCanvas.getContext('2d')!;
+    const fadeZone = 0.18; // fraction of each side used for the fade
+    const amData = amCtx.createImageData(AMS, AMS);
+    for (let py = 0; py < AMS; py++) {
+      for (let px = 0; px < AMS; px++) {
+        const fx = Math.min(px, AMS - 1 - px) / (AMS * fadeZone);
+        const fy = Math.min(py, AMS - 1 - py) / (AMS * fadeZone);
+        const t  = Math.min(fx, 1) * Math.min(fy, 1);
+        // smoothstep
+        const a  = t * t * (3 - 2 * t);
+        const i  = (py * AMS + px) * 4;
+        const v = Math.round(a * 255);
+        amData.data[i] = amData.data[i + 1] = amData.data[i + 2] = v;
+        amData.data[i + 3] = 255;
+      }
+    }
+    amCtx.putImageData(amData, 0, 0);
+    const alphaMap = new THREE.CanvasTexture(amCanvas);
+
     const planeMat = new THREE.MeshLambertMaterial({
-      color: 0x08080e, transparent: true, opacity: 0.6,
+      color: 0x263f56, transparent: true, opacity: 0.65, alphaMap,
     });
     const plane = new THREE.Mesh(planeGeo, planeMat);
     plane.rotation.x = -Math.PI / 2;
@@ -61,6 +88,25 @@ export function createFretboard(): FretboardState {
       const strMesh = new THREE.Mesh(strGeo, strMat);
       strMesh.position.set(centerX, y, 0);
       group.add(strMesh);
+    }
+
+    // Fret lines on the board plane (floor grid)
+    const planeZ = -boardLength / 2 + TS * BEHIND;
+    const boardSurfaceY = S_BASE - NH / 2 - 1.6 * K;
+    const lineThick = 0.22 * K;
+    const fretLineGeo = new THREE.BoxGeometry(lineThick, lineThick * 0.4, boardLength);
+    const fretLineMat = new THREE.MeshBasicMaterial({
+      color: 0x32587a, transparent: true, opacity: 0.35,
+    });
+    const fretLineMajMat = new THREE.MeshBasicMaterial({
+      color: 0x3d6e96, transparent: true, opacity: 0.50,
+    });
+    for (let f = 0; f <= NFRETS; f++) {
+      const x = fretX(f);
+      const isMajor = f === 0 || f === 12 || f === 24;
+      const line = new THREE.Mesh(fretLineGeo, isMajor ? fretLineMajMat : fretLineMat);
+      line.position.set(x, boardSurfaceY, planeZ);
+      group.add(line);
     }
 
     // Fret wires
@@ -82,36 +128,30 @@ export function createFretboard(): FretboardState {
       group.add(wire);
     }
 
-    // Fret dots
-    const dotY = S_BASE - NH / 2 - 1.5 * K;
+    // Fret dots — cream inlay markers at the hit line, centred between strings
+    const midY = (sY(0, nStr, inverted) + sY(nStr - 1, nStr, inverted)) / 2;
+    const dotRadius = 1.6 * K;
+    const dotMat = new THREE.MeshBasicMaterial({
+      color: 0xfff4d6, transparent: true, opacity: 0.22,
+    });
+    const dotGeo = new THREE.CircleGeometry(dotRadius, 16);
+
     for (const f of DOTS) {
       if (f > NFRETS) continue;
       const x = fretMid(f);
-      const isDouble = DDOTS.has(f);
-      const dotRadius = 1.2 * K;
 
-      if (isDouble) {
-        // Double dot
-        const midY = (sY(0, nStr, inverted) + sY(nStr - 1, nStr, inverted)) / 2;
-        const offset = S_GAP * 1.2;
-        for (const dy of [-offset, offset]) {
-          const dotGeo = new THREE.CircleGeometry(dotRadius, 12);
-          const dotMat = new THREE.MeshBasicMaterial({
-            color: 0x445566, transparent: true, opacity: 0.6,
-          });
+      if (DDOTS.has(f)) {
+        const spread = S_GAP * 0.85;
+        for (const dz of [-spread, spread]) {
           const dot = new THREE.Mesh(dotGeo, dotMat);
           dot.rotation.x = -Math.PI / 2;
-          dot.position.set(x, dotY, dy * 0.01); // slight Z offset for visibility
+          dot.position.set(x, midY, dz);
           group.add(dot);
         }
       } else {
-        const dotGeo = new THREE.CircleGeometry(dotRadius, 12);
-        const dotMat = new THREE.MeshBasicMaterial({
-          color: 0x445566, transparent: true, opacity: 0.6,
-        });
         const dot = new THREE.Mesh(dotGeo, dotMat);
         dot.rotation.x = -Math.PI / 2;
-        dot.position.set(x, dotY, 0);
+        dot.position.set(x, midY, 0);
         group.add(dot);
       }
     }
