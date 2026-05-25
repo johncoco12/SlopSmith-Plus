@@ -62,15 +62,13 @@ export function createLane(): LaneState {
       return;
     }
 
-    const now = bundle.currentTime;
+    const now     = bundle.currentTime;
     const anchors = bundle.anchors;
+    const tStart  = now - BEHIND;
+    const tEnd    = now + AHEAD;
+    const boardY  = S_BASE - NH / 2 - 1.8 * K;
 
-    // Per-fret-column lane slices (spec §19)
-    const slices = 48;
-    const sliceDt = (AHEAD + BEHIND) / slices;
-    const boardY = S_BASE - NH / 2 - 1.8 * K;
-
-    // Compute highway intensity (proximity of nearest note → 0..1)
+    // Intensity from nearest upcoming note
     let intensity = 0;
     const notes = bundle.notes;
     for (let i = 0; i < notes.length; i++) {
@@ -79,35 +77,55 @@ export function createLane(): LaneState {
       if (dt >= 0) { intensity = Math.max(intensity, 1 - dt / AHEAD); break; }
     }
     const alpha = HWY_LANE_STRIPE_OP_BASE + HWY_LANE_STRIPE_OP_INT * intensity;
-    matOdd.opacity = alpha;
+    matOdd.opacity  = alpha;
     matEven.opacity = alpha;
 
-    for (let i = 0; i < slices; i++) {
-      const dt = -BEHIND + (i + 0.5) * sliceDt;
-      const chartTime = now + dt;
-      const anc = getAnchorAt(anchors, chartTime);
-      if (!anc) continue;
+    // Find the anchor active at tStart via binary search
+    let ancIdx = 0;
+    {
+      let lo = 0, hi = anchors.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (anchors[mid].time <= tStart) lo = mid + 1;
+        else hi = mid;
+      }
+      ancIdx = Math.max(0, lo - 1);
+    }
+
+    // Walk anchor segments through the visible window.
+    // Each segment is anchored to chart time so it scrolls with the notes.
+    while (ancIdx < anchors.length) {
+      const anc     = anchors[ancIdx];
+      const nextAnc = anchors[ancIdx + 1] as Anchor | undefined;
+
+      const segStart = Math.max(anc.time, tStart);
+      const segEnd   = nextAnc ? Math.min(nextAnc.time, tEnd) : tEnd;
+
+      if (segStart >= tEnd) break;
+
+      // Mid-point of the visible slice — moves with now, exactly like notes
+      const segMidDt = (segStart + segEnd) / 2 - now;
+      const z    = dZ(segMidDt);
+      const zLen = TS * (segEnd - segStart);
 
       const fStart = Math.max(1, Math.round(anc.fret));
-      const w = Math.max(1, Math.round(anc.width));
-      const fLast = Math.min(NFRETS, fStart + w - 1);
+      const w      = Math.max(1, Math.round(anc.width));
+      const fLast  = Math.min(NFRETS, fStart + w - 1);
 
-      const z = dZ(dt);
-      const zLen = TS * sliceDt;
-
-      // Per-fret column stripe
       for (let f = fStart; f <= fLast; f++) {
-        const xL = fretX(f - 1);
-        const xR = fretX(f);
+        const xL  = fretX(f - 1);
+        const xR  = fretX(f);
         const colW = xR - xL;
-        const cx = (xL + xR) / 2;
+        const cx   = (xL + xR) / 2;
 
         const mesh = getMesh();
-        mesh.material = (f % 2 === 0) ? matEven : matOdd;
-        mesh.rotation.x = -Math.PI / 2;
+        mesh.material    = (f % 2 === 0) ? matEven : matOdd;
+        mesh.rotation.x  = -Math.PI / 2;
         mesh.position.set(cx, boardY, z);
         mesh.scale.set(colW, zLen, 1);
       }
+
+      ancIdx++;
     }
 
     for (let i = poolIdx; i < pool.length; i++) pool[i].visible = false;
