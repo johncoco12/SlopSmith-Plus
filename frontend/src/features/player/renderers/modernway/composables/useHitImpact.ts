@@ -4,7 +4,8 @@
 
 import * as THREE from 'three';
 import {
-  K, NW, BEHIND, PALETTES, fretMid, sY, lowerBoundT,
+  K, NW, BEHIND, PALETTES, NFRETS,
+  fretMid, fretX, sY, lowerBoundT, getAnchorAt,
 } from '../constants';
 import type { RenderBundle, ChartNote } from '@/features/player/types';
 
@@ -74,7 +75,19 @@ export function createHitImpact(): HitImpactPool {
     if (!state || state.state !== 'hit') return;
 
     hitNoteKeys.add(key);
-    const x = n.f === 0 ? 0 : fretMid(n.f);
+    let x: number;
+    if (n.f === 0) {
+      const anc = getAnchorAt(bundle.anchors, chartTime);
+      if (anc) {
+        const fStart = Math.max(1, Math.round(anc.fret));
+        const fLast  = Math.min(NFRETS, fStart + Math.max(1, Math.round(anc.width)) - 1);
+        x = (fretX(fStart - 1) + fretX(fLast)) / 2;
+      } else {
+        x = 0;
+      }
+    } else {
+      x = fretMid(n.f);
+    }
     const y = sY(n.s, bundle.stringCount, bundle.inverted);
     bursts.push({ wallStart: performance.now() / 1000, x, y, s: n.s });
   }

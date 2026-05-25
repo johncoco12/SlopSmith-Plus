@@ -1,15 +1,21 @@
 // Modernway — Highway lane rendering
-// The coloured lane that shows the active fret region scrolling toward the player.
+// Fret-column tiles scrolling toward the hit line at the same rate as notes.
+//
+// Tiles are aligned to a fixed SLICE_DT grid in chart time so that each tile's
+// centre is a constant chart-time point.  dZ(sliceMid - now) then moves at
+// exactly the same velocity as notes (no clamped-boundary half-speed artefact).
 
 import * as THREE from 'three';
 import {
-  K, TS, AHEAD, BEHIND, S_BASE, S_GAP, NH,
-  fretX, sY, dZ, getAnchorAt,
+  K, TS, AHEAD, BEHIND, S_BASE, NH,
+  fretX, dZ,
   HWY_LANE_STRIPE_ODD_HEX, HWY_LANE_STRIPE_EVEN_HEX,
   HWY_LANE_STRIPE_OP_BASE, HWY_LANE_STRIPE_OP_INT,
   NFRETS,
 } from '../constants';
-import type { RenderBundle, Anchor } from '@/features/player/types';
+import type { RenderBundle } from '@/features/player/types';
+
+const SLICE_DT = 0.10; // chart-seconds per tile
 
 export interface LaneState {
   group: THREE.Group;
@@ -25,7 +31,6 @@ export function createLane(): LaneState {
   const laneGeo = new THREE.PlaneGeometry(1, 1);
   const laneMats: THREE.MeshBasicMaterial[] = [];
 
-  // Pre-create materials for odd/even fret stripes
   const matOdd = new THREE.MeshBasicMaterial({
     color: HWY_LANE_STRIPE_ODD_HEX,
     transparent: true,
@@ -80,33 +85,36 @@ export function createLane(): LaneState {
     matOdd.opacity  = alpha;
     matEven.opacity = alpha;
 
-    // Find the anchor active at tStart via binary search
+    // Snap the start to the nearest SLICE_DT boundary so tile chart-times are
+    // stable across frames — only the boundary tiles pop in/out, never move.
+    const firstSliceT = Math.ceil(tStart / SLICE_DT) * SLICE_DT;
+
+    // Binary search: anchor active at firstSliceT
     let ancIdx = 0;
     {
       let lo = 0, hi = anchors.length;
       while (lo < hi) {
         const mid = (lo + hi) >>> 1;
-        if (anchors[mid].time <= tStart) lo = mid + 1;
+        if (anchors[mid].time <= firstSliceT) lo = mid + 1;
         else hi = mid;
       }
       ancIdx = Math.max(0, lo - 1);
     }
 
-    // Walk anchor segments through the visible window.
-    // Each segment is anchored to chart time so it scrolls with the notes.
-    while (ancIdx < anchors.length) {
-      const anc     = anchors[ancIdx];
-      const nextAnc = anchors[ancIdx + 1] as Anchor | undefined;
+    const zLen = TS * SLICE_DT;
 
-      const segStart = Math.max(anc.time, tStart);
-      const segEnd   = nextAnc ? Math.min(nextAnc.time, tEnd) : tEnd;
+    for (let sliceT = firstSliceT; sliceT < tEnd; sliceT += SLICE_DT) {
+      const sliceMid = sliceT + SLICE_DT / 2; // fixed chart time — never depends on now
 
-      if (segStart >= tEnd) break;
+      // Advance anchor pointer
+      while (ancIdx + 1 < anchors.length && anchors[ancIdx + 1].time <= sliceMid) {
+        ancIdx++;
+      }
 
-      // Mid-point of the visible slice — moves with now, exactly like notes
-      const segMidDt = (segStart + segEnd) / 2 - now;
-      const z    = dZ(segMidDt);
-      const zLen = TS * (segEnd - segStart);
+      const anc = anchors[ancIdx];
+      if (!anc || anc.time > sliceMid) continue;
+
+      const z = dZ(sliceMid - now); // moves at same rate as notes
 
       const fStart = Math.max(1, Math.round(anc.fret));
       const w      = Math.max(1, Math.round(anc.width));
@@ -119,13 +127,11 @@ export function createLane(): LaneState {
         const cx   = (xL + xR) / 2;
 
         const mesh = getMesh();
-        mesh.material    = (f % 2 === 0) ? matEven : matOdd;
-        mesh.rotation.x  = -Math.PI / 2;
+        mesh.material   = (f % 2 === 0) ? matEven : matOdd;
+        mesh.rotation.x = -Math.PI / 2;
         mesh.position.set(cx, boardY, z);
         mesh.scale.set(colW, zLen, 1);
       }
-
-      ancIdx++;
     }
 
     for (let i = poolIdx; i < pool.length; i++) pool[i].visible = false;

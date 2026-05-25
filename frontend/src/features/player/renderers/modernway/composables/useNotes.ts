@@ -3,9 +3,9 @@
 
 import * as THREE from 'three';
 import {
-  K, NW, NH, ND, TS, AHEAD, BEHIND, PALETTES,
-  fretMid, dZ, sY, lowerBoundT, MAX_RENDER_STRINGS,
-  CHORD_HWY_LINGER_S,
+  K, NW, NH, ND, TS, AHEAD, BEHIND, PALETTES, NFRETS,
+  fretMid, fretX, dZ, sY, lowerBoundT, MAX_RENDER_STRINGS,
+  CHORD_HWY_LINGER_S, getAnchorAt,
 } from '../constants';
 import type { RenderBundle, ChartNote, ChartChord, ChordTemplate } from '@/features/player/types';
 
@@ -97,7 +97,7 @@ export function createNoteMeshPool(): NoteMeshPool {
     now: number,
     stringCount: number,
     inverted: boolean,
-    curX: number,
+    openX: number,
   ) {
     const s = n.s;
     if (s < 0 || s >= MAX_RENDER_STRINGS) return;
@@ -113,7 +113,7 @@ export function createNoteMeshPool(): NoteMeshPool {
     const hit = Math.abs(dt) < 0.15 || sustained;
     const y = sY(s, stringCount, inverted);
     const noteZ = sustained ? 0 : Math.min(0, dZ(dt));
-    const x = n.f === 0 ? curX : fretMid(n.f);
+    const x = n.f === 0 ? openX : fretMid(n.f);
 
     // Approach rotation: vertical→horizontal as it nears hit line
     const approachRot = n.f > 0 ? Math.max(0, Math.min(1, dt / AHEAD)) * Math.PI / 2 : 0;
@@ -182,16 +182,16 @@ export function createNoteMeshPool(): NoteMeshPool {
     const notes = bundle.notes;
     const chords = bundle.chords;
 
-    // Camera X approximation for open strings
-    let curX = 0;
+    // Stable X for open-string notes: centre of the active anchor's fret range.
+    // Anchors change infrequently so this never jitters.
+    let openX = 0;
     {
-      let sumX = 0, count = 0;
-      for (let i = 0; i < notes.length; i++) {
-        const n = notes[i];
-        if (n.t < t0 || n.t > t1) continue;
-        if (n.f > 0) { sumX += fretMid(n.f); count++; }
+      const anc = getAnchorAt(bundle.anchors, now);
+      if (anc) {
+        const fStart = Math.max(1, Math.round(anc.fret));
+        const fLast  = Math.min(NFRETS, fStart + Math.max(1, Math.round(anc.width)) - 1);
+        openX = (fretX(fStart - 1) + fretX(fLast)) / 2;
       }
-      if (count > 0) curX = sumX / count;
     }
 
     // Draw single notes
@@ -199,7 +199,7 @@ export function createNoteMeshPool(): NoteMeshPool {
     for (let i = startIdx; i < notes.length; i++) {
       const n = notes[i];
       if (n.t > t1 + 1) break;
-      drawNote(n, now, stringCount, inverted, curX);
+      drawNote(n, now, stringCount, inverted, openX);
     }
 
     // Draw chord notes
@@ -212,7 +212,7 @@ export function createNoteMeshPool(): NoteMeshPool {
         const cn = ch.notes[ni];
         drawNote(
           { ...cn, t: ch.t } as unknown as ChartNote,
-          now, stringCount, inverted, curX,
+          now, stringCount, inverted, openX,
         );
       }
     }
