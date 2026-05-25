@@ -1,0 +1,29 @@
+{
+    "hide-files.files": [
+        "ug_browser.py",
+        "vue-frontend/dist",
+        ".claude",
+        ".github",
+        ".specify",
+        ".vscode",
+        "frontend/dist",
+        "frontend/node_modules",
+        "static"
+    ],
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "ug_browser.py": true,
+        "vue-frontend/dist": true,
+        ".claude": true,
+        ".github": true,
+        ".specify": true,
+        ".vscode": true,
+        "frontend/dist": true,
+        "frontend/node_modules": true,
+        "static": true
+    }
+}

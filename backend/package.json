@@ -1,0 +1,63 @@
+{
+  "name": "slopsmith-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Slopsmith Node.js/TypeScript backend — rewrite of the FastAPI server",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@fastify/multipart": "^8.3.0",
+    "@fastify/sensible": "^5.6.0",
+    "@fastify/static": "^7.0.4",
+    "@fastify/websocket": "^10.0.1",
+    "@prisma/client": "^5.22.0",
+    "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
+    "dotenv": "^16.4.7",
+    "fast-xml-parser": "^4.5.1",
+    "fastify": "^4.28.1",
+    "fastify-plugin": "^5.1.0",
+    "glob": "^11.0.0",
+    "js-yaml": "^4.1.0",
+    "lru-cache": "^11.0.2",
+    "minimatch": "^10.2.5",
+    "minio": "^8.0.7",
+    "p-limit": "^6.2.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
+    "reflect-metadata": "^0.2.2",
+    "tsyringe": "^4.10.0",
+    "uuid": "^11.0.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/archiver": "^6.0.3",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.2",
+    "@types/reflect-metadata": "^0.0.5",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^4.1.7",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.7"
+  }
+}

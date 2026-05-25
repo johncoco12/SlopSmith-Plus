@@ -1,0 +1,391 @@
+{
+  "app": {
+    "name": "Slopsmith+"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "delete": "Delete",
+    "loading": "Loading…",
+    "optional": "(optional)",
+    "confirm": "Confirm",
+    "retry": "Retry",
+    "done": "Done",
+    "error": "Error",
+    "none": "None"
+  },
+  "nav": {
+    "library": "Library",
+    "favorites": "Favorites",
+    "gear": "Your Gear",
+    "settings": "Settings",
+    "upload": "Upload",
+    "uploading": "Uploading…",
+    "processing": "Processing…",
+    "uploadDone": "Done",
+    "uploadInvalid": "No valid files uploaded",
+    "uploadError": "Error",
+    "uploadFailed": "Failed: {message}",
+    "uploadSongs": "Upload songs"
+  },
+  "profiles": {
+    "selectTitle": "Select a profile",
+    "selectSubtitle": "Choose who's playing today"
+  },
+  "profileSwitcher": {
+    "activeProfile": "Active profile",
+    "switchTo": "Switch to",
+    "settings": "Settings",
+    "admin": "Admin",
+    "audio": "Audio",
+    "manageProfiles": "Manage Profiles",
+    "signOut": "Sign Out"
+  },
+  "profile": {
+    "pin": {
+      "instruction": "Enter PIN to switch",
+      "error": "Incorrect PIN",
+      "forgotLink": "Forgot PIN? Use recovery phrase"
+    },
+    "recovery": {
+      "instruction": "Enter recovery phrase",
+      "placeholder": "Recovery phrase",
+      "error": "Incorrect recovery phrase",
+      "confirm": "Confirm",
+      "backToPin": "Back to PIN entry"
+    }
+  },
+  "setup": {
+    "title": "Welcome",
+    "subtitle": "Create your admin profile to get started.",
+    "nameLabel": "Profile Name",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "Confirm PIN",
+    "recoveryLabel": "Recovery Phrase",
+    "creating": "Creating...",
+    "submit": "Create Profile & Start",
+    "errors": {
+      "nameRequired": "Name is required",
+      "pinTooShort": "PIN must be at least 4 characters",
+      "pinMismatch": "PINs do not match",
+      "recoveryTooShort": "Recovery phrase must be at least 4 characters",
+      "failed": "Setup failed"
+    }
+  },
+  "admin": {
+    "title": "Admin",
+    "loadError": "Failed to load data",
+    "tabs": {
+      "profiles": "Profiles",
+      "groups": "Permission Groups"
+    },
+    "permissions": {
+      "admin": "Admin",
+      "upload": "Upload",
+      "editTracks": "Edit Tracks",
+      "deleteTracks": "Delete Tracks",
+      "manageProfiles": "Manage Profiles",
+      "managePermissions": "Manage Permissions",
+      "manageSettings": "Manage Settings"
+    },
+    "profiles": {
+      "editTitle": "Edit Profile",
+      "createTitle": "Create Profile",
+      "nameLabel": "Name",
+      "namePlaceholder": "Profile name",
+      "newPinLabel": "New PIN (leave blank to keep)",
+      "pinLabel": "PIN",
+      "pinPlaceholder": "••••",
+      "recoveryLabel": "Recovery phrase",
+      "recoveryPlaceholder": "Secret phrase",
+      "recoveryHintLabel": "Recovery hint",
+      "recoveryHintPlaceholder": "Hint shown on recovery screen",
+      "deleteConfirm": "Delete this profile? This cannot be undone.",
+      "newButton": "New Profile",
+      "locked": "Locked",
+      "you": "You",
+      "createdAt": "Created {date}",
+      "empty": "No profiles yet.",
+      "saveError": "Failed to save profile",
+      "updateError": "Failed to update profile",
+      "deleteError": "Failed to delete profile"
+    },
+    "groups": {
+      "editTitle": "Edit Group",
+      "createTitle": "Create Permission Group",
+      "nameLabel": "Group name",
+      "namePlaceholder": "e.g. Guests",
+      "permissionsLabel": "Permissions",
+      "assignProfilesLabel": "Assign Profiles",
+      "noProfiles": "No profiles available.",
+      "deleteConfirm": "Delete this permission group? This cannot be undone.",
+      "newButton": "New Group",
+      "noPermissions": "No permissions",
+      "members": "Members:",
+      "noMembers": "None",
+      "empty": "No permission groups yet.",
+      "saveError": "Failed to save group",
+      "deleteError": "Failed to delete group"
+    }
+  },
+  "library": {
+    "title": "Library",
+    "songCount": "{count} songs",
+    "empty": "No songs found",
+    "loadingMore": "Loading more…",
+    "search": {
+      "placeholder": "Search songs, artists, albums…",
+      "placeholderWithCount": "Search {count} songs…"
+    },
+    "format": {
+      "all": "All",
+      "psarc": "PSARC",
+      "sloppak": "Sloppak",
+      "folder": "Folder"
+    },
+    "sort": {
+      "artistAsc": "Artist A–Z",
+      "artistDesc": "Artist Z–A",
+      "titleAsc": "Title A–Z",
+      "titleDesc": "Title Z–A",
+      "recent": "Recently added",
+      "yearDesc": "Newest year",
+      "yearAsc": "Oldest year",
+      "tuning": "Tuning"
+    },
+    "filters": {
+      "button": "Filters",
+      "title": "Filters",
+      "hint": "+ require · − exclude · click again to clear",
+      "arrangements": "Arrangements",
+      "lead": "Lead",
+      "rhythm": "Rhythm",
+      "bass": "Bass",
+      "activeCount": "{count} active",
+      "stems": "Stems",
+      "sloppakOnly": "Sloppak only",
+      "stemGuitar": "guitar",
+      "stemBass": "bass",
+      "stemDrums": "drums",
+      "stemVocals": "vocals",
+      "stemPiano": "piano",
+      "stemOther": "other",
+      "lyrics": "Lyrics",
+      "hasLyrics": "Has lyrics",
+      "noLyrics": "No lyrics",
+      "tuning": "Tuning",
+      "selectedCount": "{count} selected",
+      "clearAll": "Clear all",
+      "apply": "Apply"
+    },
+    "chips": {
+      "arrangement": "Arr: {name}",
+      "noArrangement": "No {name}",
+      "stem": "Stem: {name}",
+      "noStem": "No stem: {name}",
+      "hasLyrics": "Has lyrics",
+      "noLyrics": "No lyrics",
+      "tuning": "Tuning: {name}",
+      "clearAll": "Clear all"
+    },
+    "song": {
+      "removeFavorite": "Remove from favorites",
+      "addFavorite": "Add to favorites",
+      "edit": "Edit song",
+      "filterByArtist": "Filter by {artist}"
+    },
+    "tree": {
+      "unknownArtist": "Unknown Artist",
+      "unknownAlbum": "Unknown Album"
+    }
+  },
+  "favorites": {
+    "title": "Favorites",
+    "songCount": "{count} songs",
+    "empty": "No favorites yet"
+  },
+  "gear": {
+    "title": "Your Gear",
+    "placeholder": "Your gear presets and equipment will appear here."
+  },
+  "player": {
+    "loadingTrack": "Loading track…",
+    "calibration": {
+      "prompt": "Calibrate audio & input latency for accurate play-along",
+      "button": "Calibrate"
+    },
+    "controls": {
+      "backTitle": "Back to library (Esc)",
+      "seekBackTitle": "Seek −5s (←)",
+      "pauseTitle": "Pause (Space)",
+      "playTitle": "Play (Space)",
+      "seekForwardTitle": "Seek +5s (→)",
+      "arrangementTitle": "Arrangement",
+      "micTitle": "Toggle play-along mic (M)",
+      "lyricsTitle": "Toggle lyrics (\\)",
+      "tunerTitle": "Tune instrument to song tuning",
+      "mixerTitle": "Mixer",
+      "dismiss": "Dismiss",
+      "latencyTitle": "Measure audio latency",
+      "avSyncTitle": "A/V sync offset — double-click to reset",
+      "avMinus": "A/V −10ms ([)",
+      "avPlus": "A/V +10ms (])",
+      "speed": "Speed",
+      "speedTitle": "Playback speed",
+      "mastery": "Mastery",
+      "masteryTitle": "Difficulty filter"
+    },
+    "renderer": {
+      "title": "Renderer (V)"
+    },
+    "viz": {
+      "auto": "Auto",
+      "default": "Default",
+      "title": "Visualization"
+    },
+    "loop": {
+      "setStartTitle": "Set loop start (A)",
+      "setEndTitle": "Set loop end (B)",
+      "saveTitle": "Save loop",
+      "clearTitle": "Clear loop",
+      "saved": "Saved",
+      "deleteTitle": "Delete loop"
+    },
+    "mixer": {
+      "title": "Mixer",
+      "master": "Master",
+      "song": "Song",
+      "monitor": "Monitor"
+    },
+    "tuner": {
+      "title": "Tune to song",
+      "eStandard": "E Standard",
+      "noSong": "Load a song to see target notes",
+      "detected": "Detected"
+    },
+    "latency": {
+      "title": "Latency Calibration",
+      "audioLabel": "Audio output latency",
+      "audioDesc": "Tap when you hear each metronome click. Measures speaker delay → sets A/V offset.",
+      "inputLabel": "Input detection latency",
+      "inputDesc": "Pluck your open E string on 5 slow clicks. Measures mic→YIN pipeline delay → centers the hit window.",
+      "avOffset": "A/V offset:",
+      "inputLatency": "Input latency:",
+      "uncalibrated": "uncalibrated",
+      "startTap": "Start — Step 1: Tap test",
+      "countdownGuitar": "Play guitar with each click…",
+      "countdownTap": "Tap when you hear each click…",
+      "tapInstruction": "Tap when you hear each click",
+      "tap": "TAP",
+      "audioResult": "Audio output latency",
+      "guitarInstruction": "Pluck your open E string on each click",
+      "startGuitar": "Step 2: Guitar test",
+      "micUnavailable": "Mic plugin not loaded — guitar latency test unavailable.",
+      "skipGuitar": "Skip — apply audio offset only",
+      "detected": "detected ✓",
+      "waiting": "waiting…",
+      "resultAudio": "Audio output",
+      "resultAvTarget": "→ A/V offset",
+      "resultInput": "Input pipeline",
+      "resultHitTarget": "→ hit window",
+      "negativeWarning": "Negative input latency suggests measurement error — try again.",
+      "poorConsistency": "Guitar consistency was poor — results may be inaccurate.",
+      "retry": "Retry",
+      "applyBoth": "Apply both"
+    },
+    "debug": {
+      "next": "Next:",
+      "hit": "Hit:",
+      "yin": "YIN:",
+      "renderTime": "Render T:",
+      "audioTime": "Audio T:",
+      "hitMap": "HM:",
+      "dump": "Dump"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "language": {
+      "title": "Language",
+      "label": "Display language"
+    },
+    "playback": {
+      "title": "Playback",
+      "lefty": "Left-handed mode",
+      "defaultArrangement": "Default arrangement",
+      "arrangementAuto": "Auto",
+      "arrangementLead": "Lead",
+      "arrangementRhythm": "Rhythm",
+      "arrangementBass": "Bass",
+      "psarcPlatform": "PSARC platform filter",
+      "platformAll": "All",
+      "platformPc": "PC only (_p.psarc)",
+      "platformMac": "Mac only (_m.psarc)",
+      "demucsUrl": "Demucs server URL",
+      "demucsPlaceholder": "http://..."
+    },
+    "about": {
+      "title": "About",
+      "version": "Version:",
+      "license": "AGPL v3.0 License",
+      "sourceCode": "Source Code",
+      "licenseNotice": "Slopsmith is free software. You can redistribute it and modify it under the terms of the AGPL. If you run a modified version that interacts with users over a network, you must make the modified source available to those users."
+    },
+    "audio": {
+      "title": "Audio",
+      "micLabel": "Microphone",
+      "micDefault": "Default microphone",
+      "micRefresh": "Refresh",
+      "livePreview": "Live preview",
+      "testMic": "Test mic",
+      "stop": "Stop",
+      "startPrompt": "Start test to see live pitch",
+      "clarityLabel": "Clarity threshold",
+      "clarityHint": "Lower = more detections (including uncertain ones). Higher = only very clean pitches get through.",
+      "monitorLabel": "Monitor volume",
+      "monitorHint": "Passes the raw mic signal through to your speakers so you can hear yourself play. Starts at 0 to avoid feedback — raise it only when using headphones. Also adjustable in the player's Mixer popover while playing.",
+      "monitorWarning": "⚠ Raise above 0 only when using headphones — speakers will cause feedback."
+    },
+    "scan": {
+      "title": "Library",
+      "scanning": "Scanning…",
+      "rescan": "Rescan",
+      "fullRescan": "Full Rescan"
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "systemInfo": "System info",
+      "consoleLogs": "Console logs",
+      "pluginData": "Plugin data",
+      "redact": "Redact paths & hostnames",
+      "exporting": "Exporting…",
+      "export": "Export diagnostics",
+      "exported": "Diagnostics exported",
+      "exportFailed": "Export failed: {message}"
+    },
+    "backup": {
+      "title": "Backup",
+      "export": "Export settings",
+      "importing": "Importing…",
+      "import": "Import settings",
+      "importComplete": "Import complete — reload to apply",
+      "importFailed": "Import failed: {message}"
+    },
+    "dlc": {
+      "label": "DLC folder path",
+      "placeholder": "/path/to/dlc",
+      "browse": "Browse",
+      "saved": "✓ Saved"
+    },
+    "plugins": {
+      "bundled": "bundled",
+      "checkUpdates": "Check for updates",
+      "updating": "Updating…",
+      "updateTo": "Update to {version}"
+    }
+  },
+  "plugin": {
+    "notFound": "Plugin not found"
+  }
+}

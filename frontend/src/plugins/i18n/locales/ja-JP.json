@@ -1,0 +1,382 @@
+{
+  "app": {
+    "name": "Slopsmith+"
+  },
+  "common": {
+    "cancel": "キャンセル",
+    "save": "保存",
+    "saving": "保存中…",
+    "delete": "削除",
+    "loading": "読み込み中…",
+    "optional": "（任意）",
+    "confirm": "確認",
+    "retry": "再試行",
+    "done": "完了",
+    "error": "エラー",
+    "none": "なし"
+  },
+  "nav": {
+    "library": "ライブラリ",
+    "favorites": "お気に入り",
+    "gear": "マイギア",
+    "settings": "設定",
+    "upload": "アップロード",
+    "uploading": "アップロード中…",
+    "processing": "処理中…",
+    "uploadDone": "完了",
+    "uploadInvalid": "有効なファイルがアップロードされていません",
+    "uploadError": "エラー",
+    "uploadFailed": "失敗: {message}",
+    "uploadSongs": "曲をアップロード"
+  },
+  "profiles": {
+    "selectTitle": "プロフィールを選択",
+    "selectSubtitle": "今日プレイするユーザーを選択"
+  },
+  "profileSwitcher": {
+    "activeProfile": "アクティブなプロフィール",
+    "switchTo": "切り替え先",
+    "settings": "設定",
+    "admin": "管理者",
+    "audio": "オーディオ",
+    "manageProfiles": "プロフィール管理",
+    "signOut": "サインアウト"
+  },
+  "profile": {
+    "pin": {
+      "instruction": "切り替えるにはPINを入力",
+      "error": "PINが正しくありません",
+      "forgotLink": "PINを忘れた場合は回復フレーズを使用"
+    },
+    "recovery": {
+      "instruction": "回復フレーズを入力",
+      "placeholder": "回復フレーズ",
+      "error": "回復フレーズが正しくありません",
+      "confirm": "確認",
+      "backToPin": "PIN入力に戻る"
+    }
+  },
+  "setup": {
+    "title": "ようこそ",
+    "subtitle": "管理者プロフィールを作成して始めましょう。",
+    "nameLabel": "プロフィール名",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "PINの確認",
+    "recoveryLabel": "回復フレーズ",
+    "creating": "作成中...",
+    "submit": "プロフィールを作成して開始",
+    "errors": {
+      "nameRequired": "名前は必須です",
+      "pinTooShort": "PINは4文字以上必要です",
+      "pinMismatch": "PINが一致しません",
+      "recoveryTooShort": "回復フレーズは4文字以上必要です",
+      "failed": "セットアップに失敗しました"
+    }
+  },
+  "admin": {
+    "title": "管理者",
+    "loadError": "データの読み込みに失敗しました",
+    "tabs": {
+      "profiles": "プロフィール",
+      "groups": "権限グループ"
+    },
+    "permissions": {
+      "admin": "管理者",
+      "upload": "アップロード",
+      "editTracks": "トラックを編集",
+      "deleteTracks": "トラックを削除",
+      "manageProfiles": "プロフィール管理",
+      "managePermissions": "権限管理",
+      "manageSettings": "設定管理"
+    },
+    "profiles": {
+      "editTitle": "プロフィールを編集",
+      "createTitle": "プロフィールを作成",
+      "nameLabel": "名前",
+      "namePlaceholder": "プロフィール名",
+      "newPinLabel": "新しいPIN（変更しない場合は空白）",
+      "pinLabel": "PIN",
+      "pinPlaceholder": "••••",
+      "recoveryLabel": "回復フレーズ",
+      "recoveryPlaceholder": "秘密のフレーズ",
+      "recoveryHintLabel": "回復ヒント",
+      "recoveryHintPlaceholder": "回復画面に表示するヒント",
+      "deleteConfirm": "このプロフィールを削除しますか？この操作は元に戻せません。",
+      "newButton": "新しいプロフィール",
+      "locked": "ロック済み",
+      "you": "あなた",
+      "createdAt": "{date} 作成",
+      "empty": "プロフィールがありません。",
+      "saveError": "プロフィールの保存に失敗しました",
+      "updateError": "プロフィールの更新に失敗しました",
+      "deleteError": "プロフィールの削除に失敗しました"
+    },
+    "groups": {
+      "editTitle": "グループを編集",
+      "createTitle": "権限グループを作成",
+      "nameLabel": "グループ名",
+      "namePlaceholder": "例：ゲスト",
+      "permissionsLabel": "権限",
+      "assignProfilesLabel": "プロフィールを割り当て",
+      "noProfiles": "利用可能なプロフィールがありません。",
+      "deleteConfirm": "この権限グループを削除しますか？この操作は元に戻せません。",
+      "newButton": "新しいグループ",
+      "noPermissions": "権限なし",
+      "members": "メンバー：",
+      "noMembers": "なし",
+      "empty": "権限グループがありません。",
+      "saveError": "グループの保存に失敗しました",
+      "deleteError": "グループの削除に失敗しました"
+    }
+  },
+  "library": {
+    "title": "ライブラリ",
+    "songCount": "{count} 曲",
+    "empty": "曲が見つかりません",
+    "loadingMore": "さらに読み込み中…",
+    "search": {
+      "placeholder": "曲、アーティスト、アルバムを検索…",
+      "placeholderWithCount": "{count} 曲を検索…"
+    },
+    "format": {
+      "all": "すべて",
+      "psarc": "PSARC",
+      "sloppak": "Sloppak",
+      "folder": "フォルダ"
+    },
+    "sort": {
+      "artistAsc": "アーティスト A–Z",
+      "artistDesc": "アーティスト Z–A",
+      "titleAsc": "タイトル A–Z",
+      "titleDesc": "タイトル Z–A",
+      "recent": "最近追加された",
+      "yearDesc": "新しい年順",
+      "yearAsc": "古い年順",
+      "tuning": "チューニング"
+    },
+    "filters": {
+      "button": "フィルター",
+      "title": "フィルター",
+      "hint": "+ 含める · − 除外する · もう一度クリックでクリア",
+      "arrangements": "アレンジ",
+      "lead": "リード",
+      "rhythm": "リズム",
+      "bass": "ベース",
+      "activeCount": "{count} 件有効",
+      "stems": "ステム",
+      "sloppakOnly": "Sloppakのみ",
+      "stemGuitar": "ギター",
+      "stemBass": "ベース",
+      "stemDrums": "ドラム",
+      "stemVocals": "ボーカル",
+      "stemPiano": "ピアノ",
+      "stemOther": "その他",
+      "lyrics": "歌詞",
+      "hasLyrics": "歌詞あり",
+      "noLyrics": "歌詞なし",
+      "tuning": "チューニング",
+      "selectedCount": "{count} 件選択",
+      "clearAll": "すべてクリア",
+      "apply": "適用"
+    },
+    "chips": {
+      "arrangement": "アレンジ: {name}",
+      "noArrangement": "{name}なし",
+      "stem": "ステム: {name}",
+      "noStem": "ステムなし: {name}",
+      "hasLyrics": "歌詞あり",
+      "noLyrics": "歌詞なし",
+      "tuning": "チューニング: {name}",
+      "clearAll": "すべてクリア"
+    },
+    "song": {
+      "removeFavorite": "お気に入りから削除",
+      "addFavorite": "お気に入りに追加",
+      "edit": "曲を編集",
+      "filterByArtist": "{artist} でフィルター"
+    },
+    "tree": {
+      "unknownArtist": "不明なアーティスト",
+      "unknownAlbum": "不明なアルバム"
+    }
+  },
+  "favorites": {
+    "title": "お気に入り",
+    "songCount": "{count} 曲",
+    "empty": "お気に入りはまだありません"
+  },
+  "gear": {
+    "title": "マイギア",
+    "placeholder": "ギアのプリセットと機器がここに表示されます。"
+  },
+  "player": {
+    "loadingTrack": "トラックを読み込み中…",
+    "calibration": {
+      "prompt": "正確なプレイに合わせてオーディオ・入力遅延を調整",
+      "button": "キャリブレーション"
+    },
+    "controls": {
+      "backTitle": "ライブラリに戻る (Esc)",
+      "seekBackTitle": "−5秒巻き戻し (←)",
+      "pauseTitle": "一時停止 (スペース)",
+      "playTitle": "再生 (スペース)",
+      "seekForwardTitle": "+5秒早送り (→)",
+      "arrangementTitle": "アレンジ",
+      "micTitle": "プレイ用マイクの切り替え (M)",
+      "lyricsTitle": "歌詞の表示切り替え (\\)",
+      "tunerTitle": "曲のチューニングに合わせる",
+      "mixerTitle": "ミキサー"
+    },
+    "renderer": {
+      "title": "レンダラー (V)"
+    },
+    "viz": {
+      "auto": "自動",
+      "default": "デフォルト",
+      "title": "ビジュアライゼーション"
+    },
+    "loop": {
+      "setStartTitle": "ループ開始点を設定 (A)",
+      "setEndTitle": "ループ終了点を設定 (B)",
+      "saveTitle": "ループを保存",
+      "clearTitle": "ループをクリア",
+      "saved": "保存済み",
+      "deleteTitle": "ループを削除"
+    },
+    "mixer": {
+      "title": "ミキサー",
+      "master": "マスター",
+      "song": "曲",
+      "monitor": "モニター"
+    },
+    "tuner": {
+      "title": "曲に合わせてチューニング",
+      "eStandard": "Eスタンダード",
+      "noSong": "曲を読み込むと目標音が表示されます",
+      "detected": "検出済み"
+    },
+    "latency": {
+      "title": "レイテンシーキャリブレーション",
+      "audioLabel": "オーディオ出力レイテンシー",
+      "audioDesc": "メトロノームの音が聞こえるたびにタップしてください。スピーカーの遅延を測定 → A/Vオフセットを設定。",
+      "inputLabel": "入力検出レイテンシー",
+      "inputDesc": "5回のゆっくりしたクリックでオープンE弦をはじいてください。マイク→YINパイプライン遅延を測定 → ヒットウィンドウを中央に設定。",
+      "avOffset": "A/Vオフセット:",
+      "inputLatency": "入力レイテンシー:",
+      "uncalibrated": "未調整",
+      "startTap": "開始 — ステップ1：タップテスト",
+      "countdownGuitar": "各クリックに合わせてギターを弾いてください…",
+      "countdownTap": "各クリックが聞こえたらタップしてください…",
+      "tapInstruction": "各クリックが聞こえたらタップしてください",
+      "tap": "タップ",
+      "audioResult": "オーディオ出力レイテンシー",
+      "guitarInstruction": "各クリックでオープンE弦をはじいてください",
+      "startGuitar": "ステップ2：ギターテスト",
+      "micUnavailable": "マイクプラグインが読み込まれていません — ギターレイテンシーテストは利用できません。",
+      "skipGuitar": "スキップ — オーディオオフセットのみ適用",
+      "detected": "検出済み ✓",
+      "waiting": "待機中…",
+      "resultAudio": "オーディオ出力",
+      "resultAvTarget": "→ A/Vオフセット",
+      "resultInput": "入力パイプライン",
+      "resultHitTarget": "→ ヒットウィンドウ",
+      "negativeWarning": "入力レイテンシーが負の値は測定エラーを示します — 再試行してください。",
+      "poorConsistency": "ギターの一貫性が低かったため — 結果が不正確な可能性があります。",
+      "retry": "再試行",
+      "applyBoth": "両方を適用"
+    },
+    "debug": {
+      "next": "次:",
+      "hit": "ヒット:",
+      "yin": "YIN:",
+      "renderTime": "レンダー T:",
+      "audioTime": "オーディオ T:",
+      "hitMap": "HM:",
+      "dump": "ダンプ"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "language": {
+      "title": "言語",
+      "label": "表示言語"
+    },
+    "playback": {
+      "title": "再生",
+      "lefty": "左利きモード",
+      "defaultArrangement": "デフォルトのアレンジ",
+      "arrangementAuto": "自動",
+      "arrangementLead": "リード",
+      "arrangementRhythm": "リズム",
+      "arrangementBass": "ベース",
+      "psarcPlatform": "PSARCプラットフォームフィルター",
+      "platformAll": "すべて",
+      "platformPc": "PCのみ (_p.psarc)",
+      "platformMac": "Macのみ (_m.psarc)",
+      "demucsUrl": "DemucsサーバーURL",
+      "demucsPlaceholder": "http://..."
+    },
+    "about": {
+      "title": "バージョン情報",
+      "version": "バージョン:",
+      "license": "AGPL v3.0 ライセンス",
+      "sourceCode": "ソースコード",
+      "licenseNotice": "Slopsmithはフリーソフトウェアです。AGPLの条件の下で再配布・改変することができます。ネットワーク経由でユーザーと対話する改変版を実行する場合、改変されたソースコードをユーザーに提供する必要があります。"
+    },
+    "audio": {
+      "title": "オーディオ",
+      "micLabel": "マイクロフォン",
+      "micDefault": "デフォルトのマイクロフォン",
+      "micRefresh": "更新",
+      "livePreview": "ライブプレビュー",
+      "testMic": "マイクをテスト",
+      "stop": "停止",
+      "startPrompt": "テストを開始してライブピッチを確認",
+      "clarityLabel": "明瞭度しきい値",
+      "clarityHint": "低い = より多くの検出（不確かなものも含む）。高い = 非常に明確なピッチのみ通過。",
+      "monitorLabel": "モニター音量",
+      "monitorHint": "演奏しながら自分の音を聞けるようにマイクの生信号をスピーカーに送ります。フィードバックを避けるため0から始まります — ヘッドフォン使用時のみ上げてください。プレイヤーのミキサーでも調整可能。",
+      "monitorWarning": "⚠ ヘッドフォン使用時のみ0より上げてください — スピーカーはフィードバックを引き起こします。"
+    },
+    "scan": {
+      "title": "ライブラリ",
+      "scanning": "スキャン中…",
+      "rescan": "再スキャン",
+      "fullRescan": "フルスキャン"
+    },
+    "diagnostics": {
+      "title": "診断",
+      "systemInfo": "システム情報",
+      "consoleLogs": "コンソールログ",
+      "pluginData": "プラグインデータ",
+      "redact": "パスとホスト名を非表示",
+      "exporting": "エクスポート中…",
+      "export": "診断をエクスポート",
+      "exported": "診断をエクスポートしました",
+      "exportFailed": "エクスポートに失敗しました: {message}"
+    },
+    "backup": {
+      "title": "バックアップ",
+      "export": "設定をエクスポート",
+      "importing": "インポート中…",
+      "import": "設定をインポート",
+      "importComplete": "インポート完了 — 再読み込みして適用",
+      "importFailed": "インポートに失敗しました: {message}"
+    },
+    "dlc": {
+      "label": "DLCフォルダのパス",
+      "placeholder": "/path/to/dlc",
+      "browse": "参照",
+      "saved": "✓ 保存済み"
+    },
+    "plugins": {
+      "bundled": "バンドル済み",
+      "checkUpdates": "アップデートを確認",
+      "updating": "アップデート中…",
+      "updateTo": "{version} にアップデート"
+    }
+  },
+  "plugin": {
+    "notFound": "プラグインが見つかりません"
+  }
+}

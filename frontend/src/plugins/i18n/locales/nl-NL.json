@@ -1,0 +1,382 @@
+{
+  "app": {
+    "name": "Slopsmith+"
+  },
+  "common": {
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "saving": "Opslaan…",
+    "delete": "Verwijderen",
+    "loading": "Laden…",
+    "optional": "(optioneel)",
+    "confirm": "Bevestigen",
+    "retry": "Opnieuw proberen",
+    "done": "Klaar",
+    "error": "Fout",
+    "none": "Geen"
+  },
+  "nav": {
+    "library": "Bibliotheek",
+    "favorites": "Favorieten",
+    "gear": "Jouw uitrusting",
+    "settings": "Instellingen",
+    "upload": "Uploaden",
+    "uploading": "Uploaden…",
+    "processing": "Verwerken…",
+    "uploadDone": "Klaar",
+    "uploadInvalid": "Geen geldige bestanden geüpload",
+    "uploadError": "Fout",
+    "uploadFailed": "Mislukt: {message}",
+    "uploadSongs": "Nummers uploaden"
+  },
+  "profiles": {
+    "selectTitle": "Selecteer een profiel",
+    "selectSubtitle": "Kies wie er vandaag speelt"
+  },
+  "profileSwitcher": {
+    "activeProfile": "Actief profiel",
+    "switchTo": "Wisselen naar",
+    "settings": "Instellingen",
+    "admin": "Beheer",
+    "audio": "Audio",
+    "manageProfiles": "Profielen beheren",
+    "signOut": "Afmelden"
+  },
+  "profile": {
+    "pin": {
+      "instruction": "Voer PIN in om te wisselen",
+      "error": "Onjuiste PIN",
+      "forgotLink": "PIN vergeten? Gebruik herstelzin"
+    },
+    "recovery": {
+      "instruction": "Voer herstelzin in",
+      "placeholder": "Herstelzin",
+      "error": "Onjuiste herstelzin",
+      "confirm": "Bevestigen",
+      "backToPin": "Terug naar PIN-invoer"
+    }
+  },
+  "setup": {
+    "title": "Welkom",
+    "subtitle": "Maak uw beheerprofiel aan om te beginnen.",
+    "nameLabel": "Profielnaam",
+    "pinLabel": "PIN",
+    "pinConfirmLabel": "PIN bevestigen",
+    "recoveryLabel": "Herstelzin",
+    "creating": "Aanmaken...",
+    "submit": "Profiel aanmaken & starten",
+    "errors": {
+      "nameRequired": "Naam is vereist",
+      "pinTooShort": "PIN moet minimaal 4 tekens bevatten",
+      "pinMismatch": "PINs komen niet overeen",
+      "recoveryTooShort": "Herstelzin moet minimaal 4 tekens bevatten",
+      "failed": "Instellen mislukt"
+    }
+  },
+  "admin": {
+    "title": "Beheer",
+    "loadError": "Gegevens laden mislukt",
+    "tabs": {
+      "profiles": "Profielen",
+      "groups": "Machtigingsgroepen"
+    },
+    "permissions": {
+      "admin": "Beheer",
+      "upload": "Uploaden",
+      "editTracks": "Tracks bewerken",
+      "deleteTracks": "Tracks verwijderen",
+      "manageProfiles": "Profielen beheren",
+      "managePermissions": "Machtigingen beheren",
+      "manageSettings": "Instellingen beheren"
+    },
+    "profiles": {
+      "editTitle": "Profiel bewerken",
+      "createTitle": "Profiel aanmaken",
+      "nameLabel": "Naam",
+      "namePlaceholder": "Profielnaam",
+      "newPinLabel": "Nieuwe PIN (leeg laten om te behouden)",
+      "pinLabel": "PIN",
+      "pinPlaceholder": "••••",
+      "recoveryLabel": "Herstelzin",
+      "recoveryPlaceholder": "Geheime zin",
+      "recoveryHintLabel": "Herstel hint",
+      "recoveryHintPlaceholder": "Hint getoond op herstelscherm",
+      "deleteConfirm": "Dit profiel verwijderen? Dit kan niet ongedaan worden gemaakt.",
+      "newButton": "Nieuw profiel",
+      "locked": "Vergrendeld",
+      "you": "Jij",
+      "createdAt": "Aangemaakt op {date}",
+      "empty": "Nog geen profielen.",
+      "saveError": "Profiel opslaan mislukt",
+      "updateError": "Profiel bijwerken mislukt",
+      "deleteError": "Profiel verwijderen mislukt"
+    },
+    "groups": {
+      "editTitle": "Groep bewerken",
+      "createTitle": "Machtigingsgroep aanmaken",
+      "nameLabel": "Groepsnaam",
+      "namePlaceholder": "bijv. Gasten",
+      "permissionsLabel": "Machtigingen",
+      "assignProfilesLabel": "Profielen toewijzen",
+      "noProfiles": "Geen profielen beschikbaar.",
+      "deleteConfirm": "Deze machtigingsgroep verwijderen? Dit kan niet ongedaan worden gemaakt.",
+      "newButton": "Nieuwe groep",
+      "noPermissions": "Geen machtigingen",
+      "members": "Leden:",
+      "noMembers": "Geen",
+      "empty": "Nog geen machtigingsgroepen.",
+      "saveError": "Groep opslaan mislukt",
+      "deleteError": "Groep verwijderen mislukt"
+    }
+  },
+  "library": {
+    "title": "Bibliotheek",
+    "songCount": "{count} nummers",
+    "empty": "Geen nummers gevonden",
+    "loadingMore": "Meer laden…",
+    "search": {
+      "placeholder": "Zoek nummers, artiesten, albums…",
+      "placeholderWithCount": "Zoek in {count} nummers…"
+    },
+    "format": {
+      "all": "Alle",
+      "psarc": "PSARC",
+      "sloppak": "Sloppak",
+      "folder": "Map"
+    },
+    "sort": {
+      "artistAsc": "Artiest A–Z",
+      "artistDesc": "Artiest Z–A",
+      "titleAsc": "Titel A–Z",
+      "titleDesc": "Titel Z–A",
+      "recent": "Recent toegevoegd",
+      "yearDesc": "Nieuwste jaar",
+      "yearAsc": "Oudste jaar",
+      "tuning": "Stemming"
+    },
+    "filters": {
+      "button": "Filters",
+      "title": "Filters",
+      "hint": "+ vereisen · − uitsluiten · opnieuw klikken om te wissen",
+      "arrangements": "Arrangementen",
+      "lead": "Lead",
+      "rhythm": "Ritme",
+      "bass": "Bas",
+      "activeCount": "{count} actief",
+      "stems": "Stems",
+      "sloppakOnly": "Alleen Sloppak",
+      "stemGuitar": "gitaar",
+      "stemBass": "bas",
+      "stemDrums": "drums",
+      "stemVocals": "zang",
+      "stemPiano": "piano",
+      "stemOther": "overig",
+      "lyrics": "Songtekst",
+      "hasLyrics": "Heeft songtekst",
+      "noLyrics": "Geen songtekst",
+      "tuning": "Stemming",
+      "selectedCount": "{count} geselecteerd",
+      "clearAll": "Alles wissen",
+      "apply": "Toepassen"
+    },
+    "chips": {
+      "arrangement": "Arr: {name}",
+      "noArrangement": "Geen {name}",
+      "stem": "Stem: {name}",
+      "noStem": "Geen stem: {name}",
+      "hasLyrics": "Heeft songtekst",
+      "noLyrics": "Geen songtekst",
+      "tuning": "Stemming: {name}",
+      "clearAll": "Alles wissen"
+    },
+    "song": {
+      "removeFavorite": "Uit favorieten verwijderen",
+      "addFavorite": "Aan favorieten toevoegen",
+      "edit": "Nummer bewerken",
+      "filterByArtist": "Filteren op {artist}"
+    },
+    "tree": {
+      "unknownArtist": "Onbekende artiest",
+      "unknownAlbum": "Onbekend album"
+    }
+  },
+  "favorites": {
+    "title": "Favorieten",
+    "songCount": "{count} nummers",
+    "empty": "Nog geen favorieten"
+  },
+  "gear": {
+    "title": "Jouw uitrusting",
+    "placeholder": "Jouw uitrustingspresets en apparatuur verschijnen hier."
+  },
+  "player": {
+    "loadingTrack": "Track laden…",
+    "calibration": {
+      "prompt": "Kalibreer audio- en invoerlatentie voor nauwkeurig meespelen",
+      "button": "Kalibreren"
+    },
+    "controls": {
+      "backTitle": "Terug naar bibliotheek (Esc)",
+      "seekBackTitle": "−5s terugspoelen (←)",
+      "pauseTitle": "Pauzeren (Spatie)",
+      "playTitle": "Afspelen (Spatie)",
+      "seekForwardTitle": "+5s vooruitspoelen (→)",
+      "arrangementTitle": "Arrangement",
+      "micTitle": "Meespeel-microfoon in-/uitschakelen (M)",
+      "lyricsTitle": "Songtekst in-/uitschakelen (\\)",
+      "tunerTitle": "Instrument stemmen op liedtoonsoort",
+      "mixerTitle": "Mixer"
+    },
+    "renderer": {
+      "title": "Renderer (V)"
+    },
+    "viz": {
+      "auto": "Auto",
+      "default": "Standaard",
+      "title": "Visualisatie"
+    },
+    "loop": {
+      "setStartTitle": "Lusstart instellen (A)",
+      "setEndTitle": "Luseinde instellen (B)",
+      "saveTitle": "Lus opslaan",
+      "clearTitle": "Lus wissen",
+      "saved": "Opgeslagen",
+      "deleteTitle": "Lus verwijderen"
+    },
+    "mixer": {
+      "title": "Mixer",
+      "master": "Master",
+      "song": "Nummer",
+      "monitor": "Monitor"
+    },
+    "tuner": {
+      "title": "Stemmen op nummer",
+      "eStandard": "E Standaard",
+      "noSong": "Laad een nummer om doelnoten te zien",
+      "detected": "Gedetecteerd"
+    },
+    "latency": {
+      "title": "Latentie kalibratie",
+      "audioLabel": "Audio-uitvoerlatentie",
+      "audioDesc": "Tik wanneer u elke metronoomklik hoort. Meet luidspreker vertraging → stelt A/V-offset in.",
+      "inputLabel": "Invoerdetectielatentie",
+      "inputDesc": "Tokkelt uw open E-snaar bij 5 langzame klikken. Meet mic→YIN-pipeline vertraging → centreert het raakvenster.",
+      "avOffset": "A/V-offset:",
+      "inputLatency": "Invoerlatentie:",
+      "uncalibrated": "niet gekalibreerd",
+      "startTap": "Start — Stap 1: Tiktest",
+      "countdownGuitar": "Speel gitaar bij elke klik…",
+      "countdownTap": "Tik wanneer u elke klik hoort…",
+      "tapInstruction": "Tik wanneer u elke klik hoort",
+      "tap": "TIK",
+      "audioResult": "Audio-uitvoerlatentie",
+      "guitarInstruction": "Tokkelt uw open E-snaar bij elke klik",
+      "startGuitar": "Stap 2: Gitaartest",
+      "micUnavailable": "Microfoon-plugin niet geladen — gitaarlatentietest niet beschikbaar.",
+      "skipGuitar": "Overslaan — alleen audio-offset toepassen",
+      "detected": "gedetecteerd ✓",
+      "waiting": "wachten…",
+      "resultAudio": "Audio-uitvoer",
+      "resultAvTarget": "→ A/V-offset",
+      "resultInput": "Invoer-pipeline",
+      "resultHitTarget": "→ Raakvenster",
+      "negativeWarning": "Negatieve invoerlatentie duidt op meetfout — probeer opnieuw.",
+      "poorConsistency": "Gitaar consistentie was slecht — resultaten kunnen onnauwkeurig zijn.",
+      "retry": "Opnieuw proberen",
+      "applyBoth": "Beide toepassen"
+    },
+    "debug": {
+      "next": "Volgende:",
+      "hit": "Raak:",
+      "yin": "YIN:",
+      "renderTime": "Render T:",
+      "audioTime": "Audio T:",
+      "hitMap": "HM:",
+      "dump": "Dump"
+    }
+  },
+  "settings": {
+    "title": "Instellingen",
+    "language": {
+      "title": "Taal",
+      "label": "Weergavetaal"
+    },
+    "playback": {
+      "title": "Afspelen",
+      "lefty": "Linkshandige modus",
+      "defaultArrangement": "Standaard arrangement",
+      "arrangementAuto": "Auto",
+      "arrangementLead": "Lead",
+      "arrangementRhythm": "Ritme",
+      "arrangementBass": "Bas",
+      "psarcPlatform": "PSARC-platformfilter",
+      "platformAll": "Alle",
+      "platformPc": "Alleen PC (_p.psarc)",
+      "platformMac": "Alleen Mac (_m.psarc)",
+      "demucsUrl": "Demucs server URL",
+      "demucsPlaceholder": "http://..."
+    },
+    "about": {
+      "title": "Over",
+      "version": "Versie:",
+      "license": "AGPL v3.0 Licentie",
+      "sourceCode": "Broncode",
+      "licenseNotice": "Slopsmith is vrije software. U kunt het verspreiden en aanpassen onder de voorwaarden van de AGPL. Als u een aangepaste versie uitvoert die via een netwerk met gebruikers communiceert, moet u de aangepaste broncode aan die gebruikers beschikbaar stellen."
+    },
+    "audio": {
+      "title": "Audio",
+      "micLabel": "Microfoon",
+      "micDefault": "Standaard microfoon",
+      "micRefresh": "Vernieuwen",
+      "livePreview": "Live voorbeeld",
+      "testMic": "Microfoon testen",
+      "stop": "Stoppen",
+      "startPrompt": "Start test om live toonhoogte te zien",
+      "clarityLabel": "Helderheidsdrempel",
+      "clarityHint": "Lager = meer detecties (inclusief onzekere). Hoger = alleen zeer heldere toonhoogtes.",
+      "monitorLabel": "Monitor volume",
+      "monitorHint": "Geeft het ruwe microfoon signaal door aan uw luidsprekers zodat u zichzelf kunt horen spelen. Begint op 0 om terugkoppeling te vermijden — verhoog alleen bij gebruik van hoofdtelefoon. Ook aanpasbaar in de mixer van de speler.",
+      "monitorWarning": "⚠ Verhoog boven 0 alleen bij gebruik van hoofdtelefoon — luidsprekers veroorzaken terugkoppeling."
+    },
+    "scan": {
+      "title": "Bibliotheek",
+      "scanning": "Scannen…",
+      "rescan": "Opnieuw scannen",
+      "fullRescan": "Volledig opnieuw scannen"
+    },
+    "diagnostics": {
+      "title": "Diagnostiek",
+      "systemInfo": "Systeeminfo",
+      "consoleLogs": "Consolelogboeken",
+      "pluginData": "Plug-in gegevens",
+      "redact": "Paden en hostnamen redigeren",
+      "exporting": "Exporteren…",
+      "export": "Diagnostiek exporteren",
+      "exported": "Diagnostiek geëxporteerd",
+      "exportFailed": "Export mislukt: {message}"
+    },
+    "backup": {
+      "title": "Back-up",
+      "export": "Instellingen exporteren",
+      "importing": "Importeren…",
+      "import": "Instellingen importeren",
+      "importComplete": "Import voltooid — herlaad om toe te passen",
+      "importFailed": "Import mislukt: {message}"
+    },
+    "dlc": {
+      "label": "DLC-mappad",
+      "placeholder": "/pad/naar/dlc",
+      "browse": "Bladeren",
+      "saved": "✓ Opgeslagen"
+    },
+    "plugins": {
+      "bundled": "meegeleverd",
+      "checkUpdates": "Controleer op updates",
+      "updating": "Bijwerken…",
+      "updateTo": "Bijwerken naar {version}"
+    }
+  },
+  "plugin": {
+    "notFound": "Plugin niet gevonden"
+  }
+}

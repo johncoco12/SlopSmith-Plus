@@ -1,35 +1,83 @@
+name: slopsmith-plus
+
 services:
-  web:
-    build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      # Mount your Rocksmith DLC folder (adjust path for your system)
-      - ${DLC_PATH:-~/.local/share/Steam/steamapps/common/Rocksmith2014/dlc}:/dlc
-      # Persistent config and cache
-      - rocksmith-config:/config
-      # Mount source for live reload during development
-      - ./static:/app/static
-      - ./server.py:/app/server.py
-      - ./VERSION:/app/VERSION
-      - ./ug_browser.py:/app/ug_browser.py
-      - ./lib:/app/lib
-      - ./plugins:/app/plugins
-      # Optional: mount Firefox profile for CustomsForge auth
-      # - ~/.mozilla/firefox:/firefox:ro
+  db:
+    image: postgres:16-alpine
     environment:
-      - PYTHONPATH=/app/lib:/app
+      POSTGRES_USER: slopsmith
+      POSTGRES_PASSWORD: slopsmith
+      POSTGRES_DB: slopsmith
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slopsmith"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: slopsmith
+      MINIO_ROOT_PASSWORD: slopsmith123
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8085:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    volumes:
+      - ${DLC_PATH:-~/.local/share/Steam/steamapps/common/Rocksmith2014/dlc}:/dlc
+      - rocksmith-config:/config
+      # Dev: comment these out for production (assets are baked into the image)
+      - ./plugins:/app/plugins
+      - ./static:/app/static
+      - ./VERSION:/app/VERSION
+    environment:
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config
-      - RSCLI_PATH=/opt/rscli/RsCli
-      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-      # Logging (optional)
-      # - LOG_LEVEL=DEBUG       # DEBUG | INFO | WARNING | ERROR  (default: INFO)
-      # - LOG_FORMAT=json       # json | text  (default: text — coloured console)
-      # - LOG_FILE=/config/slopsmith.log  # also write to a persistent file
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DATABASE_URL=postgresql://slopsmith:slopsmith@db:5432/slopsmith
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=slopsmith
+      - MINIO_SECRET_KEY=slopsmith123
+      - MINIO_BUCKET=slopsmith
+      - MINIO_USE_SSL=false
+      # Logging (optional — image defaults: LOG_LEVEL=info, LOG_PRETTY=true)
+      # - LOG_LEVEL=debug
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8006:80"
+    depends_on:
+      - web
 
 volumes:
+  postgres-data:
+  minio-data:
   rocksmith-config:
+
