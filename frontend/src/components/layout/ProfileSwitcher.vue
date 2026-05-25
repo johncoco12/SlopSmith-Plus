@@ -3,10 +3,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ChevronDown, Settings, AudioWaveform, Users, LogOut, Shield } from 'lucide-vue-next'
-import { useAuthStore } from '@/stores/auth'
-import { listProfiles } from '@/api/profiles'
+import { useAuthStore } from '@/features/auth/store'
+import { listProfiles } from '@/features/profiles/api'
 import type { SafeProfile } from '@/types'
-import PinDialog from '@/components/profile/PinDialog.vue'
+import PinDialog from '@/features/profiles/components/PinDialog.vue'
 
 const auth = useAuthStore()
 const router = useRouter()

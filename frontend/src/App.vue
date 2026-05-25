@@ -2,9 +2,9 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNav from '@/components/layout/AppNav.vue'
-import { useSettingsStore } from '@/stores/settings'
-import { usePluginsStore } from '@/stores/plugins'
-import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/features/settings/store'
+import { usePluginsStore } from '@/features/plugins/store'
+import { useAuthStore } from '@/features/auth/store'
 
 const route = useRoute()
 const settings = useSettingsStore()

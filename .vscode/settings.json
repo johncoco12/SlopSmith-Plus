@@ -5,7 +5,9 @@
         ".claude",
         ".github",
         ".specify",
-        ".vscode"
+        ".vscode",
+        "frontend/dist",
+        "frontend/node_modules"
     ],
     "files.exclude": {
         "**/.git": true,
@@ -18,6 +20,8 @@
         ".claude": true,
         ".github": true,
         ".specify": true,
-        ".vscode": true
+        ".vscode": true,
+        "frontend/dist": true,
+        "frontend/node_modules": true
     }
 }

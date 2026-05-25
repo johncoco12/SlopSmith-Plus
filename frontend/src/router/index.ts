@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/features/auth/store'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -7,59 +7,59 @@ const router = createRouter({
     {
       path: '/',
       name: 'library',
-      component: () => import('@/views/LibraryView.vue'),
+      component: () => import('@/features/library/views/LibraryView.vue'),
     },
     {
       path: '/favorites',
       name: 'favorites',
-      component: () => import('@/views/FavoritesView.vue'),
+      component: () => import('@/features/library/views/FavoritesView.vue'),
     },
     {
       path: '/player/:trackId',
       name: 'player',
-      component: () => import('@/views/PlayerView.vue'),
+      component: () => import('@/features/player/views/PlayerView.vue'),
     },
     {
       path: '/modernway/:trackId',
       name: 'modernway',
-      component: () => import('@/views/ModernwayPlayerView.vue'),
+      component: () => import('@/features/player/views/ModernwayPlayerView.vue'),
     },
     {
       path: '/gear',
       name: 'gear',
-      component: () => import('@/views/GearView.vue'),
+      component: () => import('@/features/settings/views/GearView.vue'),
     },
     {
       path: '/settings',
       name: 'settings',
-      component: () => import('@/views/SettingsView.vue'),
+      component: () => import('@/features/settings/views/SettingsView.vue'),
     },
     {
       path: '/audio-settings',
       name: 'audio-settings',
-      component: () => import('@/views/AudioSettingsView.vue'),
+      component: () => import('@/features/settings/views/AudioSettingsView.vue'),
     },
     {
       path: '/plugin/:id',
       name: 'plugin',
-      component: () => import('@/views/PluginView.vue'),
+      component: () => import('@/features/plugins/views/PluginView.vue'),
     },
     {
       path: '/setup',
       name: 'setup',
-      component: () => import('@/views/SetupView.vue'),
+      component: () => import('@/features/admin/views/SetupView.vue'),
       meta: { public: true },
     },
     {
       path: '/profiles',
       name: 'profiles',
-      component: () => import('@/views/ProfileSelectorView.vue'),
+      component: () => import('@/features/profiles/views/ProfileSelectorView.vue'),
       meta: { public: true },
     },
     {
       path: '/admin',
       name: 'admin',
-      component: () => import('@/views/AdminView.vue'),
+      component: () => import('@/features/admin/views/AdminView.vue'),
     },
   ],
 })
