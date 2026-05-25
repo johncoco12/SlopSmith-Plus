@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/features/auth/store'
 
-const { t } = useI18n()
 const auth = useAuthStore()
 const router = useRouter()
 
@@ -15,24 +13,72 @@ const recoveryPhrase = ref('')
 const error = ref('')
 const loading = ref(false)
 
+const pinInputRef = ref<HTMLInputElement | null>(null)
+const pinConfirmRef = ref<HTMLInputElement | null>(null)
+
+const PIN_MIN = 4
+const PIN_MAX = 8
+
+const pinStrength = computed(() => {
+  const len = pinCode.value.length
+  if (len < PIN_MIN) return null
+  if (len <= 5) return 'weak'
+  if (len <= 6) return 'fair'
+  return 'strong'
+})
+
+const strengthColor = computed(() => ({
+  weak: 'bg-red-500',
+  fair: 'bg-yellow-400',
+  strong: 'bg-green-500',
+}[pinStrength.value ?? ''] ?? ''))
+
+const strengthLabel = computed(() => ({
+  weak: 'Weak',
+  fair: 'Fair',
+  strong: 'Strong',
+}[pinStrength.value ?? ''] ?? ''))
+
+const pinMatchError = computed(() =>
+  pinConfirm.value.length >= PIN_MIN && pinCode.value !== pinConfirm.value
+    ? 'PINs do not match'
+    : ''
+)
+
+function onPinInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, PIN_MAX)
+  pinCode.value = raw
+  ;(e.target as HTMLInputElement).value = raw
+  if (raw.length === PIN_MAX) pinConfirmRef.value?.focus()
+}
+
+function onConfirmInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, PIN_MAX)
+  pinConfirm.value = raw
+  ;(e.target as HTMLInputElement).value = raw
+}
+
 async function submit() {
   error.value = ''
-  if (!name.value.trim()) { error.value = t('setup.errors.nameRequired'); return }
-  if (pinCode.value.length < 4) { error.value = t('setup.errors.pinTooShort'); return }
-  if (pinCode.value !== pinConfirm.value) { error.value = t('setup.errors.pinMismatch'); return }
-  if (recoveryPhrase.value.length < 4) { error.value = t('setup.errors.recoveryTooShort'); return }
+  if (!name.value.trim()) { error.value = 'Name is required'; return }
+  if (pinCode.value.length < PIN_MIN) { error.value = `PIN must be at least ${PIN_MIN} digits`; return }
+  if (pinCode.value !== pinConfirm.value) { error.value = 'PINs do not match'; return }
+  if (!recoveryPhrase.value.trim()) { error.value = 'Recovery phrase is required'; return }
+  if (recoveryPhrase.value.trim().split(/\s+/).length < 2) {
+    error.value = 'Use a phrase with at least two words'; return
+  }
 
   loading.value = true
   try {
-    const profile = await auth.setup({
+    await auth.setup({
       name: name.value.trim(),
       pinCode: pinCode.value,
-      recoveryPhrase: recoveryPhrase.value,
+      recoveryPhrase: recoveryPhrase.value.trim(),
     })
-    await auth.login(profile.name, pinCode.value)
+    await auth.login(name.value.trim(), pinCode.value)
     router.push('/')
-  } catch (e: any) {
-    error.value = e.message || t('setup.errors.failed')
+  } catch (e: unknown) {
+    error.value = (e as Error).message || 'Setup failed'
   } finally {
     loading.value = false
   }
@@ -42,45 +88,149 @@ async function submit() {
 <template>
   <div class="min-h-screen bg-dark-800 flex items-center justify-center p-4">
     <div class="w-full max-w-sm">
-      <div class="text-center mb-8">
+
+      <!-- Logo -->
+      <div class="text-center mb-10">
         <router-link :to="{ name: 'profiles' }" class="logo-link inline-block">
           <span class="logo-wrap">
             <span class="logo-base">Slopsmith+</span>
             <span class="logo-svg" aria-hidden="true">Slopsmith+</span>
           </span>
         </router-link>
-        <h1 class="text-2xl font-bold text-white mt-4">{{ $t('setup.title') }}</h1>
-        <p class="text-gray-400 text-sm mt-1">{{ $t('setup.subtitle') }}</p>
+        <h1 class="text-2xl font-bold text-white mt-5">Create your profile</h1>
+        <p class="text-gray-400 text-sm mt-1">You only do this once.</p>
       </div>
 
-      <form @submit.prevent="submit" class="space-y-4">
-        <div>
-          <label class="block text-sm text-gray-400 mb-1">{{ $t('setup.nameLabel') }}</label>
-          <input v-model="name" type="text" autocomplete="username"
-            class="w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-accent transition-colors" />
-        </div>
-        <div>
-          <label class="block text-sm text-gray-400 mb-1">{{ $t('setup.pinLabel') }}</label>
-          <input v-model="pinCode" type="password" autocomplete="new-password"
-            class="w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-accent transition-colors" />
-        </div>
-        <div>
-          <label class="block text-sm text-gray-400 mb-1">{{ $t('setup.pinConfirmLabel') }}</label>
-          <input v-model="pinConfirm" type="password" autocomplete="new-password"
-            class="w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-accent transition-colors" />
-        </div>
-        <div>
-          <label class="block text-sm text-gray-400 mb-1">{{ $t('setup.recoveryLabel') }}</label>
-          <input v-model="recoveryPhrase" type="text"
-            class="w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-accent transition-colors" />
+      <form @submit.prevent="submit" class="space-y-6">
+
+        <!-- Name -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Display name
+          </label>
+          <input
+            v-model="name"
+            type="text"
+            autocomplete="username"
+            placeholder="e.g. Alex"
+            class="input-field"
+          />
         </div>
 
-        <p v-if="error" class="text-red-400 text-sm">{{ error }}</p>
+        <!-- PIN -->
+        <div class="space-y-1.5">
+          <div class="flex items-baseline justify-between">
+            <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">
+              PIN
+            </label>
+            <span class="text-xs text-gray-500">{{ PIN_MIN }}–{{ PIN_MAX }} digits</span>
+          </div>
 
-        <button type="submit" :disabled="loading"
-          class="w-full bg-accent hover:bg-accent/80 text-white font-semibold py-2.5 rounded-lg disabled:opacity-50 transition-colors">
-          {{ loading ? $t('setup.creating') : $t('setup.submit') }}
+          <!-- Dot display -->
+          <div
+            class="flex items-center gap-2 cursor-text"
+            @click="pinInputRef?.focus()"
+          >
+            <span
+              v-for="i in PIN_MAX"
+              :key="i"
+              class="dot"
+              :class="i <= pinCode.length ? 'dot-filled' : 'dot-empty'"
+            />
+          </div>
+
+          <!-- Hidden numeric input -->
+          <input
+            ref="pinInputRef"
+            type="password"
+            inputmode="numeric"
+            autocomplete="new-password"
+            :value="pinCode"
+            class="sr-only"
+            @input="onPinInput"
+          />
+
+          <!-- Strength bar -->
+          <div v-if="pinCode.length >= PIN_MIN" class="flex items-center gap-2 mt-1">
+            <div class="flex-1 h-1 rounded-full bg-dark-600 overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-300"
+                :class="strengthColor"
+                :style="{ width: `${(pinCode.length / PIN_MAX) * 100}%` }"
+              />
+            </div>
+            <span class="text-xs" :class="{
+              'text-red-400': pinStrength === 'weak',
+              'text-yellow-400': pinStrength === 'fair',
+              'text-green-400': pinStrength === 'strong',
+            }">{{ strengthLabel }}</span>
+          </div>
+        </div>
+
+        <!-- PIN confirm -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Confirm PIN
+          </label>
+
+          <div
+            class="flex items-center gap-2 cursor-text"
+            @click="pinConfirmRef?.focus()"
+          >
+            <span
+              v-for="i in PIN_MAX"
+              :key="i"
+              class="dot"
+              :class="[
+                i <= pinConfirm.length
+                  ? (pinMatchError ? 'dot-error' : 'dot-filled')
+                  : 'dot-empty'
+              ]"
+            />
+          </div>
+
+          <input
+            ref="pinConfirmRef"
+            type="password"
+            inputmode="numeric"
+            autocomplete="new-password"
+            :value="pinConfirm"
+            class="sr-only"
+            @input="onConfirmInput"
+          />
+
+          <p v-if="pinMatchError" class="text-xs text-red-400">{{ pinMatchError }}</p>
+        </div>
+
+        <!-- Recovery phrase -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Recovery phrase
+          </label>
+          <p class="text-xs text-gray-500 leading-relaxed">
+            Used to reset your PIN if you forget it. Pick something memorable, not a password.
+          </p>
+          <input
+            v-model="recoveryPhrase"
+            type="text"
+            autocomplete="off"
+            placeholder="e.g. my first guitar was red"
+            class="input-field"
+          />
+        </div>
+
+        <!-- Error -->
+        <p v-if="error" class="text-sm text-red-400 text-center">{{ error }}</p>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          :disabled="loading || pinCode.length < PIN_MIN || !!pinMatchError || !recoveryPhrase.trim()"
+          class="w-full bg-accent hover:bg-accent/80 disabled:opacity-40 text-white font-semibold py-3 rounded-xl transition-colors"
+        >
+          {{ loading ? 'Creating…' : 'Create profile' }}
         </button>
+
       </form>
     </div>
   </div>
@@ -99,4 +249,28 @@ async function submit() {
   transition: clip-path 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .logo-wrap:hover .logo-svg { clip-path: inset(0 0% 0 0); }
+
+.input-field {
+  width: 100%;
+  background: theme('colors.dark.700');
+  border: 1px solid theme('colors.dark.500');
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  color: white;
+  font-size: 0.875rem;
+  transition: border-color 0.15s;
+  outline: none;
+}
+.input-field:focus { border-color: theme('colors.accent.DEFAULT', '#4080e0'); }
+.input-field::placeholder { color: theme('colors.dark.400', '#6b7280'); }
+
+.dot {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 9999px;
+  transition: all 0.15s ease;
+}
+.dot-empty { background: theme('colors.dark.600'); }
+.dot-filled { background: theme('colors.accent.DEFAULT', '#4080e0'); transform: scale(1.1); }
+.dot-error  { background: theme('colors.red.500'); transform: scale(1.1); }
 </style>

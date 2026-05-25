@@ -12,10 +12,11 @@ const props = defineProps<{
   hasMore?: boolean
 }>()
 const emit = defineEmits<{
-  open: [song: Song]
-  favorite: [filename: string]
-  edit: [song: Song]
-  'load-more': []
+  open:            [song: Song]
+  favorite:        [filename: string]
+  edit:            [song: Song]
+  delete:          [song: Song]
+  'load-more':     []
   'filter-artist': [artist: string]
 }>()
 
@@ -78,6 +79,7 @@ function selectCard(song: Song): void {
         @open="selectCard"
         @favorite="emit('favorite', $event)"
         @edit="emit('edit', $event)"
+        @delete="emit('delete', $event)"
         @filter-artist="emit('filter-artist', $event)"
       />
     </div>

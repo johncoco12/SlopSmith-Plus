@@ -13,7 +13,6 @@ import LoopControls from './LoopControls.vue'
 import MixerPopover from './MixerPopover.vue'
 import TunerPopover from './TunerPopover.vue'
 import LatencyTester from './LatencyTester.vue'
-
 const emit = defineEmits<{
   back: []
 }>()

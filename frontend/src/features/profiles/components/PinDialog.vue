@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SafeProfile } from '@/types'
 import { useAuthStore } from '@/features/auth/store'
@@ -15,35 +15,41 @@ const props = defineProps<{
 
 const auth = useAuthStore()
 const mode = ref<'pin' | 'recovery'>('pin')
-const digits = ref(['', '', '', ''])
+
+// ── PIN state ──────────────────────────────────────────────────────────────────
+const PIN_MIN = 4
+const PIN_MAX = 8
+const DOT_COUNT = 4
+const SUBMIT_DELAY_MS = 600
+
+const pin = ref('')
 const shake = ref(false)
 const pinError = ref('')
-const recoveryInput = ref('')
-const recoveryError = ref('')
-const recoveryErrorMsg = ref('')
 const loading = ref(false)
-const refs = ref<HTMLInputElement[]>([])
+const pinInputRef = ref<HTMLInputElement | null>(null)
 
-function setRef(el: any, i: number) {
-  if (el) refs.value[i] = el as HTMLInputElement
+const filledDots = computed(() => Math.min(pin.value.length, DOT_COUNT))
+const hasOverflow = computed(() => pin.value.length > DOT_COUNT)
+
+let _debounce: ReturnType<typeof setTimeout> | null = null
+
+function scheduleSubmit() {
+  if (_debounce) clearTimeout(_debounce)
+  if (pin.value.length < PIN_MIN || loading.value) return
+  _debounce = setTimeout(() => attemptSubmit(), SUBMIT_DELAY_MS)
 }
 
-function handleDigit(i: number, e: Event) {
-  const val = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(-1)
-  const next = [...digits.value]
-  next[i] = val
-  digits.value = next
-  if (val && i < 3 && refs.value[i + 1]) {
-    refs.value[i + 1].focus()
-  }
-  if (next.every((d) => d !== '')) {
-    submitPin(next.join(''))
-  }
+function onPinInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, PIN_MAX)
+  pin.value = raw
+  ;(e.target as HTMLInputElement).value = raw
+  scheduleSubmit()
 }
 
-function handleKey(i: number, e: KeyboardEvent) {
-  if (e.key === 'Backspace' && !digits.value[i] && i > 0 && refs.value[i - 1]) {
-    refs.value[i - 1].focus()
+function onPinKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && pin.value.length >= PIN_MIN && !loading.value) {
+    if (_debounce) clearTimeout(_debounce)
+    attemptSubmit()
   }
 }
 
@@ -52,60 +58,81 @@ function triggerShake() {
   setTimeout(() => { shake.value = false }, 450)
 }
 
-async function submitPin(pin: string) {
+function attemptSubmit() {
+  if (pin.value.length < PIN_MIN || loading.value) return
+  submitPin(pin.value)
+}
+
+async function submitPin(value: string) {
   if (loading.value) return
   loading.value = true
   pinError.value = ''
   try {
-    await auth.login(props.profile.name, pin)
+    await auth.login(props.profile.name, value)
     props.onSuccess()
-  } catch (e: any) {
-    pinError.value = e?.message || t('profile.pin.error')
+  } catch (e: unknown) {
+    pinError.value = (e as Error)?.message || t('profile.pin.error')
     triggerShake()
-    digits.value = ['', '', '', '']
-    setTimeout(() => refs.value[0]?.focus(), 50)
+    pin.value = ''
+    if (pinInputRef.value) pinInputRef.value.value = ''
+    setTimeout(() => pinInputRef.value?.focus(), 50)
   } finally {
     loading.value = false
   }
 }
 
+// ── Recovery state ─────────────────────────────────────────────────────────────
+const recoveryInput = ref('')
+const recoveryError = ref(false)
+const recoveryErrorMsg = ref('')
+
 async function submitRecovery(e: Event) {
   e.preventDefault()
-  if (loading.value) return
+  if (loading.value || !recoveryInput.value.trim()) return
   loading.value = true
-  recoveryError.value = ''
+  recoveryError.value = false
   recoveryErrorMsg.value = ''
   try {
     await recoverProfile(props.profile.name, recoveryInput.value.trim(), '0000')
     await auth.login(props.profile.name, '0000')
     props.onSuccess()
-  } catch (e: any) {
-    recoveryError.value = 'yes'
-    recoveryErrorMsg.value = e?.message || t('profile.recovery.error')
+  } catch (e: unknown) {
+    recoveryError.value = true
+    recoveryErrorMsg.value = (e as Error)?.message || t('profile.recovery.error')
     recoveryInput.value = ''
-    setTimeout(() => { recoveryError.value = '' }, 1500)
+    setTimeout(() => { recoveryError.value = false }, 1500)
   } finally {
     loading.value = false
   }
 }
 
+// ── Lifecycle ──────────────────────────────────────────────────────────────────
 function handleEscape(e: KeyboardEvent) {
   if (e.key === 'Escape') props.onCancel()
 }
 
 onMounted(() => {
   window.addEventListener('keydown', handleEscape)
-  setTimeout(() => refs.value[0]?.focus(), 50)
+  setTimeout(() => pinInputRef.value?.focus(), 50)
 })
-onUnmounted(() => window.removeEventListener('keydown', handleEscape))
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscape)
+  if (_debounce) clearTimeout(_debounce)
+})
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" @click.self="onCancel">
-    <div class="relative bg-dark-800 border border-white/10 rounded-2xl p-8 w-full max-w-sm shadow-2xl" @click.stop>
-
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+    @click.self="onCancel"
+  >
+    <div
+      class="relative bg-dark-800 border border-white/10 rounded-2xl p-8 w-full max-w-sm shadow-2xl"
+      @click.stop
+    >
+      <!-- Profile avatar + name -->
       <div class="flex flex-col items-center gap-3 mb-8">
-        <div class="w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center text-xl font-bold text-white">
+        <div class="w-14 h-14 rounded-full bg-accent/30 flex items-center justify-center text-xl font-bold text-white select-none">
           {{ profile.name.charAt(0).toUpperCase() }}
         </div>
         <div class="text-center">
@@ -116,21 +143,40 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
         </div>
       </div>
 
+      <!-- PIN mode -->
       <template v-if="mode === 'pin'">
-        <div :class="['flex gap-3 justify-center', shake && 'animate-[shake_0.4s_ease-in-out]']">
+        <div
+          class="flex flex-col items-center gap-5"
+          :class="shake && 'animate-[shake_0.4s_ease-in-out]'"
+        >
+          <!-- Dots — click to refocus the hidden input -->
+          <div class="flex gap-3 cursor-text" @click="pinInputRef?.focus()">
+            <span
+              v-for="i in DOT_COUNT"
+              :key="i"
+              class="dot"
+              :class="i <= filledDots ? 'dot-filled' : 'dot-empty'"
+            />
+            <span v-if="hasOverflow" class="dot dot-overflow" />
+          </div>
+
+          <!-- Hidden input -->
           <input
-            v-for="(_, i) in 4"
-            :key="i"
-            :ref="(el) => setRef(el, i)"
+            ref="pinInputRef"
             type="password"
             inputmode="numeric"
-            maxlength="1"
-            :value="digits[i]"
-            class="w-14 h-14 text-center text-2xl font-bold rounded-xl border-2 bg-dark-700 text-white focus:outline-none focus:border-accent transition-colors"
-            :class="digits[i] ? 'border-accent' : 'border-dark-500'"
-            @input="handleDigit(i, $event)"
-            @keydown="handleKey(i, $event)"
+            autocomplete="current-password"
+            :value="pin"
+            class="sr-only"
+            @input="onPinInput"
+            @keydown="onPinKeydown"
           />
+
+          <p class="text-xs text-gray-500 h-4">
+            <span v-if="loading">Checking…</span>
+            <span v-else-if="pin.length >= PIN_MIN">Press Enter or wait…</span>
+            <span v-else>Enter your PIN</span>
+          </p>
         </div>
 
         <p v-if="pinError" class="text-red-400 text-sm text-center mt-4">{{ pinError }}</p>
@@ -146,12 +192,12 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
         </div>
       </template>
 
+      <!-- Recovery mode -->
       <template v-else>
         <form @submit="submitRecovery" class="space-y-4">
           <div>
             <input
               v-model="recoveryInput"
-              ref="recoveryRef"
               type="text"
               :placeholder="$t('profile.recovery.placeholder')"
               :disabled="loading"
@@ -159,7 +205,9 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
                      focus:outline-none focus:border-accent transition-colors"
               :class="recoveryError ? 'border-red-500' : 'border-dark-500'"
             />
-            <p v-if="recoveryError" class="text-red-400 text-xs mt-1.5">{{ recoveryErrorMsg || $t('profile.recovery.error') }}</p>
+            <p v-if="recoveryError" class="text-red-400 text-xs mt-1.5">
+              {{ recoveryErrorMsg || $t('profile.recovery.error') }}
+            </p>
           </div>
           <button
             type="submit"
@@ -169,7 +217,11 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
             {{ $t('profile.recovery.confirm') }}
           </button>
           <div class="text-center">
-            <button type="button" class="text-sm text-gray-400 hover:text-accent transition-colors" @click="mode = 'pin'">
+            <button
+              type="button"
+              class="text-sm text-gray-400 hover:text-accent transition-colors"
+              @click="mode = 'pin'"
+            >
               {{ $t('profile.recovery.backToPin') }}
             </button>
           </div>
@@ -177,10 +229,44 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
       </template>
 
       <div class="mt-6 text-center">
-        <button type="button" class="text-xs text-gray-500 hover:text-gray-300 transition-colors" @click="onCancel">
+        <button
+          type="button"
+          class="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          @click="onCancel"
+        >
           {{ $t('common.cancel') }}
         </button>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.dot {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 9999px;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
+}
+.dot-empty    { background: theme('colors.dark.600'); }
+.dot-filled   { background: theme('colors.accent.DEFAULT', '#4080e0'); transform: scale(1.15); }
+.dot-overflow {
+  background: theme('colors.accent.DEFAULT', '#4080e0');
+  transform: scale(1.15);
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-5px); }
+  80%       { transform: translateX(5px); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+</style>
