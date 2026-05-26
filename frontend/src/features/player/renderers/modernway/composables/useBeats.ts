@@ -7,6 +7,14 @@ import {
 } from '../constants';
 import type { RenderBundle, Beat } from '@/features/player/types';
 
+const MAX_BEATS = 64;
+
+// Scratch objects — allocated once, reused every frame
+const _pos  = new THREE.Vector3()
+const _quat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))
+const _scl  = new THREE.Vector3()
+const _mat4 = new THREE.Matrix4()
+
 export interface BeatState {
   group: THREE.Group;
   update: (bundle: RenderBundle) => void;
@@ -15,8 +23,6 @@ export interface BeatState {
 
 export function createBeatLines(): BeatState {
   const group = new THREE.Group();
-  const pool: THREE.Mesh[] = [];
-  let poolIdx = 0;
 
   const beatGeo = new THREE.PlaneGeometry(1, 1);
   const beatMatMeasure = new THREE.MeshBasicMaterial({
@@ -26,33 +32,28 @@ export function createBeatLines(): BeatState {
     color: 0x334466, transparent: true, opacity: 0.25, side: THREE.DoubleSide,
   });
 
-  function getMesh(): THREE.Mesh {
-    if (poolIdx < pool.length) {
-      const m = pool[poolIdx];
-      m.visible = true;
-      poolIdx++;
-      return m;
-    }
-    const m = new THREE.Mesh(beatGeo, beatMatBeat);
-    m.frustumCulled = false;
-    group.add(m);
-    pool.push(m);
-    poolIdx++;
-    return m;
-  }
+  const imMeasure = new THREE.InstancedMesh(beatGeo, beatMatMeasure, MAX_BEATS)
+  const imBeat    = new THREE.InstancedMesh(beatGeo, beatMatBeat,    MAX_BEATS)
+  imMeasure.frustumCulled = false
+  imBeat.frustumCulled    = false
+  imMeasure.count = 0
+  imBeat.count    = 0
+  group.add(imMeasure, imBeat)
 
   function update(bundle: RenderBundle) {
-    poolIdx = 0;
-    if (!bundle.isReady) {
-      for (const m of pool) m.visible = false;
-      return;
-    }
+    imMeasure.count = 0
+    imBeat.count    = 0
+
+    if (!bundle.isReady) return;
 
     const now = bundle.currentTime;
     const beats = bundle.beats;
     const stringCount = bundle.stringCount;
     const inverted = bundle.inverted;
     const boardWidth = fretX(NFRETS) + 2 * K;
+    const midY = (sY(0, stringCount, inverted) + sY(stringCount - 1, stringCount, inverted)) / 2;
+
+    _scl.set(boardWidth, 0.3 * K, 1)
 
     for (let i = 0; i < beats.length; i++) {
       const b = beats[i];
@@ -60,19 +61,17 @@ export function createBeatLines(): BeatState {
       if (dt < -BEHIND) continue;
       if (dt > AHEAD) break;
 
-      const z = dZ(dt);
-      const isMeasure = b.measure >= 0;
-      const lineHeight = (sY(stringCount - 1, stringCount, inverted) - sY(0, stringCount, inverted)) + S_GAP;
+      _pos.set(boardWidth / 2, midY, dZ(dt))
+      _mat4.compose(_pos, _quat, _scl)
 
-      const mesh = getMesh();
-      mesh.material = isMeasure ? beatMatMeasure : beatMatBeat;
-      mesh.rotation.x = -Math.PI / 2;
-      const midY = (sY(0, stringCount, inverted) + sY(stringCount - 1, stringCount, inverted)) / 2;
-      mesh.position.set(boardWidth / 2, midY, z);
-      mesh.scale.set(boardWidth, 0.3 * K, 1);
+      const im = b.measure >= 0 ? imMeasure : imBeat
+      if (im.count < MAX_BEATS) {
+        im.setMatrixAt(im.count++, _mat4)
+      }
     }
 
-    for (let i = poolIdx; i < pool.length; i++) pool[i].visible = false;
+    imMeasure.instanceMatrix.needsUpdate = true
+    imBeat.instanceMatrix.needsUpdate    = true
   }
 
   function dispose() {

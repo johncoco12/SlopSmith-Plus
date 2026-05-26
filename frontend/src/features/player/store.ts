@@ -5,6 +5,7 @@ import { fetchLoops, saveLoop as apiSaveLoop, deleteLoop as apiDeleteLoop } from
 import { useAuthStore } from '@/features/auth/store'
 import type { SongInfo, Loop } from '@/types'
 import { start as pitchStart, stop as pitchStop, isRunning as isPitchRunning } from '@/features/player/services/pitchDetection'
+import type { SectionResult } from '@/features/player/engine/sectionScorer'
 
 export const usePlayerStore = defineStore('player', () => {
   const auth = useAuthStore()
@@ -44,6 +45,12 @@ export const usePlayerStore = defineStore('player', () => {
 
   // Pitch detection (synced with window.pitchYin via syncTime rAF)
   const pitchDetectionEnabled = ref<boolean>(false)
+
+  // Section scoring
+  const sectionResults = ref<SectionResult[]>([])
+  const currentSectionIndex = ref<number>(-1)
+  const combo = ref<number>(0)
+  const maxCombo = ref<number>(0)
 
   // Seek-in-progress guard: browser may briefly report audio.currentTime = 0
   // during a seek. Hold the target time until the 'seeked' event confirms.
@@ -341,6 +348,7 @@ export const usePlayerStore = defineStore('player', () => {
     avOffsetMs, mastery, vizSelection, showLyrics, masterVolume, songVolume,
     speed, loopA, loopB, savedLoops,
     pitchDetectionEnabled,
+    sectionResults, currentSectionIndex, combo, maxCombo,
     setHighway, setSongInfo, playSong, changeArrangement, cleanup,
     togglePlay, seekBy, seekTo, setSpeed, setMastery, setAvOffset, nudgeAvOffset, setVolume, setSongVolume,
     toggleLyrics, setViz,

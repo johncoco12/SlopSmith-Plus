@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { usePlayerStore } from '@/features/player/store'
 import { formatTime } from '@/utils/format'
+import type { SectionResult } from '@/features/player/engine/sectionScorer'
 
 const player = usePlayerStore()
 const trackEl    = ref<HTMLElement | null>(null)
@@ -11,6 +12,24 @@ const hoverRatio = ref<number | null>(null)
 const progress = computed(() =>
   player.duration > 0 ? player.currentTime / player.duration : 0
 )
+
+const sections = computed(() => player.sectionResults as SectionResult[])
+
+function sectionLeft(s: SectionResult): number {
+  if (!player.duration) return 0
+  return (s.startTime / player.duration) * 100
+}
+
+function sectionGradeClass(s: SectionResult): string {
+  if (!s.grade) return 'bg-white/20'
+  return {
+    S: 'bg-yellow-400/60',
+    A: 'bg-green-400/60',
+    B: 'bg-blue-400/60',
+    C: 'bg-orange-400/60',
+    D: 'bg-red-400/60',
+  }[s.grade] ?? 'bg-white/20'
+}
 
 const loopRegion = computed(() => {
   if (player.loopA === null || player.loopB === null || !player.duration) return null
@@ -79,6 +98,16 @@ function onPointerleave(): void { if (!isDragging.value) hoverRatio.value = null
           v-if="loopAMarker !== null"
           class="absolute top-0 bottom-0 w-0.5 rounded-full bg-accent/70"
           :style="{ left: loopAMarker + '%' }"
+        />
+
+        <!-- Section divider ticks (skip index 0 — no tick at very start) -->
+        <div
+          v-for="(s, i) in sections"
+          :key="'st' + i"
+          v-show="i > 0 && player.duration > 0"
+          class="absolute top-0 bottom-0 w-px transition-colors duration-300"
+          :class="sectionGradeClass(s)"
+          :style="{ left: sectionLeft(s) + '%' }"
         />
 
         <!-- Progress fill -->

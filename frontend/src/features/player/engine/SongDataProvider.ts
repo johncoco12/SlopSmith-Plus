@@ -63,6 +63,10 @@ export class SongDataProvider {
   // Hit detection / note state
   private noteStateProvider: NoteStateProvider | null = null
 
+  // Stable closure — created once, avoids per-frame allocation in makeBundle()
+  private readonly _getNoteState = (note: ChartNote | ChartChordNote, chartTime: number): NoteState | null =>
+    this.noteStateProvider ? resolveNoteState(this.noteStateProvider, note as ChartNote, chartTime) : null
+
   // Loop
   private loopA: number | null = null
   private loopB: number | null = null
@@ -228,9 +232,6 @@ export class SongDataProvider {
     )
 
     const proj = this.proj
-    const provider = this.noteStateProvider
-    const getNoteState = (note: ChartNote | ChartChordNote, chartTime: number): NoteState | null =>
-      provider ? resolveNoteState(provider, note as ChartNote, chartTime) : null
 
     const bundle: RenderBundle = {
       currentTime,
@@ -259,7 +260,7 @@ export class SongDataProvider {
       lyricsVisible: this.lyricsVisible,
       project: (t) => proj.project(t),
       fretX: (f, s, w) => proj.fretX(f, s, w),
-      getNoteState,
+      getNoteState: this._getNoteState,
     }
 
     this.bundle.value = bundle

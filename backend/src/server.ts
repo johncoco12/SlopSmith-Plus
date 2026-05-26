@@ -122,7 +122,7 @@ export async function buildServer() {
   await fastify.register(multipart, { limits: { fileSize: 256 * 1024 * 1024 } });
   await fastify.register(websocket);
   await fastify.register(staticFiles, {
-    root: config.staticDir,
+    root: [config.staticDir, path.join(config.pluginsBuiltinDir, "static")],
     prefix: "/static",
     decorateReply: false,
   });

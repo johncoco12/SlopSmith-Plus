@@ -127,6 +127,41 @@ function dismissPrompt(): void {
         <option v-for="(arr, i) in arrangements" :key="i" :value="i">{{ arr.name ?? arr }}</option>
       </select>
 
+      <div class="ctrl-sep" />
+
+      <!-- Speed -->
+      <div class="ctrl-slider-group">
+        <span class="ctrl-slider-label">{{ $t('player.controls.speed') }}</span>
+        <input
+          type="range"
+          :value="player.speed"
+          min="0.25" max="1.5" step="0.05"
+          class="ctrl-range w-20"
+          :title="$t('player.controls.speedTitle')"
+          @input="player.setSpeed(Number($event.target.value))"
+        />
+        <span class="ctrl-slider-val w-9">{{ Math.round(player.speed * 100) }}%</span>
+      </div>
+
+      <!-- Mastery -->
+      <div class="ctrl-slider-group">
+        <span class="ctrl-slider-label">{{ $t('player.controls.mastery') }}</span>
+        <input
+          type="range"
+          :value="player.mastery"
+          min="0" max="100" step="1"
+          class="ctrl-range w-20"
+          :title="$t('player.controls.masteryTitle')"
+          @input="player.setMastery(Number($event.target.value))"
+        />
+        <span class="ctrl-slider-val w-8">{{ player.mastery }}%</span>
+      </div>
+
+      <div class="ctrl-sep" />
+
+      <!-- Loop controls -->
+      <LoopControls />
+
       <div class="flex-1" />
 
       <!-- Play-along pitch detection -->
@@ -225,43 +260,6 @@ function dismissPrompt(): void {
         <button class="player-btn-xs" :title="$t('player.controls.avMinus')" @click="player.nudgeAvOffset(-10)">−</button>
         <button class="player-btn-xs" :title="$t('player.controls.avPlus')" @click="player.nudgeAvOffset(10)">+</button>
       </div>
-    </div>
-
-    <!-- ── Row 3: Practice controls ── -->
-    <div class="flex items-center gap-3 px-3 py-2 flex-wrap">
-
-      <!-- Speed -->
-      <div class="ctrl-slider-group">
-        <span class="ctrl-slider-label">{{ $t('player.controls.speed') }}</span>
-        <input
-          type="range"
-          :value="player.speed"
-          min="0.25" max="1.5" step="0.05"
-          class="ctrl-range w-20"
-          :title="$t('player.controls.speedTitle')"
-          @input="player.setSpeed(Number($event.target.value))"
-        />
-        <span class="ctrl-slider-val w-9">{{ Math.round(player.speed * 100) }}%</span>
-      </div>
-
-      <!-- Mastery -->
-      <div class="ctrl-slider-group">
-        <span class="ctrl-slider-label">{{ $t('player.controls.mastery') }}</span>
-        <input
-          type="range"
-          :value="player.mastery"
-          min="0" max="100" step="1"
-          class="ctrl-range w-20"
-          :title="$t('player.controls.masteryTitle')"
-          @input="player.setMastery(Number($event.target.value))"
-        />
-        <span class="ctrl-slider-val w-8">{{ player.mastery }}%</span>
-      </div>
-
-      <div class="ctrl-sep" />
-
-      <!-- Loop controls -->
-      <LoopControls />
     </div>
   </div>
 

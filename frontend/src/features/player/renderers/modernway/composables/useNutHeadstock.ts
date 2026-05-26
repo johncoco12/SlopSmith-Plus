@@ -33,6 +33,10 @@ export function createNutHeadstock(): NutHeadstockPool {
   const matDisposables: THREE.Material[] = [];
 
   function build(stringCount: number, inverted: boolean) {
+    // Re-enable before rebuild so new children get correct world matrices
+    group.matrixAutoUpdate = true
+    group.matrixWorldAutoUpdate = true
+
     // Clear existing
     while (group.children.length) {
       group.remove(group.children[0]);
@@ -81,6 +85,17 @@ export function createNutHeadstock(): NutHeadstockPool {
       groove.renderOrder = 51;
       group.add(groove);
     }
+
+    lastStringCount = stringCount;
+    lastInverted = inverted;
+
+    // Freeze: geometry never changes between rebuilds
+    group.updateMatrixWorld(true)
+    group.traverse((o: THREE.Object3D) => {
+      o.matrixAutoUpdate = false
+      o.matrixWorldAutoUpdate = false
+    })
+    built = true;
   }
 
   function update(bundle: RenderBundle) {

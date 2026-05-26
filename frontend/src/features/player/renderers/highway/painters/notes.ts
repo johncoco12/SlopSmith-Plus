@@ -288,32 +288,30 @@ export function drawSustains(cx: DrawContext): void {
       const col = ns!.color ?? stringBright(n.s);
       ctx.save();
       ctx.fillStyle = col;
-      ctx.shadowColor = col;
-      ctx.shadowBlur = (8 + 6 * Math.random()) * a;
-      ctx.globalAlpha = (0.45 + 0.45 * a) * (0.78 + 0.22 * Math.random());
-      ctx.beginPath();
-      ctx.moveTo(x0 - sw0, y0);
-      ctx.lineTo(x0 + sw0, y0);
-      ctx.lineTo(x1 + sw1, y1);
-      ctx.lineTo(x1 - sw1, y1);
-      ctx.fill();
 
-      ctx.shadowBlur = 0;
+      // Outer glow — wide trapezoid at low opacity (replaces shadowBlur)
+      const gw0 = sw0 * 2.8, gw1 = sw1 * 2.8;
+      ctx.globalAlpha = 0.28 * a;
+      ctx.beginPath();
+      ctx.moveTo(x0 - gw0, y0); ctx.lineTo(x0 + gw0, y0);
+      ctx.lineTo(x1 + gw1, y1); ctx.lineTo(x1 - gw1, y1);
+      ctx.closePath(); ctx.fill();
+
+      // Core trail
+      ctx.globalAlpha = 0.65 * a;
+      ctx.beginPath();
+      ctx.moveTo(x0 - sw0, y0); ctx.lineTo(x0 + sw0, y0);
+      ctx.lineTo(x1 + sw1, y1); ctx.lineTo(x1 - sw1, y1);
+      ctx.closePath(); ctx.fill();
+
+      // Bright centre spine
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = a * (0.55 + 0.45 * Math.random());
+      ctx.globalAlpha = 0.55 * a;
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(1.5, sw0 * 0.5);
-      ctx.lineJoin = 'round';
+      ctx.lineWidth = Math.max(1.5, sw0 * 0.45);
       ctx.lineCap = 'round';
       ctx.beginPath();
-      const segs = 7;
-      for (let k = 0; k <= segs; k++) {
-        const f = k / segs;
-        const jx = (k === 0 || k === segs) ? 0 : (Math.random() - 0.5) * sw0 * 2.2;
-        const xx = x0 + (x1 - x0) * f + jx;
-        const yy = y0 + (y1 - y0) * f;
-        if (k === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
-      }
+      ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
       ctx.stroke();
       ctx.restore();
     } else {
