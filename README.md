@@ -32,7 +32,7 @@
 **Requirements:** [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
 
 ```bash
-[git clone https://github.com/byrongamatos/slopsmith.git](https://github.com/johncoco12/SlopSmith-Plus)
+gtt clone https://github.com/johncoco12/SlopSmith-Plus
 cd slopsmith-plus
 docker compose up -d
 ```
