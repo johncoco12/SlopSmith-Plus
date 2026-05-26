@@ -15,7 +15,15 @@ import {
 } from '../constants';
 import type { RenderBundle } from '@/features/player/types';
 
-const SLICE_DT = 0.10; // chart-seconds per tile
+const SLICE_DT    = 0.10;  // chart-seconds per tile
+// AHEAD=2s, BEHIND=0.5s, NFRETS=24 frets → worst case ~250 tiles
+const MAX_TILES   = 256;
+
+// Scratch — reused every frame (no per-tile allocation)
+const _pos  = new THREE.Vector3()
+const _quat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))
+const _scl  = new THREE.Vector3()
+const _mat4 = new THREE.Matrix4()
 
 export interface LaneState {
   group: THREE.Group;
@@ -25,12 +33,8 @@ export interface LaneState {
 
 export function createLane(): LaneState {
   const group = new THREE.Group();
-  const pool: THREE.Mesh[] = [];
-  let poolIdx = 0;
 
   const laneGeo = new THREE.PlaneGeometry(1, 1);
-  const laneMats: THREE.MeshBasicMaterial[] = [];
-
   const matOdd = new THREE.MeshBasicMaterial({
     color: HWY_LANE_STRIPE_ODD_HEX,
     transparent: true,
@@ -43,29 +47,20 @@ export function createLane(): LaneState {
     opacity: HWY_LANE_STRIPE_OP_BASE + HWY_LANE_STRIPE_OP_INT * 0.5,
     side: THREE.DoubleSide,
   });
-  laneMats.push(matOdd, matEven);
 
-  function getMesh(): THREE.Mesh {
-    if (poolIdx < pool.length) {
-      const m = pool[poolIdx];
-      m.visible = true;
-      poolIdx++;
-      return m;
-    }
-    const m = new THREE.Mesh(laneGeo, matOdd);
-    m.frustumCulled = false;
-    group.add(m);
-    pool.push(m);
-    poolIdx++;
-    return m;
-  }
+  const imOdd  = new THREE.InstancedMesh(laneGeo, matOdd,  MAX_TILES)
+  const imEven = new THREE.InstancedMesh(laneGeo, matEven, MAX_TILES)
+  imOdd.frustumCulled  = false
+  imEven.frustumCulled = false
+  imOdd.count  = 0
+  imEven.count = 0
+  group.add(imOdd, imEven)
 
   function update(bundle: RenderBundle) {
-    poolIdx = 0;
-    if (!bundle.isReady || !bundle.anchors.length) {
-      for (const m of pool) m.visible = false;
-      return;
-    }
+    imOdd.count  = 0
+    imEven.count = 0
+
+    if (!bundle.isReady || !bundle.anchors.length) return;
 
     const now     = bundle.currentTime;
     const anchors = bundle.anchors;
@@ -85,8 +80,7 @@ export function createLane(): LaneState {
     matOdd.opacity  = alpha;
     matEven.opacity = alpha;
 
-    // Snap the start to the nearest SLICE_DT boundary so tile chart-times are
-    // stable across frames — only the boundary tiles pop in/out, never move.
+    // Snap to nearest SLICE_DT boundary — tile positions are stable between frames
     const firstSliceT = Math.ceil(tStart / SLICE_DT) * SLICE_DT;
 
     // Binary search: anchor active at firstSliceT
@@ -104,9 +98,8 @@ export function createLane(): LaneState {
     const zLen = TS * SLICE_DT;
 
     for (let sliceT = firstSliceT; sliceT < tEnd; sliceT += SLICE_DT) {
-      const sliceMid = sliceT + SLICE_DT / 2; // fixed chart time — never depends on now
+      const sliceMid = sliceT + SLICE_DT / 2;
 
-      // Advance anchor pointer
       while (ancIdx + 1 < anchors.length && anchors[ancIdx + 1].time <= sliceMid) {
         ancIdx++;
       }
@@ -114,8 +107,7 @@ export function createLane(): LaneState {
       const anc = anchors[ancIdx];
       if (!anc || anc.time > sliceMid) continue;
 
-      const z = dZ(sliceMid - now); // moves at same rate as notes
-
+      const z      = dZ(sliceMid - now);
       const fStart = Math.max(1, Math.round(anc.fret));
       const w      = Math.max(1, Math.round(anc.width));
       const fLast  = Math.min(NFRETS, fStart + w - 1);
@@ -123,23 +115,25 @@ export function createLane(): LaneState {
       for (let f = fStart; f <= fLast; f++) {
         const xL  = fretX(f - 1);
         const xR  = fretX(f);
-        const colW = xR - xL;
-        const cx   = (xL + xR) / 2;
+        const im  = (f % 2 === 0) ? imEven : imOdd
 
-        const mesh = getMesh();
-        mesh.material   = (f % 2 === 0) ? matEven : matOdd;
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(cx, boardY, z);
-        mesh.scale.set(colW, zLen, 1);
+        if (im.count >= MAX_TILES) continue;
+
+        _pos.set((xL + xR) / 2, boardY, z)
+        _scl.set(xR - xL, zLen, 1)
+        _mat4.compose(_pos, _quat, _scl)
+        im.setMatrixAt(im.count++, _mat4)
       }
     }
 
-    for (let i = poolIdx; i < pool.length; i++) pool[i].visible = false;
+    imOdd.instanceMatrix.needsUpdate  = true
+    imEven.instanceMatrix.needsUpdate = true
   }
 
   function dispose() {
     laneGeo.dispose();
-    for (const m of laneMats) m.dispose();
+    matOdd.dispose();
+    matEven.dispose();
   }
 
   return { group, update, dispose };

@@ -46,7 +46,17 @@ RUN cmake -S /tmp/vgmstream -B /tmp/vgmstream/build \
     && cmake --build /tmp/vgmstream/build --target vgmstream_cli -j"$(nproc)" \
     && cp /tmp/vgmstream/build/cli/vgmstream-cli /usr/local/bin/vgmstream-cli
 
-# ── Stage 3: Compile TypeScript ───────────────────────────────────────────
+# ── Stage 3: Build pitch_yin WASM ────────────────────────────────────────
+FROM emscripten/emsdk:latest AS wasm-builder
+
+# Mirror the directory layout build.sh expects so its relative OUT_DIR resolves correctly:
+#   plugins/pitch_yin/wasm/ → ../../static/vendor/pitch_yin/ = plugins/static/vendor/pitch_yin/
+WORKDIR /build/plugins/pitch_yin/wasm
+COPY plugins/pitch_yin/wasm/ .
+
+RUN bash build.sh
+
+# ── Stage 4: Compile TypeScript ───────────────────────────────────────────
 FROM node:20-slim AS ts-builder
 WORKDIR /build
 
@@ -58,7 +68,7 @@ COPY backend/src/ ./src/
 COPY backend/tsconfig.json ./
 RUN npx prisma generate && npm run build
 
-# ── Stage 4: Final image ──────────────────────────────────────────────────
+# ── Stage 5: Final image ──────────────────────────────────────────────────
 FROM node:20-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -91,8 +101,9 @@ RUN chmod +x docker-entrypoint.sh
 # Compiled backend: tsconfig outDir=dist, so src/index.ts → dist/index.js
 COPY --from=ts-builder /build/dist ./dist/
 
-# Assets served by the backend
+# Assets served by the backend (WASM output overlays the plugin directory)
 COPY plugins/ ./plugins/
+COPY --from=wasm-builder /build/plugins/static/vendor/pitch_yin/ ./plugins/static/vendor/pitch_yin/
 COPY VERSION ./
 
 ENV NODE_ENV=production

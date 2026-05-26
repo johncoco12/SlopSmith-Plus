@@ -141,33 +141,40 @@ onBeforeRender(() => {
   const stringCount = b.stringCount
   const inverted = b.inverted
 
-  // Target X from upcoming notes (recency-weighted centroid)
-  const t0 = now - 0.2
-  const t1 = now + AHEAD * 0.5
-  let sumX = 0, count = 0
-  for (let i = 0; i < notes.length; i++) {
-    const n = notes[i]
-    if (n.t < t0) continue
-    if (n.t > t1) break
-    if (n.f <= 0) continue
-    const x = fretMid(n.f)
-    const decay = Math.exp(-(n.t - now) * 1.5)
-    sumX += x * decay
-    count += decay
-  }
-  if (count > 0.01) {
-    tgtX = sumX / count
+  // Binary search: find first note at or after (now - 0.2)
+  const tScan0 = now - 0.2
+  let scanStart = 0
+  {
+    let lo = 0, hi = notes.length
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1
+      if (notes[mid].t < tScan0) lo = mid + 1
+      else hi = mid
+    }
+    scanStart = lo
   }
 
-  // Target distance from fret span
+  // Single pass: camera centroid + fret span (was two separate O(n) loops)
+  const tCam = now + AHEAD * 0.5
+  const tSpan = now + 2.0
+  let sumX = 0, count = 0
   let minF = 24, maxF = 0
-  for (let i = 0; i < notes.length; i++) {
+  for (let i = scanStart; i < notes.length; i++) {
     const n = notes[i]
-    if (n.t < now - 0.2 || n.t > now + 2.0) continue
+    if (n.t > tSpan) break
     if (n.f > 0) {
+      if (n.t <= tCam) {
+        const x = fretMid(n.f)
+        const decay = Math.exp(-(n.t - now) * 1.5)
+        sumX += x * decay
+        count += decay
+      }
       if (n.f < minF) minF = n.f
       if (n.f > maxF) maxF = n.f
     }
+  }
+  if (count > 0.01) {
+    tgtX = sumX / count
   }
   const span = maxF > minF ? maxF - minF : 4
   tgtDist = (65 + Math.max(span, 4) * 3 + Math.max(0, 5 - minF) * 4) * K

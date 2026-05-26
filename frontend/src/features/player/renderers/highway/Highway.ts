@@ -48,6 +48,22 @@ export class Highway implements HighwayApi {
   readonly hitDetector: HitDetector;
   private noteStateProvider: NoteStateProvider | null = null;
   private drawHooks: DrawHook[] = [];
+
+  // Stable closures — created once per instance, not per frame
+  private readonly _getNoteState = (note: ChartNote | ChartChordNote, chartTime: number): NoteState | null =>
+    this.noteStateProvider ? resolveNoteState(this.noteStateProvider, note as ChartNote, chartTime) : null
+
+  private readonly _fillTextReadable = (text: string, x: number, y: number): void => {
+    const canvas = (this.rendererMgr as any).canvas as HTMLCanvasElement | null
+    if (!canvas) return
+    const ctx2d = canvas.getContext('2d') as CanvasRenderingContext2D | null
+    if (!ctx2d) return
+    if (!this.lefty) { ctx2d.fillText(text, x, y); return }
+    ctx2d.save()
+    ctx2d.setTransform(1, 0, 0, 1, 0, 0)
+    ctx2d.fillText(text, canvas.width - x, y)
+    ctx2d.restore()
+  }
   private connectOpts: ConnectOptions = {};
   private resizeContainer: Element | null = null;
   private resizeHandler: (() => void) | null = null;
@@ -299,22 +315,6 @@ export class Highway implements HighwayApi {
     );
 
     const proj = this.proj;
-    const lefty = this.lefty;
-    const canvas = this.rendererMgr['canvas'] as HTMLCanvasElement | null;
-    const ctx2d = canvas?.getContext('2d') ?? null;
-
-    const fillTextReadable = (text: string, x: number, y: number): void => {
-      if (!ctx2d || !canvas) return;
-      if (!lefty) { ctx2d.fillText(text, x, y); return; }
-      ctx2d.save();
-      ctx2d.setTransform(1, 0, 0, 1, 0, 0);
-      ctx2d.fillText(text, canvas.width - x, y);
-      ctx2d.restore();
-    };
-
-    const provider = this.noteStateProvider;
-    const getNoteState = (note: ChartNote | ChartChordNote, chartTime: number): NoteState | null =>
-      provider ? resolveNoteState(provider, note as ChartNote, chartTime) : null;
 
     return {
       currentTime,
@@ -343,10 +343,10 @@ export class Highway implements HighwayApi {
       lyricsVisible: this.lyricsVisible,
       project: (t) => proj.project(t),
       fretX: (f, s, w) => proj.fretX(f, s, w),
-      getNoteState,
+      getNoteState: this._getNoteState,
       // Private fields consumed by DefaultRenderer.
       _displayMaxFret: proj.displayMaxFret,
-      _fillTextReadable: fillTextReadable,
+      _fillTextReadable: this._fillTextReadable,
     } as RenderBundle;
   }
 

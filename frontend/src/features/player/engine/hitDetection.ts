@@ -44,6 +44,15 @@ export class HitDetector {
   private _lastHitAt = 0
   private _lastMatchHz = 0
 
+  // Cached settings — re-read from localStorage at most once per second
+  private _playEnabled    = true
+  private _inputLatencyMs = 0
+  private _tolerance      = TOLERANCE_DEFAULT
+  private _lastSettingsRead = 0
+
+  /** Called with (noteKey, chartTime) the first time each unique note is hit. */
+  onNoteHit: ((key: string, chartTime: number) => void) | null = null
+
   private hw: HighwayApi
 
   private _boundDraw: (ctx: CanvasRenderingContext2D, W: number, H: number) => void
@@ -62,10 +71,18 @@ export class HitDetector {
   // ── Lifecycle ───────────────────────────────────────────────────────────
 
   setup(): void {
+    this._readSettings()
     this.hw.setNoteStateProvider?.(this._boundStateProvider as any)
     this.hw.addDrawHook?.(this._boundDraw)
     this._listen(true)
     this._dumpSongData()
+  }
+
+  private _readSettings(): void {
+    this._playEnabled    = localStorage.getItem(LS_PLAY_ENABLED) !== 'false'
+    this._inputLatencyMs = parseFloat(localStorage.getItem(LS_INPUT_LATENCY)!) || 0
+    this._tolerance      = parseFloat(localStorage.getItem(LS_PLAY_TOLERANCE)!) || TOLERANCE_DEFAULT
+    this._lastSettingsRead = performance.now()
   }
 
   teardown(): void {
@@ -92,13 +109,16 @@ export class HitDetector {
   private _onPitch(e: any): void {
     const hz = e?.hz ?? e?.detail?.hz ?? 0
     if (hz <= 0) return
-    if (localStorage.getItem(LS_PLAY_ENABLED) === 'false') return
 
-    const inputLatencyMs = parseFloat(localStorage.getItem(LS_INPUT_LATENCY)!) || 0
-    const now      = (this.hw.getTime?.() ?? 0) - inputLatencyMs / 1000
+    // Re-read settings at most once per second to avoid synchronous I/O on every event
+    const perf = performance.now()
+    if (perf - this._lastSettingsRead > 1000) this._readSettings()
+
+    if (!this._playEnabled) return
+
+    const now      = (this.hw.getTime?.() ?? 0) - this._inputLatencyMs / 1000
     const songInfo = this.hw.getSongInfo?.() ?? {}
-    const tolerance = parseFloat(localStorage.getItem(LS_PLAY_TOLERANCE)!) || TOLERANCE_DEFAULT
-    const perf     = performance.now()
+    const tolerance = this._tolerance
 
     const _try = (n: any, t: number): void => {
       const dt = t - now
@@ -106,10 +126,13 @@ export class HitDetector {
       const refHz = _noteHz(n.s, n.f, songInfo)
       if (refHz <= 0) return
       if (_centsDiff(hz, refHz) <= tolerance) {
-        this._hitMap.set(`${t}_${n.s}_${n.f}`, { at: perf })
+        const key = `${t}_${n.s}_${n.f}`
+        const isNew = !this._hitMap.has(key)
+        this._hitMap.set(key, { at: perf })
         this._lastHitAccuracyMs = -Math.round(dt * 1000)
         this._lastHitAt = perf
         this._lastMatchHz = refHz
+        if (isNew && this.onNoteHit) this.onNoteHit(key, t)
       }
     }
 

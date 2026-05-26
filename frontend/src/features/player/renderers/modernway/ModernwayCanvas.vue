@@ -28,4 +28,11 @@ provide(renderBundleKey, bundle as any)
   </div>
 </template>
 
-
+<!-- Disable TresJS pointer-event raycasting — getBoundingClientRect on every
+     mousemove was 2x more common in slow frames (trace analysis). Nothing in
+     the 3D scene uses raycasting, so there's no functional loss. -->
+<style scoped>
+:deep(canvas) {
+  pointer-events: none;
+}
+</style>

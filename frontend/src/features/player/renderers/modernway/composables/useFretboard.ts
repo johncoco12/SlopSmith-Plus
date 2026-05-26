@@ -18,6 +18,10 @@ export function createFretboard(): FretboardState {
   const palette = PALETTES.default;
 
   function rebuild(stringCount: number, inverted: boolean) {
+    // Re-enable updates so new children get correct world matrices
+    group.matrixAutoUpdate = true
+    group.matrixWorldAutoUpdate = true
+
     // Clear existing
     while (group.children.length) {
       const child = group.children[0];
@@ -155,6 +159,15 @@ export function createFretboard(): FretboardState {
         group.add(dot);
       }
     }
+
+    // All geometry is static until next rebuild — freeze world-matrix traversal.
+    // Three.js r152+ skips the entire subtree when matrixWorldAutoUpdate = false,
+    // eliminating updateMatrixWorld cost for ~50+ fretboard children per frame.
+    group.updateMatrixWorld(true)
+    group.traverse((o: THREE.Object3D) => {
+      o.matrixAutoUpdate = false
+      o.matrixWorldAutoUpdate = false
+    })
   }
 
   function dispose() {
@@ -170,6 +183,9 @@ export function createFretboard(): FretboardState {
       });
       group.remove(child);
     }
+    // Re-enable for next rebuild
+    group.matrixAutoUpdate = true
+    group.matrixWorldAutoUpdate = true
   }
 
   return { group, rebuild, dispose };

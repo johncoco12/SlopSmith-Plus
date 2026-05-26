@@ -7,6 +7,7 @@ import PlayerCanvas from '@/features/player/components/PlayerCanvas.vue'
 import PlayerHud from '@/features/player/components/PlayerHud.vue'
 import PlayerControls from '@/features/player/components/PlayerControls.vue'
 import DebugOverlay from '@/features/player/components/DebugOverlay.vue'
+import SectionBar from '@/features/player/components/SectionBar.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -75,6 +76,7 @@ function handleBack() {
     <div class="relative flex-1 min-h-0 flex flex-col">
       <PlayerCanvas ref="playerCanvas" />
       <PlayerHud />
+      <SectionBar />
       <!-- Bottom gradient bleed into controls -->
       <div
         class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-dark-800/75 to-transparent pointer-events-none z-10"
