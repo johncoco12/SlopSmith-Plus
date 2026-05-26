@@ -32,9 +32,9 @@
 **Requirements:** [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
 
 ```bash
-git clone https://github.com/byrongamatos/slopsmith.git
-cd slopsmith
-DLC_PATH=/path/to/Rocksmith2014/dlc docker compose up -d
+[git clone https://github.com/byrongamatos/slopsmith.git](https://github.com/johncoco12/SlopSmith-Plus)
+cd slopsmith-plus
+docker compose up -d
 ```
 
 Open **http://localhost:8006** in your browser. On first launch the app scans your DLC folder in the background — the library is usable immediately while the scan runs.
@@ -150,9 +150,6 @@ The DLC folder and default arrangement (Lead / Rhythm / Bass) can also be change
 
 The repository ships a ready-to-use `docker-compose.yml`. Start with:
 
-```bash
-DLC_PATH=/path/to/Rocksmith2014/dlc docker compose up -d
-```
 
 For a custom stack (e.g. different ports or passwords), copy and edit `docker-compose.yml` directly.
 
@@ -182,32 +179,6 @@ sudo systemctl restart apache2
 ```
 
 > **Note:** Slopsmith uses absolute paths (`/api/`, `/static/`, etc.), so each path must be proxied at the virtual-host root. To avoid collisions with an existing site, use a dedicated subdomain such as `slopsmith.your-domain.com`.
-
-### Proxmox LXC
-
-`build-proxmox-ct.sh` builds a self-contained LXC rootfs tarball from WSL2 — bootstraps Debian Trixie, installs runtime dependencies, builds RsCli (with .NET removed before packaging), and outputs a `.tar.zst` importable by `pct restore`.
-
-```bash
-# Prerequisites (WSL2)
-sudo apt install debootstrap systemd-container tar zstd curl unzip git
-
-# Build
-sudo bash build-proxmox-ct.sh amd64 slopsmith-ct
-
-# Transfer and restore on Proxmox
-scp slopsmith-ct.tar.zst root@proxmox:/var/lib/vz/template/cache/
-pct restore 200 /var/lib/vz/template/cache/slopsmith-ct.tar.zst \
-    --storage local-lvm --rootfs 8 --memory 2048 --cores 2 \
-    --net0 name=eth0,bridge=vmbr0,ip=dhcp --unprivileged 1 --start 1
-```
-
-Point `ROCKSMITH_SRC_DIR` at the Rocksmith install root (the directory that contains both `dlc/` and `songs.psarc`):
-
-```bash
-sudo env ROCKSMITH_SRC_DIR=/path/to/Rocksmith2014 bash build-proxmox-ct.sh amd64 slopsmith-ct
-```
-
-Downloaded artifacts are verified against pinned SHA256 hashes. Use `SKIP_HASH_CHECK=1` if an upstream file has rolled before the pin is updated. Only `amd64` is supported out of the box; `arm64` requires `qemu-user-static` + binfmt registration.
 
 ### Portainer
 
