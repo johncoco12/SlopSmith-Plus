@@ -25,6 +25,7 @@ import type { TrackService } from "../../src/services/TrackService.js";
 import type { LoopService } from "../../src/services/LoopService.js";
 import type { SongService } from "../../src/services/SongService.js";
 import type { PluginRegistry } from "../../src/infrastructure/plugins/PluginRegistry.js";
+import type { PluginService } from "../../src/services/PluginService.js";
 
 export interface StubOverrides {
   library?: Partial<LibraryService>;
@@ -34,6 +35,7 @@ export interface StubOverrides {
   loops?: Partial<LoopService>;
   songs?: Partial<SongService>;
   plugins?: Partial<PluginRegistry>;
+  pluginSvc?: Partial<PluginService>;
 }
 
 const MOCK_SESSION: Session = {
@@ -152,6 +154,43 @@ export function buildTestApp(overrides: StubOverrides = {}) {
     ...overrides.plugins,
   } as unknown as PluginRegistry;
 
+  const pluginSvcStub: PluginService = {
+    getAll: () => pluginsStub.getAll().map((p) => ({
+      ...p,
+      type: p.manifest.type,
+      nav: p.manifest.nav,
+      has_settings: p.capabilities.hasSettings,
+      has_script: p.capabilities.hasScript,
+      script: p.manifest.script,
+      component: p.manifest.component,
+      manifest: p.manifest,
+      state: "active" as const,
+      error: undefined,
+    })),
+    getById: (id: string) => {
+      const p = pluginsStub.getById(id);
+      return {
+        ...p,
+        type: p.manifest.type,
+        nav: p.manifest.nav,
+        has_settings: p.capabilities.hasSettings,
+        has_script: p.capabilities.hasScript,
+        script: p.manifest.script,
+        component: p.manifest.component,
+        manifest: p.manifest,
+        state: "active" as const,
+        error: undefined,
+      };
+    },
+    listProviders: () => [],
+    setActiveProvider: () => {},
+    listAvailablePermissions: () => [],
+    enablePlugin: async () => {},
+    disablePlugin: async () => {},
+    purgePluginData: async () => {},
+    ...overrides.pluginSvc,
+  } as unknown as PluginService;
+
   const permissionsStub: IPermissionsService = {
     resolvePermissions: async () => [],
     hasPermission: async () => true,
@@ -174,6 +213,7 @@ export function buildTestApp(overrides: StubOverrides = {}) {
   fastify.decorate("loops", loopsStub);
   fastify.decorate("songs", songsStub);
   fastify.decorate("plugins", pluginsStub);
+  fastify.decorate("pluginSvc", pluginSvcStub);
   fastify.decorate("permissions", permissionsStub);
 
   fastify.register(cors, { origin: true });

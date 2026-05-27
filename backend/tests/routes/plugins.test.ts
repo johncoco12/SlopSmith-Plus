@@ -17,6 +17,7 @@ function makePlugin(id: string): LoadedPlugin {
       hasScript: true,
       hasSettings: false,
       hasTour: false,
+      hasComponent: false,
     },
   };
 }
@@ -43,7 +44,7 @@ describe("GET /api/plugins", () => {
     expect(body.plugins).toHaveLength(2);
   });
 
-  it("includes id, name, version, bundled, capabilities fields", async () => {
+  it("includes id, name, version, bundled, capabilities, state fields", async () => {
     const body = (await app.inject({ method: "GET", url: "/api/plugins" })).json();
     const plugin = body.plugins[0];
     expect(plugin).toHaveProperty("id");
@@ -51,6 +52,7 @@ describe("GET /api/plugins", () => {
     expect(plugin).toHaveProperty("version");
     expect(plugin).toHaveProperty("bundled");
     expect(plugin).toHaveProperty("capabilities");
+    expect(plugin).toHaveProperty("state");
   });
 
   it("returns empty array when no plugins are loaded", async () => {
@@ -62,7 +64,39 @@ describe("GET /api/plugins", () => {
   });
 });
 
-describe("GET /api/plugins/:id/file/:filename", () => {
+describe("GET /api/plugins/:id", () => {
+  it("returns 200 with plugin detail", async () => {
+    const app = buildTestApp({
+      plugins: {
+        getAll: () => [makePlugin("leaderboard")],
+        getById: (id) => {
+          if (id !== "leaderboard") throw new NotFoundError(`Plugin "${id}"`);
+          return makePlugin("leaderboard");
+        },
+      },
+    });
+    await app.ready();
+    const res = await app.inject({ method: "GET", url: "/api/plugins/leaderboard" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.id).toBe("leaderboard");
+    await app.close();
+  });
+
+  it("returns 404 for an unknown plugin", async () => {
+    const app = buildTestApp({
+      plugins: {
+        getById: () => { throw new NotFoundError('Plugin "nope"'); },
+      },
+    });
+    await app.ready();
+    const res = await app.inject({ method: "GET", url: "/api/plugins/nope" });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe("GET /api/plugins/:id/file/*", () => {
   it("returns 404 when plugin does not exist", async () => {
     const app = buildTestApp({
       plugins: {
@@ -75,6 +109,69 @@ describe("GET /api/plugins/:id/file/:filename", () => {
       url: "/api/plugins/unknown/file/screen.js",
     });
     expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("returns 404 when the file does not exist on disk", async () => {
+    const app = buildTestApp({
+      plugins: {
+        resolveFile: () => "/nonexistent/path/screen.js",
+      },
+    });
+    await app.ready();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/plugins/some-plugin/file/screen.js",
+    });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe("GET /api/plugins/providers", () => {
+  it("returns 200 with provider list", async () => {
+    const app = buildTestApp({
+      pluginSvc: {
+        listProviders: () => [
+          { type: "theme", providers: [{ name: "dark", active: true }] },
+        ],
+      },
+    });
+    await app.ready();
+    const res = await app.inject({ method: "GET", url: "/api/plugins/providers" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body[0]).toHaveProperty("type", "theme");
+    await app.close();
+  });
+});
+
+describe("PUT /api/plugins/providers/:type/active", () => {
+  it("returns 200 when provider is set successfully", async () => {
+    const app = buildTestApp({
+      pluginSvc: { setActiveProvider: () => {} },
+    });
+    await app.ready();
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/plugins/providers/theme/active",
+      payload: { name: "dark" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+    await app.close();
+  });
+
+  it("returns 400 when name is missing", async () => {
+    const app = buildTestApp();
+    await app.ready();
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/plugins/providers/theme/active",
+      payload: {},
+    });
+    expect(res.statusCode).toBe(400);
     await app.close();
   });
 });
