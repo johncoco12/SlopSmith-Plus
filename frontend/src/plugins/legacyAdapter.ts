@@ -29,8 +29,8 @@ export function installLegacyAdapter(bus: PluginEventBus): void {
   if (existing) {
     for (const key of Object.keys(existing)) {
       if (!(key in window.slopsmith!)) {
-        (window.slopsmith as Record<string, unknown>)[key] =
-          (existing as Record<string, unknown>)[key];
+        (window.slopsmith as unknown as Record<string, unknown>)[key] =
+          (existing as unknown as Record<string, unknown>)[key];
       }
     }
   }
