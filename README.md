@@ -103,7 +103,7 @@ Real-time note highway rendering Rocksmith arrangements in two selectable visual
 - **4-Count Click** — tempo-matched metronome count-in before each repetition
 - **Rewind Effect** — highway smoothly rewinds to the loop start point
 
-### CDLC Creation
+### CDLC Creation *(coming soon)*
 
 - **Guitar Pro → CDLC** — search Ultimate Guitar for GP3 / GP4 / GP5 tabs and convert them to playable CDLC with MIDI audio (plugin)
 
