@@ -32,6 +32,20 @@ export class TrackDataRepository implements ITrackDataRepository {
     return row ? rowToTrackData(row) : null;
   }
 
+  async findWithCovers(limit: number): Promise<string[]> {
+    const rows = await prisma.trackData.findMany({
+      where: { coverImageStorageId: { not: null } },
+      select: { track: { select: { trackId: true } } },
+    });
+    const ids = rows.map((r) => r.track.trackId);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    const sanitizedLimit = Math.max(0, Math.floor(limit));
+    return ids.slice(0, sanitizedLimit);
+  }
+
   async create(trackId: number, originalFilename: string, arrangements: unknown, coverImageStorageId?: string, audioFileStorageId?: string): Promise<TrackData> {
     const row = await prisma.trackData.create({
       data: {

@@ -42,4 +42,8 @@ export class LibraryService {
   toggleFavorite(trackId: string, profileId: number): Promise<boolean> {
     return this.favorites.toggle(trackId, profileId);
   }
+
+  deleteOrphanedSongs(): Promise<number> {
+    return this.songs.deleteOrphaned();
+  }
 }

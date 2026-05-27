@@ -48,4 +48,8 @@ export class LoopRepository implements ILoopRepository {
       throw new NotFoundError(`Loop ${id}`);
     }
   }
+
+  async deleteAllByTrackId(trackId: number): Promise<void> {
+    await prisma.trackLoop.deleteMany({ where: { trackId } });
+  }
 }

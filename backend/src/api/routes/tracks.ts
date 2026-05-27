@@ -57,6 +57,17 @@ const UpdateTrackSchema = z.object({
 export const trackRoutes = fp(async function trackRoutes(fastify) {
   const tracks = fastify.trackSvc as TrackService;
 
+  // Public — no auth. Returns a random selection of trackIds that have cover art.
+  // Used by the profile switcher background mosaic.
+  fastify.get("/api/covers", async (req, reply) => {
+    const { count } = z.object({
+      count: z.coerce.number().int().min(1).max(100).default(30),
+    }).parse(req.query);
+    const trackIds = await tracks.getCovers(count);
+    reply.header("Cache-Control", "public, max-age=60");
+    return { trackIds };
+  });
+
   fastify.get("/api/tracks/:trackId", async (req) => {
     const { trackId } = trackIdParam.parse(req.params);
     return tracks.getTrack(trackId);

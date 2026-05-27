@@ -127,15 +127,31 @@ export class SongRepository implements ISongRepository {
     return new Map(rows.map((r) => [r.originalFilename, r.track.trackId]));
   }
 
+  private async getValidFilenames(): Promise<string[]> {
+    const rows = await prisma.trackData.findMany({ select: { originalFilename: true } });
+    return rows.map((r) => r.originalFilename);
+  }
+
   async search(query: LibraryQuery): Promise<PageResult<SongMeta>> {
-    const favorites = await this.getFavorites();
+    const [favorites, validFilenames] = await Promise.all([
+      this.getFavorites(),
+      this.getValidFilenames(),
+    ]);
     const where = buildWhere(query, favorites);
     const orderBy = buildOrderBy(query.sort);
     const skip = (query.page - 1) * query.size;
 
+    // Restrict to songs that have a corresponding Track (orphaned rows have no TrackData)
+    const validSet = { filename: { in: validFilenames } };
+    const withValid = where.AND
+      ? { AND: [...(where.AND as object[]), validSet] }
+      : Object.keys(where).length
+        ? { AND: [where, validSet] }
+        : validSet;
+
     const [rows, total] = await Promise.all([
-      prisma.song.findMany({ where, orderBy }),
-      prisma.song.count({ where }),
+      prisma.song.findMany({ where: withValid, orderBy }),
+      prisma.song.count({ where: withValid }),
     ]);
 
     const filtered = hasPostFilters(query)
@@ -292,5 +308,17 @@ export class SongRepository implements ISongRepository {
       await prisma.song.deleteMany({ where: { filename: { in: toDelete } } });
     }
     return toDelete.length;
+  }
+
+  async deleteOrphaned(): Promise<number> {
+    const [allSongs, trackDataFilenames] = await Promise.all([
+      prisma.song.findMany({ select: { filename: true } }),
+      prisma.trackData.findMany({ select: { originalFilename: true } }),
+    ]);
+    const valid = new Set(trackDataFilenames.map((r) => r.originalFilename));
+    const orphaned = allSongs.map((r) => r.filename).filter((f) => !valid.has(f));
+    if (orphaned.length === 0) return 0;
+    await prisma.song.deleteMany({ where: { filename: { in: orphaned } } });
+    return orphaned.length;
   }
 }

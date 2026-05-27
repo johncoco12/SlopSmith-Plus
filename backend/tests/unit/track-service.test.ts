@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { TrackService } from "../../src/services/TrackService.js";
-import type { ITrackRepository, ITrackDataRepository, IStemsRepository, IStemDataRepository, ILoopRepository } from "../../src/domain/repositories.js";
+import type { ITrackRepository, ITrackDataRepository, IStemsRepository, IStemDataRepository, ILoopRepository, IFavoritesRepository, ISongRepository } from "../../src/domain/repositories.js";
 import type { Track, TrackData, TrackStems, StemData } from "../../src/domain/models/track.js";
 import type { Loop } from "../../src/domain/models/library.js";
 import type { IStorageService } from "../../src/domain/interfaces/services/IStorageService.js";
@@ -404,5 +404,153 @@ describe("TrackService.deleteLoop", () => {
     const service = new TrackService(repos.tracks, repos.trackData, repos.stems, repos.stemData, repos.loops, repos.storage);
     await service.deleteLoop(42);
     expect(repos.loops.delete).toHaveBeenCalledWith(42);
+  });
+});
+
+// ─── Additional coverage ──────────────────────────────────────────────────────
+
+function makeFavorites(overrides: Partial<IFavoritesRepository> = {}): IFavoritesRepository {
+  return {
+    isFavorite: vi.fn(async () => false),
+    toggle: vi.fn(async () => false),
+    getAllFilenames: vi.fn(async () => new Set<string>()),
+    getFavoritesByProfile: vi.fn(async () => new Set<string>()),
+    deleteByTrackId: vi.fn(async () => {}),
+    ...overrides,
+  } as IFavoritesRepository;
+}
+
+function makeSongsRepo(overrides: Partial<ISongRepository> = {}): ISongRepository {
+  return {
+    search: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 50 })),
+    artists: vi.fn(async () => ({ items: [], total: 0, page: 1, size: 20 })),
+    stats: vi.fn(async () => ({ totalSongs: 0, totalArtists: 0, letters: {} })),
+    tuningNames: vi.fn(async () => []),
+    findByFilename: vi.fn(async () => null),
+    findCached: vi.fn(async () => null),
+    upsert: vi.fn(async () => {}),
+    delete: vi.fn(async () => {}),
+    deleteStale: vi.fn(async () => 0),
+    deleteOrphaned: vi.fn(async () => 0),
+    ...overrides,
+  } as ISongRepository;
+}
+
+describe("TrackService.getCovers", () => {
+  it("returns cover track ids from trackData repository", async () => {
+    const ids = ["track_1", "track_2", "track_3"];
+    const repos = makeRepos({
+      trackData: { findWithCovers: vi.fn(async () => ids) },
+    });
+    const service = new TrackService(repos.tracks, repos.trackData, repos.stems, repos.stemData, repos.loops, repos.storage);
+    const result = await service.getCovers(3);
+    expect(result).toEqual(ids);
+  });
+
+  it("delegates the count argument to the repository", async () => {
+    const repos = makeRepos({
+      trackData: { findWithCovers: vi.fn(async () => []) },
+    });
+    const service = new TrackService(repos.tracks, repos.trackData, repos.stems, repos.stemData, repos.loops, repos.storage);
+    await service.getCovers(10);
+    expect(repos.trackData.findWithCovers).toHaveBeenCalledWith(10);
+  });
+});
+
+describe("TrackService.updateTrack", () => {
+  it("updates and returns the track", async () => {
+    const track = makeTrack();
+    const updated = makeTrack({ title: "New Title" });
+    const repos = makeRepos({
+      tracks: {
+        findByTrackId: vi.fn(async () => track),
+        update: vi.fn(async () => updated),
+      },
+    });
+    const service = new TrackService(repos.tracks, repos.trackData, repos.stems, repos.stemData, repos.loops, repos.storage);
+    const result = await service.updateTrack("track_abc", { title: "New Title" });
+    expect(result).toEqual(updated);
+    expect(repos.tracks.update).toHaveBeenCalledWith(track.id, { title: "New Title" });
+  });
+
+  it("throws NotFoundError when track not found", async () => {
+    const repos = makeRepos({ tracks: { findByTrackId: vi.fn(async () => null) } });
+    const service = new TrackService(repos.tracks, repos.trackData, repos.stems, repos.stemData, repos.loops, repos.storage);
+    await expect(service.updateTrack("missing", {})).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("TrackService.deleteTrack", () => {
+  function makeDeleteService(overrides: {
+    tracks?: Partial<ITrackRepository>;
+    trackData?: Partial<ITrackDataRepository>;
+    stems?: Partial<IStemsRepository>;
+    stemData?: Partial<IStemDataRepository>;
+    loops?: Partial<ILoopRepository>;
+    storage?: Partial<IStorageService>;
+    favorites?: Partial<IFavoritesRepository>;
+    songs?: Partial<ISongRepository>;
+  } = {}) {
+    const repos = makeRepos(overrides);
+    const favorites = makeFavorites(overrides.favorites);
+    const songs = makeSongsRepo(overrides.songs);
+    const loops: ILoopRepository = {
+      ...repos.loops,
+      deleteAllByTrackId: vi.fn(async () => {}),
+      ...overrides.loops,
+    } as ILoopRepository;
+    return {
+      service: new TrackService(repos.tracks, repos.trackData, repos.stems, repos.stemData, loops, repos.storage, favorites, songs),
+      repos, favorites, songs, loops,
+    };
+  }
+
+  it("throws NotFoundError when track not found", async () => {
+    const { service } = makeDeleteService({ tracks: { findByTrackId: vi.fn(async () => null) } });
+    await expect(service.deleteTrack("missing")).rejects.toThrow(NotFoundError);
+  });
+
+  it("deletes track with no associated data", async () => {
+    const track = makeTrack();
+    const { service, repos, favorites, loops } = makeDeleteService({
+      tracks: { findByTrackId: vi.fn(async () => track), delete: vi.fn(async () => {}) },
+      trackData: { findByTrackId: vi.fn(async () => null) },
+      stems: { findByTrackId: vi.fn(async () => null) },
+    });
+    await service.deleteTrack("track_abc");
+    expect(repos.tracks.delete).toHaveBeenCalledWith(track.id);
+    expect(favorites.deleteByTrackId).toHaveBeenCalledWith("track_abc");
+    expect(loops.deleteAllByTrackId).toHaveBeenCalledWith(track.id);
+  });
+
+  it("cleans up storage ids from trackData before deleting", async () => {
+    const track = makeTrack();
+    const data = makeTrackData({ coverImageStorageId: "cover_1", audioFileStorageId: "audio_1" });
+    const { service, repos, songs } = makeDeleteService({
+      tracks: { findByTrackId: vi.fn(async () => track), delete: vi.fn(async () => {}) },
+      trackData: { findByTrackId: vi.fn(async () => data), delete: vi.fn(async () => {}) },
+      stems: { findByTrackId: vi.fn(async () => null) },
+    });
+    await service.deleteTrack("track_abc");
+    expect(repos.storage.delete).toHaveBeenCalledWith("cover_1");
+    expect(repos.storage.delete).toHaveBeenCalledWith("audio_1");
+    expect(songs.delete).toHaveBeenCalledWith(data.originalFilename);
+    expect(repos.trackData.delete).toHaveBeenCalledWith(data.id);
+  });
+
+  it("cleans up stem storage and stem records before deleting", async () => {
+    const track = makeTrack();
+    const stemsRecord = makeStems();
+    const stem = makeStemData({ stemAudioFileStorageId: "stem_audio_1" });
+    const { service, repos } = makeDeleteService({
+      tracks: { findByTrackId: vi.fn(async () => track), delete: vi.fn(async () => {}) },
+      trackData: { findByTrackId: vi.fn(async () => null) },
+      stems: { findByTrackId: vi.fn(async () => stemsRecord), delete: vi.fn(async () => {}) },
+      stemData: { findByStemsId: vi.fn(async () => [stem]), delete: vi.fn(async () => {}) },
+    });
+    await service.deleteTrack("track_abc");
+    expect(repos.storage.delete).toHaveBeenCalledWith("stem_audio_1");
+    expect(repos.stemData.delete).toHaveBeenCalledWith(stem.id);
+    expect(repos.stems.delete).toHaveBeenCalledWith(stemsRecord.id);
   });
 });

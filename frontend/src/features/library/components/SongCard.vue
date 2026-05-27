@@ -80,7 +80,7 @@ function onDelete(e: Event) {
 
   <article
     class="song-card group"
-    :class="{ selected }"
+    :class="{ selected, 'z-50': menuOpen }"
     tabindex="0"
     :aria-label="`${song.title} by ${song.artist}`"
     @click="emit('open', song)"

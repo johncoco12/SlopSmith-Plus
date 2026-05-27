@@ -7,7 +7,7 @@ import { requireAuth, requireAuthAsync } from "../middleware/auth.js";
 
 const LibraryQuerySchema = z.object({
   q: z.string().optional(),
-      page: z.coerce.number().int().min(0).default(1),
+      page: z.coerce.number().int().min(1).default(1),
   size: z.coerce.number().int().min(1).max(200).default(50),
   sort: z
     .enum(["artist", "artist-desc", "title", "title-desc", "recent", "tuning", "year", "year-desc"])
@@ -56,7 +56,7 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
     const q = z.object({
       q: z.string().optional(),
       letter: z.string().max(2).optional(),
-  page: z.coerce.number().int().min(0).default(1),
+  page: z.coerce.number().int().min(1).default(1),
       size: z.coerce.number().int().min(1).max(50).default(20),
       favorites: z.coerce.number().int().transform(Boolean).default(0),
     }).parse(req.query);
@@ -90,6 +90,11 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
   fastify.post("/api/rescan/full", {preHandler: [requireAuthAsync()]}, async (req, reply) => {
     scanner.scan(true).catch(() => undefined);
     return reply.code(202).send({ ok: true });
+  });
+
+  fastify.post("/api/library/cleanup-orphans", { preHandler: [requireAuthAsync()] }, async (_req, reply) => {
+    const deleted = await library.deleteOrphanedSongs();
+    return reply.send({ deleted });
   });
 
   fastify.get("/api/startup-status", async () => {

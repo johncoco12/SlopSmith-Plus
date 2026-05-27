@@ -8,7 +8,7 @@ describe("POST /api/favorites/toggle", () => {
   beforeAll(async () => {
     app = buildTestApp({
       library: {
-        toggleFavorite: async (filename: string) => filename === "fav.psarc",
+        toggleFavorite: async (trackId: string) => trackId === "fav_track",
       },
     });
     await app.ready();
@@ -20,11 +20,11 @@ describe("POST /api/favorites/toggle", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/favorites/toggle",
-      payload: { filename: "fav.psarc" },
+      payload: { trackId: "fav_track", profileId: 1 },
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.filename).toBe("fav.psarc");
+    expect(body.trackId).toBe("fav_track");
     expect(body.favorite).toBe(true);
   });
 
@@ -32,29 +32,38 @@ describe("POST /api/favorites/toggle", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/favorites/toggle",
-      payload: { filename: "other.psarc" },
+      payload: { trackId: "other_track", profileId: 1 },
     });
     expect(res.json().favorite).toBe(false);
   });
 
-  it("returns 400 when filename is missing", async () => {
+  it("returns 400 when trackId is missing", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/favorites/toggle",
-      payload: {},
+      payload: { profileId: 1 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 400 when profileId is missing", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/favorites/toggle",
+      payload: { trackId: "fav_track" },
     });
     expect(res.statusCode).toBe(400);
   });
 });
 
-describe("GET /api/loops", () => {
+describe("GET /api/tracks/:trackId/loops", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
     app = buildTestApp({
-      loops: {
-        getForSong: async () => [
-          { id: 1, filename: "song.psarc", name: "Intro", startTime: 0, endTime: 10, createdAt: new Date() },
+      trackSvc: {
+        getLoops: async () => [
+          { id: 1, profileId: 1, trackId: 1, name: "Intro", startTime: 0, endTime: 10, createdAt: new Date() },
         ],
       },
     });
@@ -63,10 +72,10 @@ describe("GET /api/loops", () => {
 
   afterAll(() => app.close());
 
-  it("returns loops for a given filename", async () => {
+  it("returns loops for a given track and profile", async () => {
     const res = await app.inject({
       method: "GET",
-      url: "/api/loops?filename=song.psarc",
+      url: "/api/tracks/track_abc/loops?profileId=1",
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
@@ -74,13 +83,13 @@ describe("GET /api/loops", () => {
     expect(body.loops[0].name).toBe("Intro");
   });
 
-  it("returns 400 when filename query param is missing", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/loops" });
+  it("returns 400 when profileId query param is missing", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/tracks/track_abc/loops" });
     expect(res.statusCode).toBe(400);
   });
 });
 
-describe("POST /api/loops", () => {
+describe("POST /api/tracks/:trackId/loops", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
@@ -93,8 +102,8 @@ describe("POST /api/loops", () => {
   it("creates a loop and returns 201", async () => {
     const res = await app.inject({
       method: "POST",
-      url: "/api/loops",
-      payload: { filename: "song.psarc", start_time: 5.0, end_time: 15.0 },
+      url: "/api/tracks/track_abc/loops",
+      payload: { start_time: 5.0, end_time: 15.0 },
     });
     expect(res.statusCode).toBe(201);
     const body = res.json();
@@ -106,8 +115,8 @@ describe("POST /api/loops", () => {
   it("accepts an optional name", async () => {
     const res = await app.inject({
       method: "POST",
-      url: "/api/loops",
-      payload: { filename: "song.psarc", name: "Chorus", start_time: 30, end_time: 60 },
+      url: "/api/tracks/track_abc/loops",
+      payload: { name: "Chorus", start_time: 30, end_time: 60 },
     });
     expect(res.statusCode).toBe(201);
   });
@@ -115,8 +124,8 @@ describe("POST /api/loops", () => {
   it("returns 400 when required fields are missing", async () => {
     const res = await app.inject({
       method: "POST",
-      url: "/api/loops",
-      payload: { filename: "song.psarc" },
+      url: "/api/tracks/track_abc/loops",
+      payload: {},
     });
     expect(res.statusCode).toBe(400);
   });

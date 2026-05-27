@@ -52,6 +52,7 @@ export interface ISongRepository {
   upsert(filename: string, input: SongInput): Promise<void>;
   delete(filename: string): Promise<void>;
   deleteStale(keepFilenames: Set<string>): Promise<number>;
+  deleteOrphaned(): Promise<number>;
 }
 
 // ─── Favorites repository ─────────────────────────────────────────────────
@@ -61,6 +62,7 @@ export interface IFavoritesRepository {
   toggle(trackId: string, profileId: number): Promise<boolean>;
   getAllFilenames(): Promise<Set<string>>;
   getFavoritesByProfile(profileId: number): Promise<Set<string>>;
+  deleteByTrackId(trackId: string): Promise<void>;
 }
 
 // ─── Loop repository ──────────────────────────────────────────────────────
@@ -69,6 +71,7 @@ export interface ILoopRepository {
   findByTrackId(trackId: number, profileId: number): Promise<Loop[]>;
   create(trackId: number, profileId: number, name: string, startTime: number, endTime: number): Promise<Loop>;
   delete(id: number): Promise<void>;
+  deleteAllByTrackId(trackId: number): Promise<void>;
 }
 
 // ─── Profile repository ────────────────────────────────────────────────────
@@ -98,6 +101,7 @@ export interface ITrackRepository {
 export interface ITrackDataRepository {
   findByTrackId(trackId: number): Promise<TrackData | null>;
   findByOriginalFilename(originalFilename: string): Promise<TrackData | null>;
+  findWithCovers(limit: number): Promise<string[]>;
   create(trackId: number, originalFilename: string, arrangements: unknown, coverImageStorageId?: string, audioFileStorageId?: string): Promise<TrackData>;
   update(id: number, data: Partial<Pick<TrackData, "arrangements" | "coverImageStorageId" | "audioFileStorageId">>): Promise<TrackData>;
   delete(id: number): Promise<void>;
