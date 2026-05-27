@@ -14,9 +14,8 @@ const auth = useAuthStore()
 const isPlayer = computed(() => route.name === 'player')
 const showLayout = computed(() => route.name !== 'player' && route.name !== 'setup' && route.name !== 'profiles')
 
-onMounted(async () => {
-  await settings.load()
-  await plugins.load()
+onMounted(() => {
+  Promise.all([settings.load(), plugins.load()])
 })
 </script>
 

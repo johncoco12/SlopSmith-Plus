@@ -143,3 +143,14 @@ model TrackScore {
   @@index([trackId])
 }
 
+model PluginData {
+  id        String   @id @default(cuid())
+  pluginId  String
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([pluginId, key])
+  @@index([pluginId])
+}
+

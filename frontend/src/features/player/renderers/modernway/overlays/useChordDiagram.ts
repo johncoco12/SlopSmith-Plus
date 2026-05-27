@@ -49,7 +49,7 @@ export function useChordDiagram(
     for (let i = b.chords.length - 1; i >= 0; i--) {
       const ch = b.chords[i];
       if (ch.t <= now && ch.t + DIAG_LINGER_S >= now) {
-        const tpl = b.chordTemplates[ch.chordId];
+        const tpl = b.chordTemplates[ch.id];
         if (tpl && tpl.name) return tpl;
       }
       if (ch.t < now - DIAG_LINGER_S - 1) break;

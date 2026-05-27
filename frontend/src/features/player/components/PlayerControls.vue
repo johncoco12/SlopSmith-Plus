@@ -122,7 +122,7 @@ function dismissPrompt(): void {
         :value="player.arrangement"
         class="ctrl-select"
         :title="$t('player.controls.arrangementTitle')"
-        @change="player.changeArrangement(Number($event.target.value))"
+        @change="player.changeArrangement(Number(($event.target as HTMLSelectElement).value))"
       >
         <option v-for="(arr, i) in arrangements" :key="i" :value="i">{{ arr.name ?? arr }}</option>
       </select>
@@ -138,7 +138,7 @@ function dismissPrompt(): void {
           min="0.25" max="1.5" step="0.05"
           class="ctrl-range w-20"
           :title="$t('player.controls.speedTitle')"
-          @input="player.setSpeed(Number($event.target.value))"
+          @input="player.setSpeed(Number(($event.target as HTMLInputElement).value))"
         />
         <span class="ctrl-slider-val w-9">{{ Math.round(player.speed * 100) }}%</span>
       </div>
@@ -152,7 +152,7 @@ function dismissPrompt(): void {
           min="0" max="100" step="1"
           class="ctrl-range w-20"
           :title="$t('player.controls.masteryTitle')"
-          @input="player.setMastery(Number($event.target.value))"
+          @input="player.setMastery(Number(($event.target as HTMLInputElement).value))"
         />
         <span class="ctrl-slider-val w-8">{{ player.mastery }}%</span>
       </div>

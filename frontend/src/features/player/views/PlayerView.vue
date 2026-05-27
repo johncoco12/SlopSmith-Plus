@@ -8,6 +8,7 @@ import PlayerHud from '@/features/player/components/PlayerHud.vue'
 import PlayerControls from '@/features/player/components/PlayerControls.vue'
 import DebugOverlay from '@/features/player/components/DebugOverlay.vue'
 import SectionBar from '@/features/player/components/SectionBar.vue'
+import PluginSlot from '@/components/plugins/PluginSlot.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -18,8 +19,6 @@ const arrangement = computed(() => Number(route.query.arrangement ?? 0))
 
 const playerCanvas = ref<InstanceType<typeof PlayerCanvas> | null>(null)
 
-// Load song whenever trackId/arrangement changes
-// (usePlayer inside PlayerCanvas handles frame loop & timing)
 watch(
   [trackId, arrangement],
   async ([tid, arr]) => {
@@ -28,7 +27,6 @@ watch(
   { immediate: true }
 )
 
-// Keyboard shortcuts
 const { register } = useShortcuts('player')
 register(' ',          () => player.togglePlay())
 register('ArrowLeft',  e  => { e.preventDefault(); player.seekBy(e.shiftKey ? -30 : -5) })
@@ -38,7 +36,6 @@ register(']',          e  => player.nudgeAvOffset(e.shiftKey ?  50 :  10))
 register('0',          () => player.setAvOffset(0))
 register('\\',         () => player.toggleLyrics())
 register('Escape',     () => router.back())
-// Toggle renderer with 'v' key
 register('v',          () => {
   playerCanvas.value?.cycleRenderer()
 })
@@ -56,7 +53,6 @@ function handleBack() {
   <select id="arr-select"      class="hidden" aria-hidden="true" />
 
   <div class="fixed inset-0 bg-dark-800 flex flex-col z-50 overflow-hidden">
-    <!-- Loading overlay -->
     <Transition name="fade">
       <div
         v-if="player.loading"
@@ -72,19 +68,18 @@ function handleBack() {
       </div>
     </Transition>
 
-    <!-- Canvas + HUD wrapper -->
     <div class="relative flex-1 min-h-0 flex flex-col">
       <PlayerCanvas ref="playerCanvas" />
       <PlayerHud />
       <SectionBar />
-      <!-- Bottom gradient bleed into controls -->
+      <PluginSlot name="player-overlay" :track-id="trackId" />
       <div
         class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-dark-800/75 to-transparent pointer-events-none z-10"
       />
     </div>
 
-    <!-- Controls bar -->
     <PlayerControls @back="handleBack" />
+    <PluginSlot name="player-controls" />
     <DebugOverlay />
   </div>
 </template>

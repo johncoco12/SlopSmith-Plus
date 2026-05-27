@@ -78,7 +78,8 @@
     "loadError": "データの読み込みに失敗しました",
     "tabs": {
       "profiles": "プロフィール",
-      "groups": "権限グループ"
+      "groups": "権限グループ",
+      "plugins": "プラグイン"
     },
     "permissions": {
       "admin": "管理者",

@@ -78,7 +78,8 @@
     "loadError": "Daten konnten nicht geladen werden",
     "tabs": {
       "profiles": "Profile",
-      "groups": "Berechtigungsgruppen"
+      "groups": "Berechtigungsgruppen",
+      "plugins": "Plugins"
     },
     "permissions": {
       "admin": "Admin",

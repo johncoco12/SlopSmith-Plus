@@ -22,13 +22,15 @@ const uploadStatus   = ref<string>('')
 const uploading      = ref(false)
 const uploadProgress = ref(0)
 
-const navLinks = computed(() => [
+type NavLink = { name: string; params?: { id: string }; label: string; icon: unknown }
+
+const navLinks = computed<NavLink[]>(() => [
   { name: 'library',   label: t('nav.library'),   icon: Library   },
   { name: 'favorites', label: t('nav.favorites'), icon: Heart     },
   ...plugins.navPlugins.map(p => ({
     name:   'plugin',
     params: { id: p.id },
-    label:  p.nav.label,
+    label:  p.nav?.label ?? p.name,
     icon:   LayoutGrid,
   })),
   { name: 'gear',      label: t('nav.gear'),      icon: Settings  },

@@ -78,7 +78,8 @@
     "loadError": "Failed to load data",
     "tabs": {
       "profiles": "Profiles",
-      "groups": "Permission Groups"
+      "groups": "Permission Groups",
+      "plugins": "Plugins"
     },
     "permissions": {
       "admin": "Admin",

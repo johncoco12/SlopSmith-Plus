@@ -78,7 +78,8 @@
     "loadError": "Nie udało się załadować danych",
     "tabs": {
       "profiles": "Profile",
-      "groups": "Grupy uprawnień"
+      "groups": "Grupy uprawnień",
+      "plugins": "Wtyczki"
     },
     "permissions": {
       "admin": "Administrator",
