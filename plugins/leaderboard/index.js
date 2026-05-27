@@ -1,5 +1,11 @@
 /** @param {import('../../backend/src/domain/interfaces/plugins/PluginContext.js').PluginContext} ctx */
 export async function setup(ctx) {
+  // Serialize all score writes to prevent concurrent read-modify-write races.
+  let writeQueue = Promise.resolve();
+  const enqueueWrite = (fn) => {
+    writeQueue = writeQueue.then(fn).catch(() => {});
+    return writeQueue;
+  };
 
   ctx.permissions.define(
     'leaderboard:view',
@@ -72,7 +78,7 @@ export async function setup(ctx) {
     ctx.logger.info('Leaderboard ready', { entryCount: existing.length, backfilled: added });
   });
 
-  ctx.hooks.on('track:score:submitted', async (payload) => {
+  ctx.hooks.on('track:score:submitted', (payload) => {
     const { trackId, score, profileId, playerName, title, artist, submittedAt } = payload.data;
 
     const entry = {
@@ -85,15 +91,17 @@ export async function setup(ctx) {
       submittedAt: String(submittedAt ?? new Date().toISOString()),
     };
 
-    const global = /** @type {any[]} */ (await ctx.db.get('scores') ?? []);
-    global.push(entry);
-    await ctx.db.set('scores', global);
+    enqueueWrite(async () => {
+      const global = /** @type {any[]} */ (await ctx.db.get('scores') ?? []);
+      global.push(entry);
+      await ctx.db.set('scores', global);
 
-    const trackScores = /** @type {any[]} */ (await ctx.db.get(`track:${trackId}`) ?? []);
-    trackScores.push(entry);
-    await ctx.db.set(`track:${trackId}`, trackScores);
+      const trackScores = /** @type {any[]} */ (await ctx.db.get(`track:${trackId}`) ?? []);
+      trackScores.push(entry);
+      await ctx.db.set(`track:${trackId}`, trackScores);
 
-    ctx.logger.info('Leaderboard entry recorded via hook', { trackId, score, profileId });
+      ctx.logger.info('Leaderboard entry recorded via hook', { trackId, score, profileId });
+    });
   });
 
   ctx.routes.register(

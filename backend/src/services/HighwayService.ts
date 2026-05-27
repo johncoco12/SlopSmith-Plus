@@ -164,7 +164,8 @@ export class HighwayService {
         fs.mkdirSync(tmpDir, { recursive: true });
         try {
           for (const [name, buf] of sngEntries) {
-            const outPath = path.join(tmpDir, name);
+            const outPath = path.resolve(tmpDir, name);
+            if (!outPath.startsWith(tmpDir + path.sep)) continue;
             fs.mkdirSync(path.dirname(outPath), { recursive: true });
             fs.writeFileSync(outPath, buf);
           }

@@ -7,13 +7,18 @@ export function installLegacyAdapter(bus: PluginEventBus): void {
       bus.emit(event, detail);
     },
     on(event: string, fn: EventListenerOrEventListenerObject, opts?: AddEventListenerOptions) {
-      bus.on(event, (d) => {
+      const handler = (d: unknown) => {
         if (typeof fn === "function") {
           fn(new CustomEvent(event, { detail: d }));
         } else {
           fn.handleEvent(new CustomEvent(event, { detail: d }));
         }
-      });
+      };
+      if (opts?.once) {
+        bus.once(event, handler);
+      } else {
+        bus.on(event, handler);
+      }
     },
     off() {
       // best-effort — legacy callers don't unsubscribe cleanly

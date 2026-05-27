@@ -78,7 +78,8 @@
     "loadError": "Échec du chargement des données",
     "tabs": {
       "profiles": "Profils",
-      "groups": "Groupes de permissions"
+      "groups": "Groupes de permissions",
+      "plugins": "Plugins"
     },
     "permissions": {
       "admin": "Admin",

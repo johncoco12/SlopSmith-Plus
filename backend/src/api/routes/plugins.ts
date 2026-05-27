@@ -40,9 +40,16 @@ export const pluginRoutes = fp(async function pluginRoutes(fastify) {
     const { id } = req.params as { id: string; "*": string };
     const filename = (req.params as { "*": string })["*"];
     const filePath = plugins.resolveFile(id, filename); // validates path traversal
+    if (!fs.existsSync(filePath)) {
+      return reply.code(404).send({ error: "File not found" });
+    }
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME[ext] ?? "application/octet-stream";
-    return reply.type(contentType).send(fs.createReadStream(filePath));
+    const stream = fs.createReadStream(filePath);
+    stream.on("error", () => {
+      if (!reply.sent) reply.code(500).send({ error: "Failed to read file" });
+    });
+    return reply.type(contentType).send(stream);
   });
 
   // Provider management

@@ -1,7 +1,8 @@
 export class ProviderRegistry {
   private readonly providers = new Map<string, Map<string, unknown>>();
   private readonly active = new Map<string, string>();
-  private readonly ownership = new Map<string, string>();
+  // Nested map: type -> name -> pluginId (avoids ambiguous string encoding)
+  private readonly ownership = new Map<string, Map<string, string>>();
 
   register<T>(type: string, name: string, provider: T, pluginId?: string): void {
     if (!this.providers.has(type)) {
@@ -11,9 +12,14 @@ export class ProviderRegistry {
     if (!this.active.has(type)) {
       this.active.set(type, name);
     }
+    // Always update ownership when pluginId is provided; clear it when re-registered without one
+    const typeOwnership = this.ownership.get(type) ?? new Map<string, string>();
     if (pluginId) {
-      this.ownership.set(`${type}:${name}`, pluginId);
+      typeOwnership.set(name, pluginId);
+    } else {
+      typeOwnership.delete(name);
     }
+    this.ownership.set(type, typeOwnership);
   }
 
   get<T>(type: string): T | null {
@@ -45,17 +51,18 @@ export class ProviderRegistry {
   }
 
   unregisterAll(pluginId: string): void {
-    for (const [key, owner] of this.ownership.entries()) {
-      if (owner !== pluginId) continue;
-      const [type, name] = key.split(":");
-      this.providers.get(type)?.delete(name);
-      this.ownership.delete(key);
-      if (this.active.get(type) === name) {
-        const remaining = [...(this.providers.get(type)?.keys() ?? [])];
-        if (remaining.length > 0) {
-          this.active.set(type, remaining[0]);
-        } else {
-          this.active.delete(type);
+    for (const [type, nameMap] of this.ownership.entries()) {
+      for (const [name, owner] of nameMap.entries()) {
+        if (owner !== pluginId) continue;
+        this.providers.get(type)?.delete(name);
+        nameMap.delete(name);
+        if (this.active.get(type) === name) {
+          const remaining = [...(this.providers.get(type)?.keys() ?? [])];
+          if (remaining.length > 0) {
+            this.active.set(type, remaining[0]);
+          } else {
+            this.active.delete(type);
+          }
         }
       }
     }

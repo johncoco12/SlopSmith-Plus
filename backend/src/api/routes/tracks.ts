@@ -158,20 +158,22 @@ export const trackRoutes = fp(async function trackRoutes(fastify) {
     const result = await scores.submit(session.profileId, trackId, score);
 
     // Notify plugins — fire-and-forget, never block the response
-    Promise.all([
+    Promise.allSettled([
       profiles.getProfile(session.profileId),
       tracks.getTrack(trackId).catch(() => null),
-    ]).then(([profile, track]) =>
-      hooks.emit("track:score:submitted", {
+    ]).then(([profileResult, trackResult]) => {
+      const profile = profileResult.status === "fulfilled" ? profileResult.value : null;
+      const track   = trackResult.status   === "fulfilled" ? trackResult.value   : null;
+      return hooks.emit("track:score:submitted", {
         trackId,
         score,
         profileId:   session.profileId,
-        playerName:  profile.name,
+        playerName:  profile?.name ?? "Anonymous",
         title:       track?.title  ?? trackId,
         artist:      track?.artist ?? '',
         submittedAt: new Date().toISOString(),
-      }),
-    ).catch(() => { /* non-fatal */ });
+      });
+    }).catch(() => { /* non-fatal */ });
 
     return reply.code(201).send(result);
   });

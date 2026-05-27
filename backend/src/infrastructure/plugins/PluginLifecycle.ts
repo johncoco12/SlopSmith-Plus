@@ -164,11 +164,7 @@ export class PluginLifecycle {
     if (!entry) return {};
 
     const entryPath = path.resolve(plugin.dir, entry);
-    try {
-      return (await import(entryPath)) as PluginModule;
-    } catch {
-      return {};
-    }
+    return (await import(entryPath)) as PluginModule;
   }
 
   private buildContext(plugin: LoadedPlugin): PluginContext {
@@ -213,6 +209,9 @@ export class PluginLifecycle {
         },
         get<T>(type: string): T | null {
           return providers.get<T>(type);
+        },
+        getByName<T>(type: string, name: string): T | null {
+          return providers.getByName<T>(type, name);
         },
       },
       permissions: {

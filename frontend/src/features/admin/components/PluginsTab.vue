@@ -83,6 +83,7 @@ async function activateProvider(type: string, name: string) {
   settingKey.value = `${type}:${name}`
   try {
     await setActiveProvider(type, name)
+    providerError.value = ''
     await loadProviders()
   } catch (e: any) {
     providerError.value = e.message ?? 'Failed to set provider'

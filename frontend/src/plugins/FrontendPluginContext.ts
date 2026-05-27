@@ -37,7 +37,9 @@ async function pluginFetch<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const url = `/api/plugins/${pluginId}/${path}`;
+  const safeId = encodeURIComponent(pluginId);
+  const safePath = path.replace(/^\/+/, "").replace(/\.\.\//g, "");
+  const url = `/api/plugins/${safeId}/${safePath}`;
   const res = await fetch(url, {
     method,
     headers: {

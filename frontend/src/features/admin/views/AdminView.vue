@@ -332,7 +332,7 @@ onMounted(() => {
           v-for="tab in [
             { key: 'profiles', label: $t('admin.tabs.profiles') },
             { key: 'groups',   label: $t('admin.tabs.groups')   },
-            { key: 'plugins',  label: 'Plugins'                  },
+            { key: 'plugins',  label: $t('admin.tabs.plugins')   },
           ]"
           :key="tab.key"
           class="px-4 py-1.5 rounded-lg text-sm font-medium transition"

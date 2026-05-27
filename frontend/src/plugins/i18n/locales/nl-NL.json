@@ -78,7 +78,8 @@
     "loadError": "Gegevens laden mislukt",
     "tabs": {
       "profiles": "Profielen",
-      "groups": "Machtigingsgroepen"
+      "groups": "Machtigingsgroepen",
+      "plugins": "Plugins"
     },
     "permissions": {
       "admin": "Beheer",

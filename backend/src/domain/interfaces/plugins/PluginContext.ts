@@ -73,6 +73,7 @@ export interface PluginContext {
   providers: {
     register<T>(type: string, name: string, provider: T): void;
     get<T>(type: string): T | null;
+    getByName<T>(type: string, name: string): T | null;
   };
   permissions: PluginPermissionHandle;
   db: PluginDb;

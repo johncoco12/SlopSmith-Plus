@@ -1,18 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { useSlotManager } from '@/plugins/SlotManager'
 
 const props = defineProps<{
   name: string
-  [key: string]: unknown
 }>()
 
+const attrs = useAttrs()
 const slotManager = useSlotManager()
 const registrations = computed(() => slotManager.get(props.name))
-const passedProps = computed(() => {
-  const { name, ...rest } = props
-  return rest
-})
+const passedProps = computed(() => attrs)
 </script>
 
 <template>
