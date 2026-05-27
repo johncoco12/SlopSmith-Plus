@@ -2,6 +2,8 @@
 
 > Browse, play, and practice your Rocksmith 2014 CDLC collection — entirely in your browser, entirely in Docker.
 
+![Cover](docs/Cover.png)
+
 [![Video Overview](docs/player-3d.webp)](https://www.youtube.com/watch?v=f_XTS9tVeaU)
 
 | | |
