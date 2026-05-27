@@ -18,7 +18,7 @@ onMounted(() => {
   faders.value = api.getFaders?.() ?? []
   _unsubscribe = api.onFadersChange?.(() => {
     faders.value = api.getFaders?.() ?? []
-  })
+  }) ?? null
 })
 
 onUnmounted(() => {

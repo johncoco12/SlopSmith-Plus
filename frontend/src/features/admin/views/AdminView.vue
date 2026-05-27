@@ -191,13 +191,13 @@ async function saveGroup() {
     if (editingGroup.value) {
       await updateGroup(editingGroup.value.id, {
         name:        groupForm.value.name,
-        permissions: groupForm.value.permissions,
+        permissions: groupForm.value.permissions as Permission[],
         profileIds:  groupForm.value.profileIds,
       })
     } else {
       await createGroup({
         name:        groupForm.value.name,
-        permissions: groupForm.value.permissions,
+        permissions: groupForm.value.permissions as Permission[],
         profileIds:  groupForm.value.profileIds,
       })
     }

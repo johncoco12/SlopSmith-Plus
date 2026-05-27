@@ -207,7 +207,7 @@ export function createBoardGhost(): BoardGhostPool {
       const palette = PALETTES.default;
       ringMat.color.setHex(palette[n.s % palette.length]);
       ringMat.opacity = projFactor * fadeMul * 0.55;
-      ringMat.emissive = undefined as any; // basic material has no emissive
+      (ringMat as any).emissive = undefined; // MeshBasicMaterial has no emissive
 
       ring.position.set(x, y, 0.02 * K); // just above board at hit line
       ring.rotation.set(0, 0, 0);

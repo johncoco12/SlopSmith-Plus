@@ -73,7 +73,7 @@ export interface SongInfo {
   format?: string
   audio_url?: string | null
   audio_error?: string | null
-  stems?: string[]
+  stems?: Array<{ id: string; url: string; default: boolean }>
   filename?: string
   [key: string]: unknown
 }

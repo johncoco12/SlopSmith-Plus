@@ -19,6 +19,8 @@ async function save(): Promise<void> {
   }
 }
 
+const canPickFolder = !!window.slopsmithDesktop?.pickDirectory
+
 async function pickFolder(): Promise<void> {
   if (window.slopsmithDesktop?.pickDirectory) {
     const path = await window.slopsmithDesktop.pickDirectory()
@@ -39,7 +41,7 @@ async function pickFolder(): Promise<void> {
         @keydown.enter="save"
       />
       <button
-        v-if="window?.slopsmithDesktop?.pickDirectory"
+        v-if="canPickFolder"
         class="settings-btn"
         :title="$t('settings.dlc.browse')"
         @click="pickFolder"

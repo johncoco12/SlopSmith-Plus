@@ -23,7 +23,7 @@ onMounted(() => {
   library.loadTuningNames()
 })
 
-function openSong(song) {
+function openSong(song: Song): void {
   router.push({
     name: 'player',
     params: { trackId: song.trackId ?? song.filename },
@@ -31,11 +31,11 @@ function openSong(song) {
   })
 }
 
-function editSong(song) {
+function editSong(song: Song): void {
   router.push({ name: 'plugin', params: { id: 'editor' }, query: { filename: song.filename } })
 }
 
-function deleteSong(song) {
+function deleteSong(song: Song): void {
   pendingDelete.value = song
 }
 

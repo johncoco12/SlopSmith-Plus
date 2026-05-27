@@ -1,7 +1,7 @@
 // REST-based highway data client.
 // Replaces the WebSocket client — fetches all chart data from /api/tracks/:trackId/highway
 
-import type { ConnectOptions, SongInfo } from './types.js';
+import type { ConnectOptions, SongInfo, ChartNote, ChartChord, Anchor, HandShape } from './types.js';
 import type { ChartState } from './engine/chartState.js';
 import type { MasteryFilter } from './engine/masteryFilter.js';
 import type { ProjectionHelper } from './engine/projection.js';
@@ -113,8 +113,12 @@ export class HighwayRestClient {
       this.state.toneChanges = data.tone_changes;
       this.state.toneBase = data.tone_base;
       this.state.notes = data.notes;
-      this.state.chords = data.chords;
-      this.state.handShapes = data.handshapes;
+      this.state.chords = data.chords as ChartChord[];
+      this.state.handShapes = data.handshapes.map((hs) => ({
+        start_time: hs.st,
+        end_time:   hs.et,
+        chord_id:   hs.id,
+      }));
 
       // Process phrases
       if (data.phrases) {
@@ -125,10 +129,10 @@ export class HighwayRestClient {
             max_difficulty: p.max_difficulty,
             levels: p.levels.map((l) => ({
               difficulty: l.difficulty,
-              notes: l.notes,
-              chords: l.chords,
-              anchors: l.anchors,
-              handshapes: l.handshapes,
+              notes:      l.notes      as ChartNote[],
+              chords:     l.chords     as ChartChord[],
+              anchors:    l.anchors    as Anchor[],
+              handshapes: l.handshapes as HandShape[],
             })),
           });
         }

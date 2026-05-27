@@ -20,7 +20,7 @@ const options = computed(() => [
     :value="player.vizSelection"
     class="ctrl-select"
     :title="$t('player.viz.title')"
-    @change="player.setViz($event.target.value)"
+    @change="player.setViz(($event.target as HTMLSelectElement).value)"
   >
     <option v-for="opt in options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
   </select>

@@ -35,14 +35,14 @@ const countdown = ref(0)
 
 // Phase 1: audio tap
 const tapCount   = ref(0)
-const tapOffsets = ref([])
-const audioMs    = ref(null)      // median audio output latency
+const tapOffsets = ref<number[]>([])
+const audioMs    = ref<number | null>(null)
 
 // Phase 2: guitar detection
 const guitarCount   = ref(0)
-const guitarOffsets = ref([])
-const guitarMs      = ref(null)   // median (audio_out + input_pipeline)
-const lastNote      = ref(null)   // last detected note name
+const guitarOffsets = ref<number[]>([])
+const guitarMs      = ref<number | null>(null)
+const lastNote      = ref<string | null>(null)
 
 // inputMs cancels out the common reaction-time term:
 // both phases use the same audio click → same reaction time → it subtracts away.
@@ -60,11 +60,11 @@ let _rafId: number | null            = null
 
 const beatFlash = ref(false)
 
-function _audioPerfMs(audioSec) {
+function _audioPerfMs(audioSec: number) {
   return _perfOrigin + audioSec * 1000
 }
 
-function _nearestBeat(perfMs, beatSec) {
+function _nearestBeat(perfMs: number, beatSec: number) {
   let best = -1, bestDiff = Infinity
   for (let i = 0; i < _beatTimes.length; i++) {
     const d = Math.abs(perfMs - _audioPerfMs(_beatTimes[i]))
@@ -74,11 +74,11 @@ function _nearestBeat(perfMs, beatSec) {
 }
 
 // Phase 1: pitched tone (880 Hz) — human taps when they hear it.
-function _scheduleClicks(startSec) {
-  const osc  = _ctx.createOscillator()
-  const env  = _ctx.createGain()
+function _scheduleClicks(startSec: number) {
+  const osc  = _ctx!.createOscillator()
+  const env  = _ctx!.createGain()
   osc.connect(env)
-  env.connect(_ctx.destination)
+  env.connect(_ctx!.destination)
   osc.frequency.value = 880
   _beatTimes = []
   for (let i = 0; i < TOTAL_TAPS; i++) {
@@ -95,22 +95,22 @@ function _scheduleClicks(startSec) {
 // Phase 2: noise burst — audible as a click but NOT periodic, so YIN clarity stays
 // below the detection threshold and the mic won't auto-trigger pitch:detected.
 // The user's guitar string (sustained, pitched) will still register clearly.
-function _scheduleNoiseClicks(startSec) {
-  const sr          = _ctx.sampleRate
+function _scheduleNoiseClicks(startSec: number) {
+  const sr          = _ctx!.sampleRate
   const burstFrames = Math.ceil(0.025 * sr)   // 25 ms of noise
   _beatTimes = []
   for (let i = 0; i < GUITAR_BEATS; i++) {
     const t = startSec + i * G_BEAT_SEC
     _beatTimes.push(t)
-    const buf  = _ctx.createBuffer(1, burstFrames, sr)
+    const buf  = _ctx!.createBuffer(1, burstFrames, sr)
     const data = buf.getChannelData(0)
     for (let j = 0; j < burstFrames; j++) {
       // Tapered envelope: sharp attack, quick fade — sounds like a stick click
       data[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / burstFrames, 2) * 0.5
     }
-    const src  = _ctx.createBufferSource()
+    const src  = _ctx!.createBufferSource()
     src.buffer = buf
-    src.connect(_ctx.destination)
+    src.connect(_ctx!.destination)
     src.start(t)
   }
 }
@@ -125,18 +125,18 @@ function _startFlashLoop(activePhase: string): void {
   _rafId = requestAnimationFrame(loop)
 }
 
-function _median(arr) {
+function _median(arr: number[]) {
   const s = [...arr].sort((a, b) => a - b)
   const m = Math.floor(s.length / 2)
   return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m]
 }
 
-function _stddev(arr) {
+function _stddev(arr: number[]) {
   const mean = arr.reduce((a, b) => a + b, 0) / arr.length
   return Math.sqrt(arr.reduce((s, v) => s + (v - mean) ** 2, 0) / arr.length)
 }
 
-function _consistency(offsets) {
+function _consistency(offsets: number[]) {
   if (offsets.length < 2) return ''
   const sd = _stddev(offsets)
   if (sd < 15) return 'good'
@@ -163,8 +163,8 @@ async function startAudioTest() {
 }
 
 function _launchAudio() {
-  const start = _ctx.currentTime + 0.05
-  _perfOrigin = performance.now() - _ctx.currentTime * 1000
+  const start = _ctx!.currentTime + 0.05
+  _perfOrigin = performance.now() - _ctx!.currentTime * 1000
   _scheduleClicks(start)
   phase.value = 'running-audio'
   _startFlashLoop('running-audio')
@@ -196,7 +196,7 @@ let _beatSeen: boolean[]              = []
 let _guitarFinishTimer: ReturnType<typeof setTimeout> | null = null
 
 // Accept any E note (midi class 4: E1 41Hz, E2 82Hz, E3 165Hz, E4 330Hz, E5 659Hz)
-function _isENote(hz) {
+function _isENote(hz: number) {
   if (hz <= 0) return false
   return (((Math.round(69 + 12 * Math.log2(hz / 440))) % 12) + 12) % 12 === 4
 }
@@ -230,8 +230,8 @@ async function startGuitarTest() {
 }
 
 function _launchGuitar() {
-  const start = _ctx.currentTime + 0.05
-  _perfOrigin = performance.now() - _ctx.currentTime * 1000
+  const start = _ctx!.currentTime + 0.05
+  _perfOrigin = performance.now() - _ctx!.currentTime * 1000
   _scheduleNoiseClicks(start)
   phase.value = 'running-guitar'
   _startFlashLoop('running-guitar')
@@ -327,7 +327,7 @@ const micAvailable = computed(() => true)
 // Expose localStorage values for the template (localStorage is not in Vue's template globals)
 const storedInputLatency = computed(() => localStorage.getItem('pitch_yin.inputLatencyMs'))
 
-function _sign(n) { return n > 0 ? '+' : '' }
+function _sign(n: number | null) { return n !== null && n > 0 ? '+' : '' }
 </script>
 
 <template>

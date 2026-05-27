@@ -16,7 +16,7 @@ const BASE_GUITAR7 = [35, 40, 45, 50, 55, 59, 64]
 const BASE_BASS4   = [28, 33, 38, 43]            // E1 A1 D2 G2
 const BASE_BASS5   = [23, 28, 33, 38, 43]        // B0 E1 A1 D2 G2
 
-function _baseMidis(stringCount, arrangement) {
+function _baseMidis(stringCount: number, arrangement: string | null | undefined) {
   const isBass = /bass/i.test(arrangement ?? '')
   if (isBass && stringCount === 5) return BASE_BASS5
   if (isBass)                      return BASE_BASS4
@@ -24,21 +24,23 @@ function _baseMidis(stringCount, arrangement) {
   return BASE_GUITAR6.slice(0, Math.min(stringCount, 6))
 }
 
-function _midiToNote(midi) {
+function _midiToNote(midi: number) {
   const m = Math.round(midi)
   return NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1)
 }
 
-function _noteHz(midi) {
+function _noteHz(midi: number) {
   return 440 * Math.pow(2, (midi - 69) / 12)
 }
 
-function _tuningName(offsets) {
+function _tuningName(offsets: number[]) {
   if (!offsets?.length) return 'E Standard'
   if (offsets.length === 6 && offsets.every(o => o === offsets[0])) {
-    const std = { 0: 'E Standard', '-1': 'Eb Standard', '-2': 'D Standard',
+    const std: Record<string, string> = {
+      '0': 'E Standard', '-1': 'Eb Standard', '-2': 'D Standard',
       '-3': 'C# Standard', '-4': 'C Standard', '-5': 'B Standard',
-      '-6': 'Bb Standard', 1: 'F Standard', 2: 'F# Standard' }
+      '-6': 'Bb Standard', '1': 'F Standard', '2': 'F# Standard',
+    }
     const n = std[String(offsets[0])]
     if (n) return n
   }
@@ -46,7 +48,7 @@ function _tuningName(offsets) {
   if (offsets.length === 6 && offsets[0] === offsets[1] - 2 && offsets.slice(1).every(o => o === offsets[1])) {
     return 'Drop ' + NOTE_NAMES[((40 + offsets[0]) % 12 + 12) % 12]  // 40 = E2 = standard low E
   }
-  const named = {
+  const named: Record<string, string> = {
     '-2,0,0,0,0,0': 'Drop D', '-4,-2,-2,-2,-2,-2': 'Drop C',
     '-2,-2,0,0,0,0': 'Double Drop D', '0,0,0,-1,0,0': 'Open G',
     '-2,-2,0,0,-2,-2': 'Open D', '-2,0,0,0,-2,0': 'DADGAD',
@@ -63,10 +65,10 @@ const stringTargets = computed(() => {
   const sc = player.highway?.getStringCount?.()
     ?? (Array.isArray(info.tuning) ? info.tuning.length : 6)
   const tuning = Array.isArray(info.tuning) ? info.tuning : []
-  const capo   = Number.isFinite(info.capo) ? info.capo : 0
+  const capo   = info.capo ?? 0
   const bases  = _baseMidis(sc, info.arrangement ?? '')
   return Array.from({ length: sc }, (_, s) => {
-    const off  = Number.isFinite(tuning[s]) ? tuning[s] : 0
+    const off  = tuning[s] ?? 0
     const midi = (bases[s] ?? 40) + off + capo
     return { string: s, midi, note: _midiToNote(midi), hz: _noteHz(midi) }
   })
@@ -79,7 +81,7 @@ const tuningLabel = computed(() => {
 
 const capoLabel = computed(() => {
   const c = player.songInfo?.capo
-  return Number.isFinite(c) && c > 0 ? `capo ${c}` : ''
+  return Number.isFinite(c) && c != null && c > 0 ? `capo ${c}` : ''
 })
 
 // ── Live pitch detection ──────────────────────────────────────────────────────

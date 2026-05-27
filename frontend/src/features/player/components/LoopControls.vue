@@ -80,7 +80,7 @@ async function deleteLoop(): Promise<void> {
       <select
         v-model="selectedLoop"
         class="ctrl-select"
-        @change="loadLoop($event.target.value)"
+        @change="loadLoop(($event.target as HTMLSelectElement).value)"
       >
         <option value="">{{ $t('player.loop.saved') }}</option>
         <option v-for="l in player.savedLoops" :key="l.id" :value="l.id">{{ l.name }}</option>

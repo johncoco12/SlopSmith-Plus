@@ -9,7 +9,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
 }
 
