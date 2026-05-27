@@ -55,6 +55,7 @@ export class PluginRegistry {
           hasScript: !!manifest.script && fs.existsSync(path.join(pluginDir, manifest.script)),
           hasSettings: !!manifest.settings?.html && fs.existsSync(path.join(pluginDir, manifest.settings.html)),
           hasTour: this.hasTourFile(manifest, pluginDir),
+          hasComponent: !!manifest.component && fs.existsSync(path.join(pluginDir, manifest.component)),
         },
       });
     }

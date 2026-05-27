@@ -1,0 +1,13 @@
+{
+  "id": "leaderboard",
+  "name": "Leaderboard",
+  "version": "1.0.0",
+  "bundled": true,
+  "server": "index.js",
+  "component": "client.js",
+  "nav": {
+    "label": "Leaderboard",
+    "screen": "leaderboard"
+  },
+  "dependsOn": []
+}

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Heart, Play, MoreVertical, Pencil, Trash2 } from 'lucide-vue-next'
 import type { Song } from '@/types'
+import PluginSlot from '@/components/plugins/PluginSlot.vue'
 
 const props = defineProps<{
   song: Song & { mtime?: number; favorite?: boolean; tuningName?: string; trackId?: string }
@@ -39,7 +40,6 @@ const arrNames = computed(() =>
   )
 )
 
-// ── Score badge ────────────────────────────────────────────────────────────────
 const scoreGrade = computed(() => {
   const s = props.song.bestScore
   if (s == null) return ''
@@ -59,7 +59,6 @@ const scoreBadgeClass = computed(() => {
   return 'score-d'
 })
 
-// ── Favorite animation ─────────────────────────────────────────────────────────
 const favBurst = ref(false)
 
 function onFavorite() {
@@ -71,7 +70,6 @@ function onFavorite() {
   emit('favorite', props.song.trackId ?? props.song.filename)
 }
 
-// ── Context menu ───────────────────────────────────────────────────────────────
 const menuOpen = ref(false)
 
 function openMenu(e: Event) {
@@ -107,7 +105,6 @@ function onDelete(e: Event) {
     @keydown.enter="emit('open', song)"
     @keydown.space.prevent="emit('open', song)"
   >
-    <!-- ── Album art ──────────────────────────────────────────────────────── -->
     <div class="card-art">
       <img
         :src="artUrl"
@@ -118,14 +115,12 @@ function onDelete(e: Event) {
       />
       <div class="absolute inset-0 flex items-center justify-center text-4xl select-none -z-10" aria-hidden="true">🎸</div>
 
-      <!-- Play overlay -->
       <div class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
         <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20 shadow-lg">
           <Play :size="20" class="text-white translate-x-0.5" fill="currentColor" />
         </div>
       </div>
 
-      <!-- ⋯ menu — top-left -->
       <div class="absolute top-2 left-2 z-30">
         <button
           class="p-1.5 rounded-full bg-black/60 backdrop-blur-sm text-gray-300 hover:text-white transition-all duration-150"
@@ -155,7 +150,6 @@ function onDelete(e: Event) {
         </Transition>
       </div>
 
-      <!-- Heart — top-right -->
       <button
         class="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/60 backdrop-blur-sm transition-all duration-150"
         :class="song.favorite
@@ -175,7 +169,6 @@ function onDelete(e: Event) {
       </button>
     </div>
 
-    <!-- ── Info ──────────────────────────────────────────────────────────── -->
     <div class="p-3 space-y-1">
       <div class="flex items-center gap-1.5 min-w-0">
         <p class="text-sm font-semibold text-gray-100 truncate leading-snug flex-1">{{ song.title }}</p>
@@ -185,6 +178,7 @@ function onDelete(e: Event) {
           :class="scoreBadgeClass"
           :title="`Best score: ${song.bestScore}%`"
         >{{ scoreGrade }}</span>
+        <PluginSlot name="library-card-badge" :song="song" />
       </div>
 
       <p class="text-xs text-gray-400 truncate">
@@ -256,7 +250,6 @@ function onDelete(e: Event) {
   line-height: 1.6;
 }
 
-/* ── Heart burst ────────────────────────────────────────────────────────────── */
 .fav-burst {
   position: absolute;
   inset: -5px;
@@ -280,7 +273,6 @@ function onDelete(e: Event) {
   100% { transform: scale(1); }
 }
 
-/* ── Score badge ────────────────────────────────────────────────────────────── */
 .score-badge {
   display: inline-flex;
   align-items: center;
@@ -299,7 +291,6 @@ function onDelete(e: Event) {
 .score-c { background: #92400e22; color: #fbbf24; border: 1px solid #92400e55; }
 .score-d { background: #7f1d1d22; color: #f87171; border: 1px solid #7f1d1d55; }
 
-/* ── Menu transition ────────────────────────────────────────────────────────── */
 .menu-enter-active { transition: opacity 0.12s ease, transform 0.12s ease; }
 .menu-leave-active { transition: opacity 0.08s ease; }
 .menu-enter-from   { opacity: 0; transform: scale(0.95) translateY(-4px); }

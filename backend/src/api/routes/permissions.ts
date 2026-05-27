@@ -3,17 +3,18 @@ import { z } from "zod";
 import type { IPermissionsService } from "../../domain/interfaces/services/IPermissionsService.js";
 import { requireAuth, requireAuthAsync, requirePermission } from "../middleware/auth.js";
 import { Permissions } from "../../domain/models/permission.js";
+import type { PluginService } from "../../services/PluginService.js";
 
 const CreateGroupSchema = z.object({
   name: z.string().min(1).max(128),
   profileIds: z.array(z.number().int()).optional().default([]),
-  permissions: z.array(z.enum(Object.values(Permissions) as [string, ...string[]])).optional().default([]),
+  permissions: z.array(z.string().min(1)).optional().default([]),
 });
 
 const UpdateGroupSchema = z.object({
   name: z.string().min(1).max(128).optional(),
   profileIds: z.array(z.number().int()).optional(),
-  permissions: z.array(z.enum(Object.values(Permissions) as [string, ...string[]])).optional(),
+  permissions: z.array(z.string().min(1)).optional(),
 });
 
 const AddProfileSchema = z.object({
@@ -22,6 +23,13 @@ const AddProfileSchema = z.object({
 
 export const permissionRoutes = fp(async function permissionRoutes(fastify) {
   const perms = fastify.permissions as IPermissionsService;
+  const pluginSvc = fastify.pluginSvc as PluginService;
+
+  fastify.get(
+    "/api/permissions/available",
+    { preHandler: [requireAuthAsync()] },
+    async () => pluginSvc.listAvailablePermissions(),
+  );
 
   fastify.get("/api/permissions/groups",{preHandler: [requireAuthAsync()]}, async (req) => {
     return perms.listGroups();

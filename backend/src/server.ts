@@ -20,13 +20,18 @@ import {
   ITrackScoreRepositoryToken,
 } from "./tokens.js";
 
-// Repositories
 import { SongRepository } from "./infrastructure/db/SongRepository.js";
 import { FavoritesRepository } from "./infrastructure/db/FavoritesRepository.js";
 import { LoopRepository } from "./infrastructure/db/LoopRepository.js";
 import { PluginRegistry } from "./infrastructure/plugins/PluginRegistry.js";
+import { HookSystem } from "./infrastructure/plugins/HookSystem.js";
+import { ProviderRegistry } from "./infrastructure/plugins/ProviderRegistry.js";
+import { PermissionRegistry } from "./infrastructure/plugins/PermissionRegistry.js";
+import { PluginDbFactory } from "./infrastructure/plugins/PluginDb.js";
+import { RouteRegistrar } from "./infrastructure/plugins/RouteRegistrar.js";
+import { PluginLifecycle } from "./infrastructure/plugins/PluginLifecycle.js";
+import { PluginService } from "./services/PluginService.js";
 
-// Services
 import { LibraryService } from "./services/LibraryService.js";
 import { ScannerService } from "./services/ScannerService.js";
 import { SettingsService } from "./services/SettingsService.js";
@@ -38,13 +43,10 @@ import type { StorageService } from "./services/StorageService.js";
 import type { IProfileService } from "./domain/interfaces/services/IProfileService.js";
 import type { IPermissionsService } from "./domain/interfaces/services/IPermissionsService.js";
 
-// Middleware
 import { errorHandler } from "./api/middleware/errorHandler.js";
 import { correlationId } from "./api/middleware/correlationId.js";
-// import { demoMode } from "./api/middleware/demoMode.js";
 import { authMiddleware } from "./api/middleware/auth.js";
 
-// Routes
 import { libraryRoutes } from "./api/routes/library.js";
 import { favoritesRoutes } from "./api/routes/favorites.js";
 import { settingsRoutes } from "./api/routes/settings.js";
@@ -59,12 +61,7 @@ import { trackRoutes } from "./api/routes/tracks.js";
 import { highwayRoutes } from "./api/routes/highway.js";
 import { setupRoutes } from "./api/routes/setup.js";
 
-// WebSocket handlers (TODO: implement stubs)
-// import { highwayWs } from "./api/ws/highway.js";
-// import { retuneWs } from "./api/ws/retune.js";
-
 export async function buildServer() {
-  // ─── Service instances (resolve after DI container is registered) ──────────
   const songRepo = new SongRepository();
   const favRepo = new FavoritesRepository();
   const loopRepo = new LoopRepository();
@@ -107,13 +104,43 @@ export async function buildServer() {
 
   pluginRegistry.discover(config.pluginsBuiltinDir, config.pluginsUserDir);
 
+  const hookSystem = new HookSystem();
+  const providerRegistry = new ProviderRegistry();
+  const permissionRegistry = new PermissionRegistry();
+  const pluginDbFactory = new PluginDbFactory();
+
+  // Core providers — available to all plugins via ctx.providers.get(type)
+  providerRegistry.register('trackScores', 'core', {
+    getAll: () => trackScoreService.getAll(),
+  });
+
   const fastify = Fastify({
     logger: config.logPretty
       ? { level: config.logLevel, transport: { target: "pino-pretty" } }
       : { level: config.logLevel },
   });
 
-  // ── Decorators (DI via Fastify instance) ──────────────────────────────────
+  // RouteRegistrar needs the fastify instance, but start() is called after
+  // routes so that plugin-defined routes still register in time.
+  const routeRegistrar = new RouteRegistrar(fastify);
+  const pluginLifecycle = new PluginLifecycle(
+    pluginRegistry,
+    hookSystem,
+    providerRegistry,
+    permissionRegistry,
+    pluginDbFactory,
+    routeRegistrar,
+    config,
+    fastify.log,
+  );
+  const pluginSvc = new PluginService(
+    pluginRegistry,
+    pluginLifecycle,
+    providerRegistry,
+    permissionRegistry,
+    pluginDbFactory,
+  );
+
   fastify.decorate("library", libraryService);
   fastify.decorate("scanner", scannerService);
   fastify.decorate("settings", settingsService);
@@ -125,8 +152,11 @@ export async function buildServer() {
   fastify.decorate("highway", highwayService);
   fastify.decorate("plugins", pluginRegistry);
   fastify.decorate("storage", storageService);
+  fastify.decorate("hooks", hookSystem);
+  fastify.decorate("providerRegistry", providerRegistry);
+  fastify.decorate("permissionRegistry", permissionRegistry);
+  fastify.decorate("pluginSvc", pluginSvc);
 
-  // ── Core plugins ──────────────────────────────────────────────────────────
   await fastify.register(cors, { origin: true });
   await fastify.register(multipart, { limits: { fileSize: 256 * 1024 * 1024 } });
   await fastify.register(websocket);
@@ -136,13 +166,10 @@ export async function buildServer() {
     decorateReply: false,
   });
 
-  // ── Middleware ────────────────────────────────────────────────────────────
   await fastify.register(correlationId);
   await fastify.register(errorHandler);
-  // await fastify.register(demoMode);
   await fastify.register(authMiddleware);
 
-  // ── HTTP Routes ───────────────────────────────────────────────────────────
   await fastify.register(libraryRoutes);
   await fastify.register(favoritesRoutes);
   await fastify.register(settingsRoutes);
@@ -157,11 +184,9 @@ export async function buildServer() {
   await fastify.register(highwayRoutes);
   await fastify.register(setupRoutes);
 
-  // ── WebSocket handlers ────────────────────────────────────────────────────
-  // await fastify.register(highwayWs);
-  // await fastify.register(retuneWs);
+  await pluginLifecycle.start();
+  fastify.addHook("onClose", async () => { await pluginLifecycle.shutdown(); });
 
-  // ── SPA catch-all — serve index.html for unmatched GET requests ───────────
   const indexPath = path.join(config.staticDir, "index.html");
   fastify.setNotFoundHandler(async (req, reply) => {
     if (req.method === "GET" && !req.url.startsWith("/api") && !req.url.startsWith("/ws")) {
@@ -170,7 +195,6 @@ export async function buildServer() {
     return reply.code(404).send({ error: "Not found" });
   });
 
-  // ── Startup cleanup — remove Song rows with no corresponding Track ─────────
   songRepo.deleteOrphaned()
     .then((n) => { if (n > 0) fastify.log.info(`Purged ${n} orphaned Song row(s)`) })
     .catch((err) => fastify.log.warn({ err }, "Orphan cleanup failed (non-fatal)"));

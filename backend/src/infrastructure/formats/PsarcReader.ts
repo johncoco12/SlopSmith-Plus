@@ -255,11 +255,7 @@ export class PsarcReader {
         const compressed = Buffer.alloc(compressedSize);
         fs.readSync(fd, compressed, 0, compressedSize, pos);
         pos += compressedSize;
-        try {
-          chunks.push(inflateSync(compressed));
-        } catch {
-          chunks.push(compressed);
-        }
+        chunks.push(inflateSync(compressed));
       }
     }
 

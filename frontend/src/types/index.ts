@@ -123,9 +123,13 @@ export interface Plugin {
   name: string
   version?: string
   type?: string
-  nav?: { label: string; screen: string }
+  nav?: { label: string; screen?: string; section?: string }
   has_settings?: boolean
   has_script?: boolean
+  script?: string
+  component?: string
+  state?: string
+  error?: string
   [key: string]: unknown
 }
 
@@ -212,7 +216,7 @@ export interface PermissionGroup {
   id: number
   name: string
   profileIds: number[]
-  permissions: Permission[]
+  permissions: string[]
   createdAt: string
   updatedAt: string
 }

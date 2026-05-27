@@ -1,11 +1,3 @@
-// usePlayer — renderer-agnostic player composable
-//
-// Sets up the SongDataProvider (data loading, timing, mastery),
-// drives a frame loop to produce RenderBundle each frame,
-// and exposes a reactive bundle ref for any renderer to consume.
-//
-// This replaces the old useHighway() which coupled data loading to a canvas.
-
 import { onMounted, onUnmounted, shallowRef, type ShallowRef } from 'vue'
 import { SongDataProvider } from '../engine/SongDataProvider'
 import { HitDetector } from '../engine/hitDetection'
@@ -13,25 +5,14 @@ import { SectionScorer } from '../engine/sectionScorer'
 import { usePlayerStore } from '@/features/player/store'
 import { useAuthStore } from '@/features/auth/store'
 import { submitScore } from '@/features/player/scoreApi'
+import { pluginEventBus } from '@/plugins'
 import type { RenderBundle } from '../types'
 
 export interface UsePlayerReturn {
-  /** Reactive RenderBundle — updated every frame when song is loaded */
   bundle: ShallowRef<RenderBundle | null>
-  /** The data provider instance (for direct API access if needed) */
   provider: SongDataProvider
 }
 
-/**
- * Renderer-agnostic player setup.
- *
- * - Creates a SongDataProvider for chart data loading & timing
- * - Runs a rAF loop to produce RenderBundle each frame
- * - Wires to the player store for audio sync
- * - Sets up hit detection
- *
- * The returned `bundle` ref can be consumed by any renderer (2D canvas, 3D TresJS, etc.)
- */
 export function usePlayer(): UsePlayerReturn {
   const store = usePlayerStore()
   const auth = useAuthStore()
@@ -87,7 +68,6 @@ export function usePlayer(): UsePlayerReturn {
 
     const _t0 = performance.now()
 
-    // Update active section, finalise grades, detect misses
     scorer.tick(newTime)
 
     const _t1 = performance.now()
@@ -102,7 +82,6 @@ export function usePlayer(): UsePlayerReturn {
 
     const _t2 = performance.now()
 
-    // Produce bundle
     provider.makeBundle()
 
     const _t3 = performance.now()
@@ -123,7 +102,9 @@ export function usePlayer(): UsePlayerReturn {
     const totalNotes = results.reduce((s, r) => s + r.totalNotes, 0)
     const hitNotes = results.reduce((s, r) => s + r.hitNotes, 0)
     const combined = totalNotes > 0 ? Math.round((hitNotes / totalNotes) * 100) : 100
-    submitScore(trackId, combined).catch(e => console.warn('[score] submit failed:', e))
+    submitScore(trackId, combined)
+      .then(() => pluginEventBus.emit('leaderboard:submitted', { trackId, score: combined }))
+      .catch(e => console.warn('[score] submit failed:', e))
   }
 
   onMounted(() => {
@@ -138,7 +119,6 @@ export function usePlayer(): UsePlayerReturn {
     // Expose on window.highway so DebugOverlay can reach it (matches legacy Highway class shape)
     ;(window as any).highway.hitDetector = hitDetector
 
-    // Ready callback
     provider.onReady = onSongReady
     const emitter = (window as any).slopsmith
     emitter?.on?.('song:ready', onSongReady)
@@ -147,7 +127,6 @@ export function usePlayer(): UsePlayerReturn {
     _audio = document.getElementById('audio') as HTMLAudioElement | null
     _audio?.addEventListener('ended', onSongEnded)
 
-    // Start frame loop
     rafId = requestAnimationFrame(frameLoop)
 
     // Replay song if route watch already fired before mount

@@ -1,3 +1,12 @@
+export type PluginState =
+  | "discovered"
+  | "loading"
+  | "setting_up"
+  | "active"
+  | "errored"
+  | "tearing_down"
+  | "disabled";
+
 export interface PluginNav {
   readonly label: string;
   readonly screen?: string;
@@ -23,11 +32,24 @@ export interface PluginManifest {
   readonly type?: string;
   readonly nav?: PluginNav;
   readonly screen?: string;
+  readonly server?: string;
   readonly script?: string;
+  readonly component?: string;
   readonly routes?: string;
+  readonly hooks?: readonly { event: string; phase?: "before" | "after" }[];
+  readonly providers?: readonly { type: string; name: string; factory: string }[];
+  readonly dependsOn?: readonly string[];
   readonly tour?: string | { file: string };
   readonly settings?: PluginSettings;
   readonly diagnostics?: PluginDiagnostics;
+}
+
+export interface PluginCapabilities {
+  readonly hasScreen: boolean;
+  readonly hasScript: boolean;
+  readonly hasSettings: boolean;
+  readonly hasTour: boolean;
+  readonly hasComponent: boolean;
 }
 
 export interface LoadedPlugin {
@@ -40,9 +62,10 @@ export interface LoadedPlugin {
   readonly capabilities: PluginCapabilities;
 }
 
-export interface PluginCapabilities {
-  readonly hasScreen: boolean;
-  readonly hasScript: boolean;
-  readonly hasSettings: boolean;
-  readonly hasTour: boolean;
+export interface PluginStatus {
+  readonly id: string;
+  readonly name: string;
+  readonly version?: string;
+  readonly state: PluginState;
+  readonly error?: string;
 }

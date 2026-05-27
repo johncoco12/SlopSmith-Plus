@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { PsarcReader } from "../infrastructure/formats/PsarcReader.js";
 import { SloppakLoader } from "../infrastructure/formats/SloppakLoader.js";
@@ -9,6 +10,8 @@ import {
   parseLyricsXml,
   arrangementDisplayName,
   arrangementFromWireJson,
+  extractArrNameFromXml,
+  convertSngToXml,
 } from "../infrastructure/formats/ArrangementParser.js";
 import {
   toWireNote,
@@ -147,8 +150,38 @@ export class HighwayService {
         try { manifests.push(JSON.parse(content) as Record<string, unknown>); } catch { /* skip */ }
       } else if (lower.endsWith(".xml")) {
         const stem = path.basename(filename, ".xml").toLowerCase();
-        const name = arrangementDisplayName(stem, path.basename(filename, ".xml"));
+        const name = extractArrNameFromXml(content) ?? arrangementDisplayName(stem, path.basename(filename, ".xml"));
         arrXmls.push({ name, xml: content });
+      }
+    }
+
+    // For ODLC packages that contain only compiled .sng files (no XML), run rscli
+    // to convert SNG→XML and add the results to arrXmls.
+    if (arrXmls.length === 0 && this.config.rscliPath && fs.existsSync(this.config.rscliPath)) {
+      const sngEntries = PsarcReader.read(filePath, ["**/*.sng"]);
+      if (sngEntries.size > 0) {
+        const tmpDir = path.join(os.tmpdir(), `slopsmith-sng-${Date.now()}`);
+        fs.mkdirSync(tmpDir, { recursive: true });
+        try {
+          for (const [name, buf] of sngEntries) {
+            const outPath = path.join(tmpDir, name);
+            fs.mkdirSync(path.dirname(outPath), { recursive: true });
+            fs.writeFileSync(outPath, buf);
+          }
+          convertSngToXml(tmpDir, this.config.rscliPath);
+          const xmlArrDir = path.join(tmpDir, "songs", "arr");
+          if (fs.existsSync(xmlArrDir)) {
+            for (const f of fs.readdirSync(xmlArrDir)) {
+              if (!f.endsWith(".xml") || f.includes("_showlights")) continue;
+              const xmlContent = fs.readFileSync(path.join(xmlArrDir, f), "utf8");
+              const xmlName = extractArrNameFromXml(xmlContent)
+                ?? arrangementDisplayName(path.basename(f, ".xml").toLowerCase());
+              arrXmls.push({ name: xmlName, xml: xmlContent });
+            }
+          }
+        } finally {
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* best-effort */ }
+        }
       }
     }
 

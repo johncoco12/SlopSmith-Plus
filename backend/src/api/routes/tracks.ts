@@ -56,11 +56,11 @@ const UpdateTrackSchema = z.object({
 });
 
 export const trackRoutes = fp(async function trackRoutes(fastify) {
-  const tracks = fastify.trackSvc as TrackService;
-  const scores = fastify.trackScoreSvc as TrackScoreService;
+  const tracks  = fastify.trackSvc as TrackService;
+  const scores  = fastify.trackScoreSvc as TrackScoreService;
+  const hooks   = fastify.hooks;
+  const profiles = fastify.profiles;
 
-  // Public — no auth. Returns a random selection of trackIds that have cover art.
-  // Used by the profile switcher background mosaic.
   fastify.get("/api/covers", async (req, reply) => {
     const { count } = z.object({
       count: z.coerce.number().int().min(1).max(100).default(30),
@@ -156,6 +156,23 @@ export const trackRoutes = fp(async function trackRoutes(fastify) {
     const session = req.session!;
     const { score } = z.object({ score: z.number().int().min(0).max(100) }).parse(req.body);
     const result = await scores.submit(session.profileId, trackId, score);
+
+    // Notify plugins — fire-and-forget, never block the response
+    Promise.all([
+      profiles.getProfile(session.profileId),
+      tracks.getTrack(trackId).catch(() => null),
+    ]).then(([profile, track]) =>
+      hooks.emit("track:score:submitted", {
+        trackId,
+        score,
+        profileId:   session.profileId,
+        playerName:  profile.name,
+        title:       track?.title  ?? trackId,
+        artist:      track?.artist ?? '',
+        submittedAt: new Date().toISOString(),
+      }),
+    ).catch(() => { /* non-fatal */ });
+
     return reply.code(201).send(result);
   });
 

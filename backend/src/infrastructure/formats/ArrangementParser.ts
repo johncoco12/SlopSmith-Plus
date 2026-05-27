@@ -31,11 +31,9 @@ const ARRANGEMENT_PRIORITY: Record<string, number> = {
   lead: 0, combo: 1, rhythm: 2, bass: 3,
 };
 
-// ─── XML helpers ───────────────────────────────────────────────────────────
-
 const ARRAY_TAGS = new Set([
   "note", "chord", "chordNote", "anchor", "beat", "section",
-  "handShape", "phrase", "phraseIteration", "level", "chordTemplate",
+  "handShape", "phrase", "phraseIteration", "level", "chordTemplate", "tone",
 ]);
 
 const parser = new XMLParser({
@@ -69,8 +67,6 @@ function arr<T>(el: El, ...path: string[]): T[] {
   for (const p of path) cur = (cur as El)?.[p];
   return Array.isArray(cur) ? (cur as T[]) : [];
 }
-
-// ─── Element parsers ───────────────────────────────────────────────────────
 
 function parseNote(el: El): Note {
   return {
@@ -165,8 +161,6 @@ function parseLevel(el: El): PhraseLevel {
   };
 }
 
-// ─── Public API ────────────────────────────────────────────────────────────
-
 export interface ParsedSongRoot {
   readonly title: string;
   readonly artist: string;
@@ -226,6 +220,18 @@ export function arrangementDisplayName(
   return rawName;
 }
 
+export function extractArrNameFromXml(xml: string): string | null {
+  try {
+    const doc = parser.parse(xml);
+    const root = (doc["song"] ?? doc["Song"]) as El | undefined;
+    if (!root) return null;
+    const rawName = str(root, "arrangement", "");
+    return rawName ? arrangementDisplayName(rawName) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function sortArrangementsByPriority<T extends { name: string }>(arrs: T[]): T[] {
   return [...arrs].sort((a, b) => {
     const pa = ARRANGEMENT_PRIORITY[a.name.toLowerCase()] ?? 99;
@@ -236,7 +242,8 @@ export function sortArrangementsByPriority<T extends { name: string }>(arrs: T[]
 
 export function parseArrangementXml(xml: string, arrangementName?: string): Arrangement {
   const doc = parser.parse(xml);
-  const root = (doc["song"] ?? doc["Song"]) as El;
+  const root = (doc["song"] ?? doc["Song"]) as El | undefined;
+  if (!root) throw new Error("Not a song arrangement XML");
 
   // Tuning. RS XML has string0..string5; extended-range instruments (7/8-string
   // guitar, 5-string bass) add string6+ attributes.
@@ -266,7 +273,6 @@ export function parseArrangementXml(xml: string, arrangementName?: string): Arra
 
   const capo = num(root, "capo");
 
-  // All difficulty levels
   const allLevels = arr<El>(root, "levels", "level").map(parseLevel);
   // Find the highest difficulty level that has notes (some DDC-created
   // arrangements pad high difficulties with 0-note, chord-only ghost levels)
@@ -306,7 +312,6 @@ export function parseArrangementXml(xml: string, arrangementName?: string): Arra
   }
   synthesizeChordNotes(topLevel?.chords ?? []);
 
-  // Also synthesize in phrases (multi-difficulty arrangements)
   if (phrases) {
     for (const p of phrases) {
       for (const lv of p.levels) {
@@ -314,6 +319,15 @@ export function parseArrangementXml(xml: string, arrangementName?: string): Arra
       }
     }
   }
+
+  const toneBase = str(root, "tonebase", "");
+  const toneChanges = arr<El>(root, "tones", "tone").map((t) => ({
+    time: num(t, "time"),
+    name: str(t, "name"),
+  }));
+  const tones: ToneData | undefined = toneBase
+    ? { base: toneBase, changes: toneChanges }
+    : undefined;
 
   return {
     name,
@@ -325,6 +339,7 @@ export function parseArrangementXml(xml: string, arrangementName?: string): Arra
     handShapes: topLevel?.handShapes ?? [],
     chordTemplates,
     phrases: phrases.length > 1 ? phrases : undefined,
+    tones,
   };
 }
 
@@ -368,8 +383,6 @@ export function parseLyricsXml(xml: string): LyricWord[] {
     w: str(v, "lyric"),
   }));
 }
-
-// ─── Sloppak wire format deserialization ──────────────────────────────────
 
 function phraseLevelFromWire(d: Record<string, unknown>): PhraseLevel {
   return {
@@ -469,8 +482,6 @@ export function arrangementFromWireJson(data: El): Arrangement {
   };
 }
 
-// ─── Directory loader (used by SongService for PSARC and loose folders) ──
-
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -491,7 +502,7 @@ function hasArrangementXml(root: Record<string, unknown>): boolean {
   }
 }
 
-function convertSngToXml(dir: string, rscliPath: string): void {
+export function convertSngToXml(dir: string, rscliPath: string): void {
   const sngFiles = (fs.readdirSync(dir, { recursive: true }) as string[])
     .filter((f) => f.endsWith(".sng"));
 

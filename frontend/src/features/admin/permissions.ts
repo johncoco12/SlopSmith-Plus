@@ -1,6 +1,16 @@
 import { get, post, patch as patchReq, del } from '@/api/index'
 import type { PermissionGroup, Permission } from '@/types'
 
+export interface AvailablePermission {
+  name: string
+  description: string
+  pluginId?: string
+}
+
+export function listAvailablePermissions(): Promise<AvailablePermission[]> {
+  return get('/api/permissions/available') as Promise<AvailablePermission[]>
+}
+
 export function listGroups(): Promise<PermissionGroup[]> {
   return get('/api/permissions/groups') as Promise<PermissionGroup[]>
 }

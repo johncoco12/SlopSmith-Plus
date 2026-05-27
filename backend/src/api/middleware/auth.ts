@@ -27,6 +27,15 @@ export function requirePermission(...permissions: Permissions[]): preHandlerAsyn
   };
 }
 
+export function requirePermissionStr(permission: string): preHandlerAsyncHookHandler {
+  return async (req: FastifyRequest) => {
+    const session = requireAuth(req);
+    const perms = req.server.permissions as IPermissionsService;
+    const ok = await perms.hasAnyPermission(session.profileId, permission);
+    if (!ok) throw new ForbiddenError(`Missing permission: ${permission}`);
+  };
+}
+
 export function requireAllPermissions(...permissions: Permissions[]): preHandlerAsyncHookHandler {
   return async (req: FastifyRequest) => {
     const session = requireAuth(req);

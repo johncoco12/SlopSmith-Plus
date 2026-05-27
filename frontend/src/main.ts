@@ -1,33 +1,24 @@
 import { createApp } from 'vue'
+import * as Vue from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { i18n } from './plugins/i18n'
+import { installPluginSystem } from './plugins'
 import './assets/style.css'
 import './styles/typography.css'
 
-// Bootstrap window.slopsmith with a full event emitter so highway.js can
-// call emit/on/off.  diagnostics.js (loaded earlier in <head>) already set
-// window.slopsmith = { diagnostics: ... } — we extend it, not replace it.
-;(function () {
-  const existing = (typeof window.slopsmith === 'object' && window.slopsmith !== null)
-    ? window.slopsmith
-    : null
-  const bus = Object.assign(new EventTarget(), {
-    emit(event: string, detail?: unknown) { this.dispatchEvent(new CustomEvent(event, { detail })) },
-    on(event: string, fn: EventListenerOrEventListenerObject, opts?: AddEventListenerOptions)  { this.addEventListener(event, fn, opts) },
-    off(event: string, fn: EventListenerOrEventListenerObject, opts?: EventListenerOptions) { this.removeEventListener(event, fn, opts) },
-  }) as typeof window.slopsmith
-  window.slopsmith = bus
-  if (existing) {
-    for (const key of Object.keys(existing)) {
-      if (!(key in bus)) (bus as Record<string, unknown>)[key] = (existing as Record<string, unknown>)[key]
-    }
-  }
-})()
+// Expose Vue so dynamically-loaded plugin modules (client.js files) can import
+// reactive primitives from the same instance and share the reactivity system.
+;(window as any).__slopsmithVue = Vue
 
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 app.use(i18n)
+
+// Install plugin system: wires PluginEventBus, SlotManager, and backward-compat
+// window.slopsmith adapter (so pitch_yin and other legacy scripts keep working)
+installPluginSystem(app)
+
 app.mount('#app')
