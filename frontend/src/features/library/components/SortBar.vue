@@ -97,7 +97,7 @@ function onSearch(e: Event): void {
         :value="sortBy"
         class="px-2.5 py-1.5 rounded-lg text-xs bg-dark-600 border border-white/[.06]
                text-gray-400 focus:outline-none focus:ring-1 focus:ring-accent/40 shrink-0 cursor-pointer"
-        @change="emit('set-sort', $event.target.value)"
+        @change="emit('set-sort', ($event.target as HTMLSelectElement).value)"
       >
         <option value="artist">{{ $t('library.sort.artistAsc') }}</option>
         <option value="artist-desc">{{ $t('library.sort.artistDesc') }}</option>
@@ -114,13 +114,13 @@ function onSearch(e: Event): void {
         class="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0
                bg-dark-600 border border-white/[.06] text-gray-400
                hover:text-gray-200 hover:bg-dark-500 transition-all"
-        :class="filterCount > 0 ? '!border-accent/40 !text-accent !bg-accent/10' : ''"
+        :class="(filterCount ?? 0) > 0 ? '!border-accent/40 !text-accent !bg-accent/10' : ''"
         @click="emit('toggle-filters')"
       >
         <SlidersHorizontal :size="13" />
         {{ $t('library.filters.button') }}
         <span
-          v-if="filterCount > 0"
+          v-if="(filterCount ?? 0) > 0"
           class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-accent text-white
                  text-[9px] flex items-center justify-center font-bold"
         >{{ filterCount }}</span>

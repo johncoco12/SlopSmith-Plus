@@ -50,7 +50,7 @@ watch(open, async (isOpen) => {
       const s = document.createElement('script')
       for (const a of old.attributes) s.setAttribute(a.name, a.value)
       s.textContent = old.textContent
-      old.parentNode.replaceChild(s, old)
+      old.parentNode?.replaceChild(s, old)
     })
     htmlLoaded.value = true
   } catch (e: unknown) {

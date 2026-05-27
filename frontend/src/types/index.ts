@@ -73,7 +73,7 @@ export interface SongInfo {
   format?: string
   audio_url?: string | null
   audio_error?: string | null
-  stems?: string[]
+  stems?: Array<{ id: string; url: string; default: boolean }>
   filename?: string
   [key: string]: unknown
 }
@@ -92,6 +92,7 @@ export interface Song {
   has_lyrics?: boolean
   tuning?: string
   isFavorite?: boolean
+  bestScore?: number
   [key: string]: unknown
 }
 
@@ -122,9 +123,13 @@ export interface Plugin {
   name: string
   version?: string
   type?: string
-  nav?: { label: string; screen: string }
+  nav?: { label: string; screen?: string; section?: string }
   has_settings?: boolean
   has_script?: boolean
+  script?: string
+  component?: string
+  state?: string
+  error?: string
   [key: string]: unknown
 }
 
@@ -211,7 +216,7 @@ export interface PermissionGroup {
   id: number
   name: string
   profileIds: number[]
-  permissions: Permission[]
+  permissions: string[]
   createdAt: string
   updatedAt: string
 }

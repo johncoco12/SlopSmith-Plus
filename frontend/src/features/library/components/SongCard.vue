@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Heart, Play, MoreVertical, Pencil, Trash2 } from 'lucide-vue-next'
 import type { Song } from '@/types'
+import PluginSlot from '@/components/plugins/PluginSlot.vue'
 
 const props = defineProps<{
   song: Song & { mtime?: number; favorite?: boolean; tuningName?: string; trackId?: string }
@@ -20,9 +21,9 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const FORMAT_COLOR: Record<string, string> = {
-  psarc:   'bg-blue-900/50 text-blue-300 border-blue-700/40',
-  sloppak: 'bg-purple-900/50 text-purple-300 border-purple-700/40',
-  loose:   'bg-gray-800 text-gray-400 border-gray-700/40',
+  psarc:   'bg-blue-500/15 text-blue-400 border-blue-500/30',
+  sloppak: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  loose:   'bg-gray-500/15 text-gray-400 border-gray-500/30',
 }
 
 const artUrl = computed(() =>
@@ -39,7 +40,25 @@ const arrNames = computed(() =>
   )
 )
 
-// ── Favorite animation ─────────────────────────────────────────────────────────
+const scoreGrade = computed(() => {
+  const s = props.song.bestScore
+  if (s == null) return ''
+  if (s >= 95) return 'S'
+  if (s >= 80) return 'A'
+  if (s >= 60) return 'B'
+  if (s >= 40) return 'C'
+  return 'D'
+})
+
+const scoreBadgeClass = computed(() => {
+  const g = scoreGrade.value
+  if (g === 'S') return 'score-s'
+  if (g === 'A') return 'score-a'
+  if (g === 'B') return 'score-b'
+  if (g === 'C') return 'score-c'
+  return 'score-d'
+})
+
 const favBurst = ref(false)
 
 function onFavorite() {
@@ -51,7 +70,6 @@ function onFavorite() {
   emit('favorite', props.song.trackId ?? props.song.filename)
 }
 
-// ── Context menu ───────────────────────────────────────────────────────────────
 const menuOpen = ref(false)
 
 function openMenu(e: Event) {
@@ -87,7 +105,6 @@ function onDelete(e: Event) {
     @keydown.enter="emit('open', song)"
     @keydown.space.prevent="emit('open', song)"
   >
-    <!-- ── Album art ──────────────────────────────────────────────────────── -->
     <div class="card-art">
       <img
         :src="artUrl"
@@ -98,17 +115,15 @@ function onDelete(e: Event) {
       />
       <div class="absolute inset-0 flex items-center justify-center text-4xl select-none -z-10" aria-hidden="true">🎸</div>
 
-      <!-- Play overlay -->
       <div class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
         <div class="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20 shadow-lg">
           <Play :size="20" class="text-white translate-x-0.5" fill="currentColor" />
         </div>
       </div>
 
-      <!-- ⋯ menu — top-left -->
       <div class="absolute top-2 left-2 z-30">
         <button
-          class="p-1.5 rounded-full bg-black/60 backdrop-blur-sm text-gray-300 hover:text-white transition-all duration-150"
+          class="p-1.5 rounded-full bg-black/60 backdrop-blur-sm text-fg-muted hover:text-fg transition-all duration-150"
           :class="menuOpen ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100'"
           :aria-label="t('library.song.options', 'Options')"
           @click="openMenu"
@@ -119,15 +134,15 @@ function onDelete(e: Event) {
         <Transition name="menu">
           <div
             v-if="menuOpen"
-            class="absolute top-full left-0 mt-1.5 z-30 w-44 rounded-xl bg-dark-700 border border-white/10 shadow-2xl overflow-hidden py-1"
+            class="absolute top-full left-0 mt-1.5 z-30 w-44 rounded-xl bg-dark-700 border border-line/10 shadow-2xl overflow-hidden py-1 menu-dropdown"
             @click.stop
           >
             <button class="menu-item" @click="onEdit">
-              <Pencil :size="13" class="text-gray-400 shrink-0" />
+              <Pencil :size="13" class="text-fg-muted shrink-0" />
               <span>Edit metadata</span>
             </button>
-            <div class="mx-3 my-1 border-t border-white/[.06]" />
-            <button class="menu-item !text-red-400 hover:!bg-red-500/10" @click="onDelete">
+            <div class="mx-3 my-1 border-t border-line/[.06]" />
+            <button class="menu-item menu-danger" @click="onDelete">
               <Trash2 :size="13" class="shrink-0" />
               <span>Delete</span>
             </button>
@@ -135,12 +150,11 @@ function onDelete(e: Event) {
         </Transition>
       </div>
 
-      <!-- Heart — top-right -->
       <button
         class="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/60 backdrop-blur-sm transition-all duration-150"
-        :class="song.favorite
-          ? 'opacity-100 text-rose-400'
-          : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-rose-400'"
+:class="song.favorite
+           ? 'opacity-100 text-rose-400'
+           : 'opacity-0 group-hover:opacity-100 text-fg-muted hover:text-rose-400'"
         :aria-label="song.favorite ? t('library.song.removeFavorite') : t('library.song.addFavorite')"
         @click.stop="onFavorite"
       >
@@ -155,9 +169,17 @@ function onDelete(e: Event) {
       </button>
     </div>
 
-    <!-- ── Info ──────────────────────────────────────────────────────────── -->
     <div class="p-3 space-y-1">
-      <p class="text-sm font-semibold text-gray-100 truncate leading-snug">{{ song.title }}</p>
+      <div class="flex items-center gap-1.5 min-w-0">
+        <p class="text-sm font-semibold text-gray-100 truncate leading-snug flex-1">{{ song.title }}</p>
+        <span
+          v-if="song.bestScore != null"
+          class="score-badge shrink-0"
+          :class="scoreBadgeClass"
+          :title="`Best score: ${song.bestScore}%`"
+        >{{ scoreGrade }}</span>
+        <PluginSlot name="library-card-badge" :song="song" />
+      </div>
 
       <p class="text-xs text-gray-400 truncate">
         <button
@@ -228,7 +250,6 @@ function onDelete(e: Event) {
   line-height: 1.6;
 }
 
-/* ── Heart burst ────────────────────────────────────────────────────────────── */
 .fav-burst {
   position: absolute;
   inset: -5px;
@@ -252,7 +273,24 @@ function onDelete(e: Event) {
   100% { transform: scale(1); }
 }
 
-/* ── Menu transition ────────────────────────────────────────────────────────── */
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.score-s { background: #7c3aed22; color: #a78bfa; border: 1px solid #7c3aed55; }
+.score-a { background: #065f4622; color: #34d399; border: 1px solid #06503255; }
+.score-b { background: #1e3a8a22; color: #60a5fa; border: 1px solid #1e3a8a55; }
+.score-c { background: #92400e22; color: #fbbf24; border: 1px solid #92400e55; }
+.score-d { background: #7f1d1d22; color: #f87171; border: 1px solid #7f1d1d55; }
+
 .menu-enter-active { transition: opacity 0.12s ease, transform 0.12s ease; }
 .menu-leave-active { transition: opacity 0.08s ease; }
 .menu-enter-from   { opacity: 0; transform: scale(0.95) translateY(-4px); }
@@ -265,9 +303,46 @@ function onDelete(e: Event) {
   width: 100%;
   padding: 0.5rem 0.875rem;
   font-size: 0.8125rem;
-  color: theme('colors.gray.200');
+  color: theme('colors.fg.DEFAULT');
   text-align: left;
   transition: background-color 0.1s;
 }
-.menu-item:hover { background: rgb(255 255 255 / 0.06); }
+.menu-item:hover { background: rgb(var(--line) / 0.06); }
+
+.menu-danger { color: theme('colors.danger'); }
+.menu-danger:hover { background: rgb(var(--danger) / 0.1); }
+
+/* ─── Light theme ──────────────────────────────────────────────────────────── */
+
+/* Card border */
+:global(html.theme-light) .song-card {
+  border-color: rgba(0,0,0,0.10);
+}
+:global(html.theme-light) .song-card:hover,
+:global(html.theme-light) .song-card:focus-visible {
+  border-color: rgba(0,0,0,0.18);
+  box-shadow: 0 8px 32px -8px rgb(0 0 0 / 0.12);
+}
+
+/*
+ * Card-art overlay elements (⋮ menu button, ♥ fav button, play circle) all sit
+ * on top of bg-black/60 or bg-black/40 circles/overlays so their text must stay
+ * light regardless of theme — the global html.theme-light overrides must not reach them.
+ */
+:global(html.theme-light) .card-art .text-white          { color: rgb(255 255 255); }
+:global(html.theme-light) .card-art .text-fg             { color: rgb(255 255 255); }
+:global(html.theme-light) .card-art .text-fg-muted       { color: rgb(209 213 219); }
+:global(html.theme-light) .card-art .hover\:text-fg:hover { color: rgb(255 255 255); }
+:global(html.theme-light) .card-art .hover\:text-white:hover { color: rgb(255 255 255); }
+:global(html.theme-light) .card-art .bg-white\/10        { background-color: rgba(255,255,255,0.10); }
+
+/*
+ * Score badges use light pastels (contrast ratio < 3:1 on white) — remap to
+ * darker shades of the same hue so they stay readable on light card backgrounds.
+ */
+:global(html.theme-light) .score-s { background: rgba(124,58,237,0.12); color: #5b21b6; border-color: rgba(124,58,237,0.35); }
+:global(html.theme-light) .score-a { background: rgba(5,150,105,0.12);  color: #065f46; border-color: rgba(5,150,105,0.35);  }
+:global(html.theme-light) .score-b { background: rgba(37,99,235,0.12);  color: #1e40af; border-color: rgba(37,99,235,0.35);  }
+:global(html.theme-light) .score-c { background: rgba(217,119,6,0.12);  color: #92400e; border-color: rgba(217,119,6,0.35);  }
+:global(html.theme-light) .score-d { background: rgba(220,38,38,0.12);  color: #991b1b; border-color: rgba(220,38,38,0.35);  }
 </style>

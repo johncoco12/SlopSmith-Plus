@@ -381,6 +381,10 @@ onUnmounted(() => {
   if (_timer) clearInterval(_timer)
   if (_rafId) cancelAnimationFrame(_rafId)
 })
+
+function dumpHitDebug(): void {
+  (window as any).highway?.hitDetector?.dumpHitDebug?.()
+}
 </script>
 
 <template>
@@ -486,7 +490,7 @@ onUnmounted(() => {
         >HM{{ debugHitMap ? ' ON' : ' OFF' }}</button>
         <button
           class="px-1 rounded pointer-events-auto bg-white/10 text-white/70 hover:bg-white/20 text-[9px]"
-          @click="(window as any).highway?.hitDetector?.dumpHitDebug?.()"
+          @click="dumpHitDebug"
         >Dump</button>
       </div>
 

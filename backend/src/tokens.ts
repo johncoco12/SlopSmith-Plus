@@ -9,3 +9,9 @@ export const ITrackDataRepositoryToken = Symbol("ITrackDataRepository");
 export const IStemsRepositoryToken = Symbol("IStemsRepository");
 export const IStemDataRepositoryToken = Symbol("IStemDataRepository");
 export const ILoopRepositoryToken = Symbol("ILoopRepository");
+export const ITrackScoreRepositoryToken = Symbol("ITrackScoreRepository");
+
+export const HookSystemToken = Symbol("HookSystem");
+export const ProviderRegistryToken = Symbol("ProviderRegistry");
+export const PermissionRegistryToken = Symbol("PermissionRegistry");
+export const PluginDbFactoryToken = Symbol("PluginDbFactory");

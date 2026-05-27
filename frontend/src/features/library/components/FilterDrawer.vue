@@ -17,7 +17,12 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const local = reactive({
+const local = reactive<{
+  arrangements: { has: string[]; lacks: string[] }
+  stems:        { has: string[]; lacks: string[] }
+  lyrics:       boolean | null
+  tunings:      string[]
+}>({
   arrangements: { has: [], lacks: [] },
   stems:        { has: [], lacks: [] },
   lyrics:       null,
@@ -30,23 +35,26 @@ watch(() => props.open, open => {
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
-function getState(section, val) {
+type FilterSection = 'arrangements' | 'stems'
+type TriState = 'require' | 'exclude' | 'any'
+
+function getState(section: FilterSection, val: string): TriState {
   if (local[section].has.includes(val))   return 'require'
   if (local[section].lacks.includes(val)) return 'exclude'
   return 'any'
 }
 
-function toggleState(section, val, target) {
+function toggleState(section: FilterSection, val: string, target: TriState): void {
   const current = getState(section, val)
-  local[section].has   = local[section].has.filter(v => v !== val)
-  local[section].lacks = local[section].lacks.filter(v => v !== val)
+  local[section].has   = local[section].has.filter((v: string) => v !== val)
+  local[section].lacks = local[section].lacks.filter((v: string) => v !== val)
   if (current !== target) {
     if (target === 'require') local[section].has.push(val)
     else                      local[section].lacks.push(val)
   }
 }
 
-const sectionCount = (section) =>
+const sectionCount = (section: FilterSection) =>
   local[section].has.length + local[section].lacks.length
 
 const totalActive = computed(() =>
@@ -261,7 +269,7 @@ const { t } = useI18n()
           </section>
 
           <!-- ── Tunings ── -->
-          <template v-if="tuningNames.length">
+          <template v-if="tuningNames?.length">
             <div class="h-px bg-white/[.04]" />
 
             <section>

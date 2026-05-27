@@ -1,16 +1,22 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{vue,js}'],
+  content: ['./index.html', './src/**/*.{vue,js}', '../plugins/**/*.js'],
   theme: {
     extend: {
       colors: {
         dark: {
-          500: '#2a2a2a',
-          600: '#1e1e1e',
-          700: '#161616',
-          800: '#111111',
+          500: 'rgb(var(--dark-500) / <alpha-value>)',
+          600: 'rgb(var(--dark-600) / <alpha-value>)',
+          700: 'rgb(var(--dark-700) / <alpha-value>)',
+          800: 'rgb(var(--dark-800) / <alpha-value>)',
         },
-        accent: '#4080e0',
+        accent: 'rgb(var(--accent) / <alpha-value>)',
+        fg: {
+          DEFAULT: 'rgb(var(--fg) / <alpha-value>)',
+          muted: 'rgb(var(--fg-muted) / <alpha-value>)',
+        },
+        line: 'rgb(var(--line) / <alpha-value>)',
+        danger: 'rgb(var(--danger) / <alpha-value>)',
         gold: '#e8c040',
       },
       fontFamily: {

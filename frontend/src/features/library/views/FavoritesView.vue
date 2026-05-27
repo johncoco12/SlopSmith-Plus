@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useFavoritesStore } from '@/features/library/store'
+import type { Song } from '@/types'
 import SortBar from '@/features/library/components/SortBar.vue'
 import FilterChips from '@/features/library/components/FilterChips.vue'
 import FilterDrawer from '@/features/library/components/FilterDrawer.vue'
@@ -19,7 +20,7 @@ onMounted(() => {
   favorites.loadTuningNames()
 })
 
-function openSong(song) {
+function openSong(song: Song): void {
   router.push({
     name: 'player',
     params: { trackId: song.trackId ?? song.filename },
@@ -27,7 +28,7 @@ function openSong(song) {
   })
 }
 
-function editSong(song) {
+function editSong(song: Song): void {
   router.push({ name: 'plugin', params: { id: 'editor' }, query: { filename: song.filename } })
 }
 </script>

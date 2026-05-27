@@ -78,7 +78,8 @@
     "loadError": "Error al cargar datos",
     "tabs": {
       "profiles": "Perfiles",
-      "groups": "Grupos de permisos"
+      "groups": "Grupos de permisos",
+      "plugins": "Plugins"
     },
     "permissions": {
       "admin": "Admin",

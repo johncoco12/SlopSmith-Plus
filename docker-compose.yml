@@ -40,6 +40,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     ports:
       - "8085:8080"
     depends_on:
@@ -50,10 +51,16 @@ services:
     volumes:
       - ${DLC_PATH:-~/.local/share/Steam/steamapps/common/Rocksmith2014/dlc}:/dlc
       - rocksmith-config:/config
-      # Dev: comment these out for production (assets are baked into the image)
+      # Bundled plugins and static assets.
+      # In dev these are live-mounted so edits are picked up on server restart.
+      # For a production image build, comment these three lines out — the assets
+      # are baked in via `COPY plugins/` and `COPY static/` in the Dockerfile.
       - ./plugins:/app/plugins
       - ./static:/app/static
       - ./VERSION:/app/VERSION
+      # User-installed plugins: drop a plugin folder here and restart the server.
+      # This volume persists across image upgrades, so user plugins are never lost.
+      - user-plugins:/app/user-plugins
     environment:
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config
@@ -66,6 +73,8 @@ services:
       - MINIO_SECRET_KEY=slopsmith123
       - MINIO_BUCKET=slopsmith
       - MINIO_USE_SSL=false
+      # User plugin directory — plugins placed here are loaded alongside bundled ones.
+      - SLOPSMITH_PLUGINS_DIR=/app/user-plugins
       # Logging (optional — image defaults: LOG_LEVEL=info, LOG_PRETTY=true)
       # - LOG_LEVEL=debug
 
@@ -80,4 +89,5 @@ volumes:
   postgres-data:
   minio-data:
   rocksmith-config:
+  user-plugins:
 

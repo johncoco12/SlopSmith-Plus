@@ -130,3 +130,27 @@ model StemData {
   @@index([stemsId])
 }
 
+model TrackScore {
+  id           Int      @id @default(autoincrement())
+  profileId    Int
+  trackId      String
+  bestScore    Int
+  playCount    Int      @default(1)
+  lastPlayedAt DateTime @default(now())
+
+  @@unique([profileId, trackId])
+  @@index([profileId])
+  @@index([trackId])
+}
+
+model PluginData {
+  id        String   @id @default(cuid())
+  pluginId  String
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([pluginId, key])
+  @@index([pluginId])
+}
+

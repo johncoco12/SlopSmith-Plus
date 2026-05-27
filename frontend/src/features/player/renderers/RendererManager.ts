@@ -186,6 +186,7 @@ export class RendererManager {
       this._checkVisibility();
       if (this.lastVisible === false) return;
       const bundle = makeBundle();
+      if (!bundle) return;
       try {
         this.renderer.draw(bundle);
         this.drawFailures = 0;

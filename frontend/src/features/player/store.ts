@@ -131,21 +131,21 @@ export const usePlayerStore = defineStore('player', () => {
   // ── playback controls ─────────────────────────────────────────────────────
 
   function togglePlay(): void {
-    const audio = highway.value?.getAudioElement()
+    const audio = highway.value?.getAudioElement?.()
     if (!audio) return
     if (audio.paused) { audio.play(); playing.value = true }
     else              { audio.pause(); playing.value = false }
   }
 
   function seekBy(seconds: number): void {
-    const audio = highway.value?.getAudioElement()
+    const audio = highway.value?.getAudioElement?.()
     if (!audio) return
     _seekTarget = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + seconds))
     audio.currentTime = _seekTarget
   }
 
   function seekTo(time: number): void {
-    const audio = highway.value?.getAudioElement()
+    const audio = highway.value?.getAudioElement?.()
     if (!audio || !isFinite(time) || !duration.value) return
     const clamped = Math.max(0, Math.min(duration.value, time))
     _seekTarget = clamped
@@ -154,7 +154,7 @@ export const usePlayerStore = defineStore('player', () => {
 
   function setSpeed(v: number): void {
     speed.value = v
-    const audio = highway.value?.getAudioElement()
+    const audio = highway.value?.getAudioElement?.()
     if (audio) audio.playbackRate = v
   }
 
@@ -183,7 +183,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function _applyVolume(): void {
-    const audio = highway.value?.getAudioElement()
+    const audio = highway.value?.getAudioElement?.()
     if (audio) audio.volume = (masterVolume.value / 100) * (songVolume.value / 100)
   }
 

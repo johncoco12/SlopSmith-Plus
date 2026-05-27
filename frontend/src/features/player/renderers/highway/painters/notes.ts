@@ -2,7 +2,7 @@
 
 import { stringColor, stringDim, stringBright, stringColor as sc } from '../colors.js';
 import { paintGemGlow } from './gemGlow.js';
-import type { DrawContext, ChartNote, NoteState } from '@/features/player/types';
+import type { DrawContext, ChartNote, NoteState, NoteStateRaw, NoteStateProvider } from '@/features/player/types';
 import { VISIBLE_SECONDS } from '@/features/player/engine/projection';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -424,11 +424,11 @@ export function drawUnisonBends(
 }
 
 export function resolveNoteState(
-  provider: import('../types.js').NoteStateProvider,
+  provider: NoteStateProvider,
   note: ChartNote,
   chartTime: number,
-): import('../types.js').NoteState | null {
-  let raw: import('../types.js').NoteStateRaw | null | undefined | false | 0;
+): NoteState | null {
+  let raw: NoteStateRaw | null | undefined | false | 0;
   try { raw = provider(note, chartTime); } catch { return null; }
   if (!raw) return null;
   const state = typeof raw === 'string' ? raw : raw.state;

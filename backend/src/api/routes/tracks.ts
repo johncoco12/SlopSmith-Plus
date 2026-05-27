@@ -2,6 +2,7 @@ import fp from "fastify-plugin";
 import { z } from "zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { TrackService } from "../../services/TrackService.js";
+import type { TrackScoreService } from "../../services/TrackScoreService.js";
 import { requireAuth, requireAuthAsync, requirePermission } from "../middleware/auth.js";
 import { Permissions } from "../../domain/models/permission.js";
 
@@ -55,10 +56,11 @@ const UpdateTrackSchema = z.object({
 });
 
 export const trackRoutes = fp(async function trackRoutes(fastify) {
-  const tracks = fastify.trackSvc as TrackService;
+  const tracks  = fastify.trackSvc as TrackService;
+  const scores  = fastify.trackScoreSvc as TrackScoreService;
+  const hooks   = fastify.hooks;
+  const profiles = fastify.profiles;
 
-  // Public — no auth. Returns a random selection of trackIds that have cover art.
-  // Used by the profile switcher background mosaic.
   fastify.get("/api/covers", async (req, reply) => {
     const { count } = z.object({
       count: z.coerce.number().int().min(1).max(100).default(30),
@@ -145,5 +147,43 @@ export const trackRoutes = fp(async function trackRoutes(fastify) {
     const { trackId } = trackIdParam.parse(req.params);
     await tracks.deleteTrack(trackId);
     return reply.code(204).send();
+  });
+
+  fastify.post("/api/tracks/:trackId/score", {
+    preHandler: [requireAuthAsync()],
+  }, async (req, reply) => {
+    const { trackId } = trackIdParam.parse(req.params);
+    const session = req.session!;
+    const { score } = z.object({ score: z.number().int().min(0).max(100) }).parse(req.body);
+    const result = await scores.submit(session.profileId, trackId, score);
+
+    // Notify plugins — fire-and-forget, never block the response
+    Promise.allSettled([
+      profiles.getProfile(session.profileId),
+      tracks.getTrack(trackId).catch(() => null),
+    ]).then(([profileResult, trackResult]) => {
+      const profile = profileResult.status === "fulfilled" ? profileResult.value : null;
+      const track   = trackResult.status   === "fulfilled" ? trackResult.value   : null;
+      return hooks.emit("track:score:submitted", {
+        trackId,
+        score,
+        profileId:   session.profileId,
+        playerName:  profile?.name ?? "Anonymous",
+        title:       track?.title  ?? trackId,
+        artist:      track?.artist ?? '',
+        submittedAt: new Date().toISOString(),
+      });
+    }).catch(() => { /* non-fatal */ });
+
+    return reply.code(201).send(result);
+  });
+
+  fastify.post("/api/scores/batch", {
+    preHandler: [requireAuthAsync()],
+  }, async (req) => {
+    const session = req.session!;
+    const { trackIds } = z.object({ trackIds: z.array(z.string()).max(500) }).parse(req.body);
+    const results = await scores.getBatch(session.profileId, trackIds);
+    return { scores: results };
   });
 });

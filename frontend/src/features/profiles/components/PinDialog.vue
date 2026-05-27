@@ -250,9 +250,9 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .dot-empty    { background: theme('colors.dark.600'); }
-.dot-filled   { background: theme('colors.accent.DEFAULT', '#4080e0'); transform: scale(1.15); }
+.dot-filled   { background: #4080E0; transform: scale(1.15); }
 .dot-overflow {
-  background: theme('colors.accent.DEFAULT', '#4080e0');
+  background: #4080E0;
   transform: scale(1.15);
   animation: pulse 0.8s ease-in-out infinite;
 }

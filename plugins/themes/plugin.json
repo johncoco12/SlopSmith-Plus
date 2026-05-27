@@ -1,0 +1,9 @@
+{
+  "id": "themes",
+  "name": "Themes",
+  "version": "1.0.0",
+  "bundled": true,
+  "server": "index.js",
+  "component": "client.js",
+  "dependsOn": []
+}

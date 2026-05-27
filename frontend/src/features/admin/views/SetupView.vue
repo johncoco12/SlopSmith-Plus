@@ -27,17 +27,15 @@ const pinStrength = computed(() => {
   return 'strong'
 })
 
-const strengthColor = computed(() => ({
-  weak: 'bg-red-500',
-  fair: 'bg-yellow-400',
-  strong: 'bg-green-500',
-}[pinStrength.value ?? ''] ?? ''))
+const strengthColor = computed(() => {
+  const map = { weak: 'bg-red-500', fair: 'bg-yellow-400', strong: 'bg-green-500' }
+  return pinStrength.value ? (map[pinStrength.value] ?? '') : ''
+})
 
-const strengthLabel = computed(() => ({
-  weak: 'Weak',
-  fair: 'Fair',
-  strong: 'Strong',
-}[pinStrength.value ?? ''] ?? ''))
+const strengthLabel = computed(() => {
+  const map = { weak: 'Weak', fair: 'Fair', strong: 'Strong' }
+  return pinStrength.value ? (map[pinStrength.value] ?? '') : ''
+})
 
 const pinMatchError = computed(() =>
   pinConfirm.value.length >= PIN_MIN && pinCode.value !== pinConfirm.value

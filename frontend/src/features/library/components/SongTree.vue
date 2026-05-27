@@ -119,7 +119,7 @@ function artUrl(song: Song & { mtime?: number }): string {
                     :alt="song.album"
                     class="w-full h-full object-cover"
                     loading="lazy"
-                    @error="$event.target.style.display='none'"
+                    @error="($event.target as HTMLImageElement).style.display='none'"
                   />
                   <div class="absolute inset-0 flex items-center justify-center -z-10">
                     <Music2 :size="14" class="text-gray-600" />

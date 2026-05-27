@@ -21,7 +21,7 @@ export interface ChartNote {
 }
 
 export interface ChartChordNote extends ChartNote {
-  // Inside a chord object, same fields; chord time is on ChartChord
+  // Inside a chord object; chord time is on ChartChord.t
 }
 
 export interface ChartChord {
@@ -100,6 +100,7 @@ export interface SongInfo {
   stems?: Array<{ id: string; url: string; default: boolean }>;
   stringCount?: number;
   offset?: number;
+  [key: string]: unknown;
 }
 
 // ── Renderer contract ─────────────────────────────────────────────────────────

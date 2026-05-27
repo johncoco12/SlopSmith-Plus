@@ -1,6 +1,6 @@
 # Slopsmith Plus
 
-> Browse, play, and practice your Rocksmith 2014 CDLC collection — entirely in your browser, entirely in Docker.
+> Browse, play, and practice your Rocksmith 2014 CDLC collection — entirely in your browser, entirely in Docker. 
 
 ![Cover](docs/Cover.png)
 
@@ -99,13 +99,13 @@ Real-time note highway rendering Rocksmith arrangements in two selectable visual
 ### Practice Tools
 
 - **A-B Looping** — set start and end points to repeat any section
-- **Saved Loops** — name and store multiple loops per song, persisted across sessions
-- **4-Count Click** — tempo-matched metronome count-in before each repetition
-- **Rewind Effect** — highway smoothly rewinds to the loop start point
+- **Saved Loops** — name and store multiple loops per song, persisted across sessions *planed 
+- **4-Count Click** — tempo-matched metronome count-in before each repetition *planed 
+- **Rewind Effect** — highway smoothly rewinds to the loop start point *planed 
 
 ### CDLC Creation *(coming soon)*
 
-- **Guitar Pro → CDLC** — search Ultimate Guitar for GP3 / GP4 / GP5 tabs and convert them to playable CDLC with MIDI audio (plugin)
+- **Guitar Pro → CDLC** — search Ultimate Guitar for GP3 / GP4 / GP5 tabs and convert them to playable CDLC with MIDI audio (plugin) *planing phase ( build in feature when creator is done )
 
 ### Profiles & Access Control
 
@@ -114,15 +114,19 @@ Real-time note highway rendering Rocksmith arrangements in two selectable visual
 - **Avatars** — assign a custom avatar to each profile
 - **Permission Groups** — admin and user-level access control
 
-### Plugin System *(coming soon)*
+### Plugin System *(experimental)*
 
-A plugin system is currently in development, including:
+Slopsmith Plus includes an experimental plugin architecture. Plugins can extend the UI, add server-side API routes, register settings panels, and hook into the player.
 
-- **Bundled plugins** — will ship with the app (3D highway, note detection, etc.)
-- **User plugins** — install by mounting a `plugins/` directory
-- **Plugin Management UI** — browse, enable, and configure from Settings
-- **Plugin diagnostics** — plugins will be able to contribute data to the diagnostics bundle
-- **Slopsmith compatibility layer** — existing Slopsmith plugins will work in Slopsmith Plus without modification
+**Bundled plugins** (ship with the app):
+
+| Plugin | Description |
+|--------|-------------|
+| **Themes** | Color theme picker — 9 built-in themes (Default, Obsidian, Ember, Rose, Sage, Violet, Solarized, Light, Solarized Light) with server-side persistence |
+| **Leaderboard** | Per-song score tracking and global leaderboards |
+| **YIN Pitch Detector** | Real-time pitch detection via the YIN algorithm compiled to WASM |
+
+> **Note:** The plugin system is experimental — APIs, hooks, and the plugin manifest format may change between releases. If you are building a third-party plugin, expect breaking changes until the API stabilizes. Legacy Slopsmith plugins are **not** supported yet.
 
 ### Compatibility & Scalability
 
