@@ -3,11 +3,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/features/auth/store'
+import { post } from '@/api/index'
 import { listProfiles, createProfile, updateProfile, deleteProfile } from '@/features/profiles/api'
 import { listGroups, createGroup, updateGroup, deleteGroup, listAvailablePermissions } from '@/features/admin/permissions'
 import type { AvailablePermission } from '@/features/admin/permissions'
 import type { SafeProfile, PermissionGroup, Permission } from '@/types'
 import PluginsTab from '@/features/admin/components/PluginsTab.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -20,6 +22,29 @@ const profiles = ref<SafeProfile[]>([])
 const groups   = ref<PermissionGroup[]>([])
 const loading  = ref(false)
 const error    = ref('')
+
+const restarting    = ref(false)
+const restartPrompt = ref(false)
+
+async function waitForBackend(): Promise<void> {
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 500))
+    try {
+      const res = await fetch('/api/startup-status')
+      if (res.ok) return
+    } catch { /* still down */ }
+  }
+}
+
+async function restartServer() {
+  restartPrompt.value = false
+  restarting.value = true
+  try {
+    await post('/api/admin/restart', {})
+  } catch { /* expected — server exits */ }
+  await waitForBackend()
+  window.location.reload()
+}
 
 const availablePerms = ref<AvailablePermission[]>([
   { name: 'admin',              description: t('admin.permissions.admin')              },
@@ -252,7 +277,47 @@ onMounted(() => {
         </svg>
         <h1 class="text-base font-semibold text-gray-100">{{ $t('admin.title') }}</h1>
       </div>
+
+      <button
+        class="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition text-orange-400 border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20"
+        :disabled="restarting"
+        @click="restartPrompt = true"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 01-9 9 9.75 9.75 0 01-6.74-2.74L3 16M3 21v-5h5"/>
+        </svg>
+        Restart Server
+      </button>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="restarting"
+        class="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-dark-800/95 backdrop-blur-sm"
+      >
+        <svg class="w-8 h-8 text-accent animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5" />
+        </svg>
+        <p class="text-sm font-medium text-gray-200">Restarting server…</p>
+        <p class="text-xs text-gray-500">The page will reload automatically</p>
+      </div>
+    </Teleport>
+
+    <ConfirmDialog
+      :open="restartPrompt"
+      title="Restart the server?"
+      description="The app will be unavailable for a few seconds."
+      confirm-label="Restart"
+      variant="warning"
+      @confirm="restartServer"
+      @cancel="restartPrompt = false"
+    >
+      <template #icon>
+        <svg class="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 019-9 9.75 9.75 0 016.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 01-9 9 9.75 9.75 0 01-6.74-2.74L3 16M3 21v-5h5"/>
+        </svg>
+      </template>
+    </ConfirmDialog>
 
     <div v-if="error" class="max-w-3xl mx-auto mb-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center gap-2">
       <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
@@ -326,15 +391,15 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="confirmDeleteProfileId !== null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div class="bg-dark-700 border border-white/[.08] rounded-2xl p-6 w-full max-w-sm shadow-xl text-center">
-            <p class="text-gray-200 mb-4">{{ $t('admin.profiles.deleteConfirm') }}</p>
-            <div class="flex justify-center gap-3">
-              <button class="settings-btn" @click="confirmDeleteProfileId = null">{{ $t('common.cancel') }}</button>
-              <button class="settings-btn !bg-red-500/20 !border-red-500/40 !text-red-400 hover:!bg-red-500/30" @click="doDeleteProfile">{{ $t('common.delete') }}</button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          :open="confirmDeleteProfileId !== null"
+          :title="$t('admin.profiles.deleteConfirm')"
+          :confirm-label="$t('common.delete')"
+          :cancel-label="$t('common.cancel')"
+          variant="danger"
+          @confirm="doDeleteProfile"
+          @cancel="confirmDeleteProfileId = null"
+        />
 
         <div class="flex items-center justify-between mb-4">
           <p class="text-sm text-gray-400">{{ profiles.length }} profile{{ profiles.length === 1 ? '' : 's' }}</p>
@@ -518,15 +583,15 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="confirmDeleteGroupId !== null" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div class="bg-dark-700 border border-white/[.08] rounded-2xl p-6 w-full max-w-sm shadow-xl text-center">
-            <p class="text-gray-200 mb-4">{{ $t('admin.groups.deleteConfirm') }}</p>
-            <div class="flex justify-center gap-3">
-              <button class="settings-btn" @click="confirmDeleteGroupId = null">{{ $t('common.cancel') }}</button>
-              <button class="settings-btn !bg-red-500/20 !border-red-500/40 !text-red-400 hover:!bg-red-500/30" @click="doDeleteGroup">{{ $t('common.delete') }}</button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          :open="confirmDeleteGroupId !== null"
+          :title="$t('admin.groups.deleteConfirm')"
+          :confirm-label="$t('common.delete')"
+          :cancel-label="$t('common.cancel')"
+          variant="danger"
+          @confirm="doDeleteGroup"
+          @cancel="confirmDeleteGroupId = null"
+        />
 
         <div class="flex items-center justify-between mb-4">
           <p class="text-sm text-gray-400">{{ groups.length }} group{{ groups.length === 1 ? '' : 's' }}</p>

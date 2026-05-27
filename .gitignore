@@ -17,6 +17,8 @@ plugins/*/
 !plugins/highway_3d/**
 !plugins/leaderboard/
 !plugins/leaderboard/**
+!plugins/themes/
+!plugins/themes/**
 plugins/highway_3d/__pycache__/
 !plugins/app_tour_library/
 !plugins/app_tour_library/**

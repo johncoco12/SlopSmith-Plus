@@ -7,12 +7,16 @@ import FilterChips from '@/features/library/components/FilterChips.vue'
 import FilterDrawer from '@/features/library/components/FilterDrawer.vue'
 import SongGrid from '@/features/library/components/SongGrid.vue'
 import SongTree from '@/features/library/components/SongTree.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import type { Song } from '@/types'
 
 defineOptions({ name: 'LibraryView' })
 
 const router     = useRouter()
 const library    = useLibraryStore()
 const drawerOpen = ref(false)
+
+const pendingDelete = ref<(Song & { trackId?: string }) | null>(null)
 
 onMounted(() => {
   library.loadPage()
@@ -31,10 +35,15 @@ function editSong(song) {
   router.push({ name: 'plugin', params: { id: 'editor' }, query: { filename: song.filename } })
 }
 
-async function deleteSong(song) {
-  const trackId = song.trackId ?? song.filename
-  if (!confirm(`Delete "${song.title}" by ${song.artist}? This cannot be undone.`)) return
-  await library.deleteTrack(trackId)
+function deleteSong(song) {
+  pendingDelete.value = song
+}
+
+async function confirmDelete() {
+  const song = pendingDelete.value
+  if (!song) return
+  pendingDelete.value = null
+  await library.deleteTrack(song.trackId ?? song.filename)
 }
 </script>
 
@@ -100,6 +109,16 @@ async function deleteSong(song) {
       @update="f => { library.setFilters(f); drawerOpen = false }"
       @clear="library.clearFilters"
       @close="drawerOpen = false"
+    />
+
+    <ConfirmDialog
+      :open="pendingDelete !== null"
+      :title="`Delete &quot;${pendingDelete?.title}&quot;?`"
+      description="This cannot be undone."
+      confirm-label="Delete"
+      variant="danger"
+      @confirm="confirmDelete"
+      @cancel="pendingDelete = null"
     />
   </div>
 </template>

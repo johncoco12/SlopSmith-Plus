@@ -83,6 +83,13 @@ export const pluginRoutes = fp(async function pluginRoutes(fastify) {
     setTimeout(() => process.exit(0), 300);
   });
 
+  fastify.post("/api/admin/restart", {
+    preHandler: [requireAuthAsync(), requirePermission(Permissions.MANAGE_SETTINGS)],
+  }, async (_req, reply) => {
+    reply.code(200).send({ ok: true, restarting: true });
+    setTimeout(() => process.exit(0), 300);
+  });
+
   // Plugin settings persistence via PluginData
   fastify.get(
     "/api/plugins/:id/settings",
