@@ -42,9 +42,10 @@ async function apiFetch(path: string, options: FetchOptions = {}): Promise<unkno
   return json ? res.json() : res
 }
 
-export const get    = (path: string): Promise<unknown> => apiFetch(path)
-export const del    = (path: string): Promise<unknown> => apiFetch(path, { method: 'DELETE' })
-export const getRaw = (path: string): Promise<unknown> => apiFetch(path, { json: false })
+export const get     = (path: string): Promise<unknown> => apiFetch(path)
+export const del     = (path: string): Promise<unknown> => apiFetch(path, { method: 'DELETE' })
+export const delVoid = (path: string): Promise<void>    => apiFetch(path, { method: 'DELETE', json: false }).then(() => {})
+export const getRaw  = (path: string): Promise<unknown> => apiFetch(path, { json: false })
 
 export function post(path: string, body: unknown): Promise<unknown> {
   return apiFetch(path, {

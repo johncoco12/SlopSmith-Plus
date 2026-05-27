@@ -42,7 +42,8 @@ export class TrackDataRepository implements ITrackDataRepository {
       const j = Math.floor(Math.random() * (i + 1));
       [ids[i], ids[j]] = [ids[j], ids[i]];
     }
-    return ids.slice(0, limit);
+    const sanitizedLimit = Math.max(0, Math.floor(limit));
+    return ids.slice(0, sanitizedLimit);
   }
 
   async create(trackId: number, originalFilename: string, arrangements: unknown, coverImageStorageId?: string, audioFileStorageId?: string): Promise<TrackData> {

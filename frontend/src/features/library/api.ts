@@ -1,4 +1,4 @@
-import { get, post, del } from '@/api/index'
+import { get, post, delVoid } from '@/api/index'
 
 function parseSortBy(sortBy: string): { sort: string; dir: string } {
   if (sortBy.endsWith('-desc')) return { sort: sortBy.slice(0, -5), dir: 'desc' }
@@ -64,6 +64,6 @@ export function toggleFavorite(trackId: string, profileId: number): Promise<unkn
   return post('/api/favorites/toggle', { trackId, profileId })
 }
 
-export function deleteTrack(trackId: string): Promise<unknown> {
-  return del(`/api/tracks/${encodeURIComponent(trackId)}`)
+export function deleteTrack(trackId: string): Promise<void> {
+  return delVoid(`/api/tracks/${encodeURIComponent(trackId)}`)
 }

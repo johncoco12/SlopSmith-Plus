@@ -8,6 +8,8 @@ import type { TrackService } from "../services/TrackService.js";
 import type { HighwayService } from "../services/HighwayService.js";
 import type { StorageService } from "../services/StorageService.js";
 import type { PluginRegistry } from "../infrastructure/plugins/PluginRegistry.js";
+import type { SongService } from "../services/SongService.js";
+import type { LoopService } from "../services/LoopService.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -21,6 +23,8 @@ declare module "fastify" {
     highway: HighwayService;
     storage: StorageService;
     plugins: PluginRegistry;
+    songs: SongService;
+    loops: LoopService;
   }
 
   interface FastifyRequest {
