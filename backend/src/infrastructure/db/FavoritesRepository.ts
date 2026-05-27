@@ -34,4 +34,8 @@ export class FavoritesRepository implements IFavoritesRepository {
     });
     return new Set(rows.map((r) => r.trackId));
   }
+
+  async deleteByTrackId(trackId: string): Promise<void> {
+    await prisma.favorite.deleteMany({ where: { trackId } });
+  }
 }

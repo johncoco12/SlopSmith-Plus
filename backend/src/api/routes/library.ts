@@ -92,6 +92,11 @@ export const libraryRoutes = fp(async function libraryRoutes(fastify) {
     return reply.code(202).send({ ok: true });
   });
 
+  fastify.post("/api/library/cleanup-orphans", { preHandler: [requireAuthAsync()] }, async (_req, reply) => {
+    const deleted = await library.deleteOrphanedSongs();
+    return reply.send({ deleted });
+  });
+
   fastify.get("/api/startup-status", async () => {
     return {
       stage: "ready",

@@ -6,6 +6,7 @@ import {
   fetchLibraryStats,
   fetchTuningNames,
   toggleFavorite as apiToggleFavorite,
+  deleteTrack as apiDeleteTrack,
 } from '@/features/library/api'
 import { useAuthStore } from '@/features/auth/store'
 import type { Song, LibraryFilters } from '@/types'
@@ -119,6 +120,15 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
       if (song) song.isFavorite = !song.isFavorite
     }
 
+    async function deleteTrack(trackId: string): Promise<void> {
+      await apiDeleteTrack(trackId)
+      const idx = songs.value.findIndex(s => s.trackId === trackId || s.filename === trackId)
+      if (idx !== -1) {
+        songs.value.splice(idx, 1)
+        total.value = Math.max(0, total.value - 1)
+      }
+    }
+
     function setViewMode(mode: string): void { viewMode.value = mode }
     function setSort(s: string): void  { sortBy.value = s;        loadPage() }
     function setFormat(f: string): void { formatFilter.value = f;  loadPage() }
@@ -132,7 +142,7 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
       search, tuningNames, treeStats, treeLetter,
       activeFilterCount,
       loadPage, loadMore, loadTuningNames, loadStats,
-      toggleFavorite,
+      toggleFavorite, deleteTrack,
       setViewMode, setSort, setFormat, setSearch, setFilters, clearFilters,
     }
   })

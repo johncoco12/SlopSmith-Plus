@@ -89,6 +89,8 @@ export async function buildServer() {
     container.resolve(IStemDataRepositoryToken),
     container.resolve(ILoopRepositoryToken),
     storageService,
+    favRepo,
+    songRepo,
   );
 
   const highwayService = new HighwayService(
@@ -160,6 +162,11 @@ export async function buildServer() {
     }
     return reply.code(404).send({ error: "Not found" });
   });
+
+  // ── Startup cleanup — remove Song rows with no corresponding Track ─────────
+  songRepo.deleteOrphaned()
+    .then((n) => { if (n > 0) fastify.log.info(`Purged ${n} orphaned Song row(s)`) })
+    .catch((err) => fastify.log.warn({ err }, "Orphan cleanup failed (non-fatal)"));
 
   return fastify;
 }

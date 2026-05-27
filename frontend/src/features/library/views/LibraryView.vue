@@ -30,6 +30,12 @@ function openSong(song) {
 function editSong(song) {
   router.push({ name: 'plugin', params: { id: 'editor' }, query: { filename: song.filename } })
 }
+
+async function deleteSong(song) {
+  const trackId = song.trackId ?? song.filename
+  if (!confirm(`Delete "${song.title}" by ${song.artist}? This cannot be undone.`)) return
+  await library.deleteTrack(trackId)
+}
 </script>
 
 <template>
@@ -75,6 +81,7 @@ function editSong(song) {
       @open="openSong"
       @favorite="library.toggleFavorite"
       @edit="editSong"
+      @delete="deleteSong"
       @load-more="library.loadMore"
       @filter-artist="library.setSearch"
     />
