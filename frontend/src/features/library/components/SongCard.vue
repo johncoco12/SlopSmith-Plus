@@ -39,6 +39,26 @@ const arrNames = computed(() =>
   )
 )
 
+// ── Score badge ────────────────────────────────────────────────────────────────
+const scoreGrade = computed(() => {
+  const s = props.song.bestScore
+  if (s == null) return ''
+  if (s >= 95) return 'S'
+  if (s >= 80) return 'A'
+  if (s >= 60) return 'B'
+  if (s >= 40) return 'C'
+  return 'D'
+})
+
+const scoreBadgeClass = computed(() => {
+  const g = scoreGrade.value
+  if (g === 'S') return 'score-s'
+  if (g === 'A') return 'score-a'
+  if (g === 'B') return 'score-b'
+  if (g === 'C') return 'score-c'
+  return 'score-d'
+})
+
 // ── Favorite animation ─────────────────────────────────────────────────────────
 const favBurst = ref(false)
 
@@ -157,7 +177,15 @@ function onDelete(e: Event) {
 
     <!-- ── Info ──────────────────────────────────────────────────────────── -->
     <div class="p-3 space-y-1">
-      <p class="text-sm font-semibold text-gray-100 truncate leading-snug">{{ song.title }}</p>
+      <div class="flex items-center gap-1.5 min-w-0">
+        <p class="text-sm font-semibold text-gray-100 truncate leading-snug flex-1">{{ song.title }}</p>
+        <span
+          v-if="song.bestScore != null"
+          class="score-badge shrink-0"
+          :class="scoreBadgeClass"
+          :title="`Best score: ${song.bestScore}%`"
+        >{{ scoreGrade }}</span>
+      </div>
 
       <p class="text-xs text-gray-400 truncate">
         <button
@@ -251,6 +279,25 @@ function onDelete(e: Event) {
   45%  { transform: scale(1.5); }
   100% { transform: scale(1); }
 }
+
+/* ── Score badge ────────────────────────────────────────────────────────────── */
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.score-s { background: #7c3aed22; color: #a78bfa; border: 1px solid #7c3aed55; }
+.score-a { background: #065f4622; color: #34d399; border: 1px solid #06503255; }
+.score-b { background: #1e3a8a22; color: #60a5fa; border: 1px solid #1e3a8a55; }
+.score-c { background: #92400e22; color: #fbbf24; border: 1px solid #92400e55; }
+.score-d { background: #7f1d1d22; color: #f87171; border: 1px solid #7f1d1d55; }
 
 /* ── Menu transition ────────────────────────────────────────────────────────── */
 .menu-enter-active { transition: opacity 0.12s ease, transform 0.12s ease; }

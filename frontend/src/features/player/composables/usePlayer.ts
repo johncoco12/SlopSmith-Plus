@@ -11,6 +11,8 @@ import { SongDataProvider } from '../engine/SongDataProvider'
 import { HitDetector } from '../engine/hitDetection'
 import { SectionScorer } from '../engine/sectionScorer'
 import { usePlayerStore } from '@/features/player/store'
+import { useAuthStore } from '@/features/auth/store'
+import { submitScore } from '@/features/player/scoreApi'
 import type { RenderBundle } from '../types'
 
 export interface UsePlayerReturn {
@@ -32,6 +34,7 @@ export interface UsePlayerReturn {
  */
 export function usePlayer(): UsePlayerReturn {
   const store = usePlayerStore()
+  const auth = useAuthStore()
   const provider = new SongDataProvider()
   const bundle = provider.bundle
 
@@ -111,6 +114,18 @@ export function usePlayer(): UsePlayerReturn {
     ;(window as any).__perfBreakdown = _perf
   }
 
+  function onSongEnded(): void {
+    const results = scorer.getResults()
+    if (!scorer.hasSections()) return
+    const profileId = auth.profile?.id
+    const trackId = store.trackIdRef
+    if (!profileId || !trackId) return
+    const totalNotes = results.reduce((s, r) => s + r.totalNotes, 0)
+    const hitNotes = results.reduce((s, r) => s + r.hitNotes, 0)
+    const combined = totalNotes > 0 ? Math.round((hitNotes / totalNotes) * 100) : 100
+    submitScore(trackId, combined).catch(e => console.warn('[score] submit failed:', e))
+  }
+
   onMounted(() => {
     // Wire to player store (backwards compat — store still expects a highway-like object)
     ;(window as any).highway = provider
@@ -130,6 +145,7 @@ export function usePlayer(): UsePlayerReturn {
 
     // Cache audio element once — avoids document.getElementById on every rAF frame
     _audio = document.getElementById('audio') as HTMLAudioElement | null
+    _audio?.addEventListener('ended', onSongEnded)
 
     // Start frame loop
     rafId = requestAnimationFrame(frameLoop)
@@ -143,6 +159,7 @@ export function usePlayer(): UsePlayerReturn {
   onUnmounted(() => {
     if (rafId !== null) cancelAnimationFrame(rafId)
     rafId = null
+    _audio?.removeEventListener('ended', onSongEnded)
     _audio = null
 
     const emitter = (window as any).slopsmith

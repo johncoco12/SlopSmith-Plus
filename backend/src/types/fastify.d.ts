@@ -5,6 +5,7 @@ import type { IProfileService, Session } from "../domain/interfaces/services/IPr
 import type { IPermissionsService } from "../domain/interfaces/services/IPermissionsService.js";
 import type { ImportService } from "../services/ImportService.js";
 import type { TrackService } from "../services/TrackService.js";
+import type { TrackScoreService } from "../services/TrackScoreService.js";
 import type { HighwayService } from "../services/HighwayService.js";
 import type { StorageService } from "../services/StorageService.js";
 import type { PluginRegistry } from "../infrastructure/plugins/PluginRegistry.js";
@@ -20,6 +21,7 @@ declare module "fastify" {
     permissions: IPermissionsService;
     imports: ImportService;
     trackSvc: TrackService;
+    trackScoreSvc: TrackScoreService;
     highway: HighwayService;
     storage: StorageService;
     plugins: PluginRegistry;

@@ -9,3 +9,4 @@ export const ITrackDataRepositoryToken = Symbol("ITrackDataRepository");
 export const IStemsRepositoryToken = Symbol("IStemsRepository");
 export const IStemDataRepositoryToken = Symbol("IStemDataRepository");
 export const ILoopRepositoryToken = Symbol("ILoopRepository");
+export const ITrackScoreRepositoryToken = Symbol("ITrackScoreRepository");

@@ -92,6 +92,7 @@ export interface Song {
   has_lyrics?: boolean
   tuning?: string
   isFavorite?: boolean
+  bestScore?: number
   [key: string]: unknown
 }
 

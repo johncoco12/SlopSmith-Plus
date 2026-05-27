@@ -11,6 +11,8 @@ import { TrackDataRepository } from "./infrastructure/db/TrackDataRepository.js"
 import { StemsRepository } from "./infrastructure/db/StemsRepository.js";
 import { StemDataRepository } from "./infrastructure/db/StemDataRepository.js";
 import { LoopRepository } from "./infrastructure/db/LoopRepository.js";
+import { TrackScoreRepository } from "./infrastructure/db/TrackScoreRepository.js";
+import type { ITrackScoreRepository } from "./infrastructure/db/TrackScoreRepository.js";
 import {
   IStorageProviderToken,
   IStorageServiceToken,
@@ -23,6 +25,7 @@ import {
   IStemsRepositoryToken,
   IStemDataRepositoryToken,
   ILoopRepositoryToken,
+  ITrackScoreRepositoryToken,
 } from "./tokens.js";
 import type { IStorageProvider } from "./domain/interfaces/providers/IStorageProvider.js";
 import type { IStorageService } from "./domain/interfaces/services/IStorageService.js";
@@ -44,6 +47,7 @@ export {
   IStemsRepositoryToken,
   IStemDataRepositoryToken,
   ILoopRepositoryToken,
+  ITrackScoreRepositoryToken,
 };
 
 export function registerContainer(): DependencyContainer {
@@ -85,6 +89,9 @@ export function registerContainer(): DependencyContainer {
   });
   container.register<ILoopRepository>(ILoopRepositoryToken, {
     useFactory: () => new LoopRepository(),
+  });
+  container.register<ITrackScoreRepository>(ITrackScoreRepositoryToken, {
+    useFactory: () => new TrackScoreRepository(),
   });
 
   // Services

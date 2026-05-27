@@ -8,6 +8,7 @@ import {
   toggleFavorite as apiToggleFavorite,
   deleteTrack as apiDeleteTrack,
 } from '@/features/library/api'
+import { fetchScoresBatch } from '@/features/player/scoreApi'
 import { useAuthStore } from '@/features/auth/store'
 import type { Song, LibraryFilters } from '@/types'
 
@@ -72,6 +73,17 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
       }
     }
 
+    async function _mergeScores(items: Song[]): Promise<void> {
+      const profileId = auth.profile?.id
+      if (!profileId) return
+      const ids = items.map(s => s.trackId ?? s.filename).filter(Boolean) as string[]
+      const scoreMap = await fetchScoresBatch(ids).catch(() => new Map<string, number>())
+      for (const s of items) {
+        const key = s.trackId ?? s.filename
+        if (key && scoreMap.has(key)) s.bestScore = scoreMap.get(key)
+      }
+    }
+
     async function loadPage(): Promise<void> {
       if (loading.value) return
       loading.value = true
@@ -80,9 +92,11 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
       hasMore.value = true
       try {
         const data = await fetchLibraryGrid(_params(0)) as any
-        songs.value = data.songs ?? []
-        total.value = data.total ?? songs.value.length
-        hasMore.value = songs.value.length < total.value
+        const items: Song[] = data.songs ?? []
+        await _mergeScores(items)
+        songs.value = items
+        total.value = data.total ?? items.length
+        hasMore.value = items.length < total.value
       } finally {
         loading.value = false
       }
@@ -95,6 +109,7 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
       try {
         const data = await fetchLibraryGrid(_params(page.value)) as any
         const items: Song[] = data.songs ?? []
+        await _mergeScores(items)
         songs.value.push(...items)
         if (data.total) total.value = data.total
         hasMore.value = songs.value.length < total.value

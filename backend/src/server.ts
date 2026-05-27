@@ -17,6 +17,7 @@ import {
   IStemsRepositoryToken,
   IStemDataRepositoryToken,
   ILoopRepositoryToken,
+  ITrackScoreRepositoryToken,
 } from "./tokens.js";
 
 // Repositories
@@ -31,6 +32,7 @@ import { ScannerService } from "./services/ScannerService.js";
 import { SettingsService } from "./services/SettingsService.js";
 import { ImportService } from "./services/ImportService.js";
 import { TrackService } from "./services/TrackService.js";
+import { TrackScoreService } from "./services/TrackScoreService.js";
 import { HighwayService } from "./services/HighwayService.js";
 import type { StorageService } from "./services/StorageService.js";
 import type { IProfileService } from "./domain/interfaces/services/IProfileService.js";
@@ -93,6 +95,10 @@ export async function buildServer() {
     songRepo,
   );
 
+  const trackScoreService = new TrackScoreService(
+    container.resolve(ITrackScoreRepositoryToken),
+  );
+
   const highwayService = new HighwayService(
     container.resolve(ITrackRepositoryToken),
     container.resolve(ITrackDataRepositoryToken),
@@ -115,6 +121,7 @@ export async function buildServer() {
   fastify.decorate("permissions", permissionsService);
   fastify.decorate("imports", importService);
   fastify.decorate("trackSvc", trackService);
+  fastify.decorate("trackScoreSvc", trackScoreService);
   fastify.decorate("highway", highwayService);
   fastify.decorate("plugins", pluginRegistry);
   fastify.decorate("storage", storageService);
