@@ -1,6 +1,6 @@
 # Slopsmith Plus
 
-> Browse, play, and practice your Rocksmith 2014 CDLC collection — entirely in your browser, entirely in Docker.
+> Browse, play, and practice your Rocksmith 2014 CDLC collection — entirely in your browser, entirely in Docker. 
 
 ![Cover](docs/Cover.png)
 
@@ -99,13 +99,13 @@ Real-time note highway rendering Rocksmith arrangements in two selectable visual
 ### Practice Tools
 
 - **A-B Looping** — set start and end points to repeat any section
-- **Saved Loops** — name and store multiple loops per song, persisted across sessions
-- **4-Count Click** — tempo-matched metronome count-in before each repetition
-- **Rewind Effect** — highway smoothly rewinds to the loop start point
+- **Saved Loops** — name and store multiple loops per song, persisted across sessions *planed 
+- **4-Count Click** — tempo-matched metronome count-in before each repetition *planed 
+- **Rewind Effect** — highway smoothly rewinds to the loop start point *planed 
 
 ### CDLC Creation
 
-- **Guitar Pro → CDLC** — search Ultimate Guitar for GP3 / GP4 / GP5 tabs and convert them to playable CDLC with MIDI audio (plugin)
+- **Guitar Pro → CDLC** — search Ultimate Guitar for GP3 / GP4 / GP5 tabs and convert them to playable CDLC with MIDI audio (plugin) *planing phase ( build in feature when creator is done )
 
 ### Profiles & Access Control
 
