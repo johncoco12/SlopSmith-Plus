@@ -11,6 +11,18 @@
 | ![Library](docs/LibaryScreenshot.png) | ![3D Highway](docs/3DRenderScreenshot.png) |
 | ![Admin Panel](docs/AdminPanelScreenshot.png.png) | ![Profile Switcher](docs/ProfileSwitcherScreenshot.png.png) |
 
+
+---
+
+## Companion App — VST Support
+
+**SlopAudio Connect** is a companion app that connects to your Slopsmith Plus server, enabling features that require direct access to your local audio hardware — including fast pitch detection and VST support.
+
+> **Now available:** [github.com/johncoco12/SlopAudio-Connect](https://github.com/johncoco12/SlopAudio-Connect)
+
+---
+
+
 ---
 
 ## Contents
@@ -137,15 +149,6 @@ Slopsmith Plus includes an experimental plugin architecture. Plugins can extend 
 - 8-thread parallel metadata extraction, non-blocking background scan
 - PostgreSQL-backed server-side pagination — tested beyond 80,000 songs
 
----
-
-## Companion App — VST Support
-
-**SlopAudio Connect** is a companion app that connects to your Slopsmith Plus server, enabling features that require direct access to your local audio hardware — including fast pitch detection and VST support.
-
-> **Now available:** [github.com/johncoco12/SlopAudio-Connect](https://github.com/johncoco12/SlopAudio-Connect)
-
----
 
 ## Configuration
 
