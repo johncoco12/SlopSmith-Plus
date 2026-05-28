@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/features/player/store'
 import {
   ArrowLeft, SkipBack, Play, Pause, SkipForward,
-  Mic2, Guitar, Gauge, Monitor, SlidersHorizontal, Timer, Cable, PlugZap,
+  Mic2, Guitar, Gauge, Monitor, SlidersHorizontal, Timer, Cable,
 } from 'lucide-vue-next'
 import SeekBar from './SeekBar.vue'
 import VizPicker from './VizPicker.vue'
@@ -13,7 +13,6 @@ import LoopControls from './LoopControls.vue'
 import MixerPopover from './MixerPopover.vue'
 import TunerPopover from './TunerPopover.vue'
 import SacPopover from './SacPopover.vue'
-import PluginChainPanel from './PluginChainPanel.vue'
 import LatencyTester from './LatencyTester.vue'
 import { useSacStore } from '@/features/player/composables/useSac'
 const emit = defineEmits<{
@@ -25,7 +24,6 @@ const player = usePlayerStore()
 const mixerOpen         = ref<boolean>(false)
 const tunerOpen         = ref<boolean>(false)
 const sacOpen           = ref<boolean>(false)
-const pluginsOpen       = ref<boolean>(false)
 const sac               = useSacStore()
 const latencyTesterOpen = ref<boolean>(false)
 const latencyGuided     = ref<boolean>(false)
@@ -205,29 +203,7 @@ function dismissPrompt(): void {
       </div>
 
       <!-- SlopAudio Connect -->
-      <div class="flex items-center gap-0.5">
-        <!-- Audio Plugins button (visible when SAC is connected) -->
-        <Transition
-          enter-active-class="transition-all duration-150 overflow-hidden"
-          enter-from-class="max-w-0 opacity-0"
-          enter-to-class="max-w-[120px] opacity-100"
-          leave-active-class="transition-all duration-100 overflow-hidden"
-          leave-from-class="max-w-[120px] opacity-100"
-          leave-to-class="max-w-0 opacity-0"
-        >
-          <button
-            v-if="sac.status !== 'idle'"
-            class="player-btn flex items-center gap-1 text-[11px] font-medium whitespace-nowrap px-2"
-            :class="{ 'text-accent': pluginsOpen }"
-            :title="$t('player.plugins.title')"
-            @click="pluginsOpen = !pluginsOpen"
-          >
-            <PlugZap :size="13" />
-            {{ $t('player.plugins.audioPlugins') }}
-          </button>
-        </Transition>
-
-        <div class="relative">
+      <div class="relative">
           <button
             class="player-btn"
             :class="{
@@ -258,7 +234,6 @@ function dismissPrompt(): void {
             </div>
           </Transition>
         </div>
-      </div>
 
       <!-- Tuner -->
       <div class="relative">
@@ -337,23 +312,4 @@ function dismissPrompt(): void {
     <LatencyTester v-if="latencyTesterOpen" :guided="latencyGuided" @close="onTesterClose" />
   </Teleport>
 
-  <!-- Plugin chain side panel (teleported to body, slides in from left) -->
-  <Teleport to="body">
-    <Transition
-      enter-active-class="transition-transform duration-200"
-      enter-from-class="-translate-x-full"
-      enter-to-class="translate-x-0"
-      leave-active-class="transition-transform duration-150"
-      leave-from-class="translate-x-0"
-      leave-to-class="-translate-x-full"
-    >
-      <div
-        v-if="pluginsOpen"
-        class="fixed left-0 top-14 bottom-0 z-40 flex flex-col shadow-2xl"
-        style="width: 320px;"
-      >
-        <PluginChainPanel @close="pluginsOpen = false" />
-      </div>
-    </Transition>
-  </Teleport>
 </template>
