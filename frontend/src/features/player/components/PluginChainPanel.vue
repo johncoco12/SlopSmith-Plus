@@ -125,7 +125,7 @@ function paramDisplayValue(param: SacPluginParameter): string {
 
     <!-- Loading state (linked but no chain yet) -->
     <div
-      v-else-if="sac.status !== 'idle' && sac.chainState.length === 0"
+      v-else-if="sac.chainState.length === 0"
       class="flex-1 flex flex-col items-center justify-center gap-3 text-center px-6"
     >
       <p class="text-xs text-gray-500">{{ t('player.plugins.emptyChain') }}</p>
