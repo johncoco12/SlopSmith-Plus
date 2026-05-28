@@ -27,7 +27,8 @@
     "uploadInvalid": "Nie przesłano prawidłowych plików",
     "uploadError": "Błąd",
     "uploadFailed": "Nie udało się: {message}",
-    "uploadSongs": "Prześlij piosenki"
+    "uploadSongs": "Prześlij piosenki",
+    "sacConnect": "SlopAudio Connect"
   },
   "profiles": {
     "selectTitle": "Wybierz profil",
@@ -227,6 +228,36 @@
       "lyricsTitle": "Przełącz tekst (\\)",
       "tunerTitle": "Nastraj instrument do stroju piosenki",
       "mixerTitle": "Mikser"
+    },
+    "sac": {
+      "title": "SlopAudio Connect",
+      "statusIdle": "Not connected",
+      "statusConnecting": "Connecting…",
+      "statusLinked": "Linked · {name}",
+      "statusMonitoring": "Monitoring · {name}",
+      "disconnect": "Disconnect",
+      "waitingForTrack": "Monitoring will start automatically when you play a track.",
+      "availableSessions": "Available sessions",
+      "refresh": "Refresh",
+      "scanning": "Scanning…",
+      "noSessions": "No SlopAudio Connect instances found.",
+      "launchHint": "Launch the app on your device.",
+      "inUse": "in use",
+      "connect": "Connect →",
+      "confidence": "confidence"
+    },
+    "plugins": {
+      "title": "Wtyczki audio",
+      "audioPlugins": "Wtyczki audio",
+      "refresh": "Odśwież łańcuch",
+      "notConnected": "Połącz SlopAudio Connect, aby zarządzać łańcuchem wtyczek VST.",
+      "emptyChain": "Brak wtyczek w łańcuchu. Dodaj wtyczkę lub odśwież.",
+      "bypass": "Omiń wtyczkę",
+      "enable": "Włącz wtyczkę",
+      "remove": "Usuń wtyczkę",
+      "addPlugin": "Dodaj wtyczkę",
+      "searchPlugins": "Szukaj wtyczek…",
+      "noPluginsFound": "Nie znaleziono wtyczek."
     },
     "renderer": {
       "title": "Renderer (V)"

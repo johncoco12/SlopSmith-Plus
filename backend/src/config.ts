@@ -22,6 +22,11 @@ const EnvSchema = z.object({
   APP_LICENSE_URL: z.string().url().optional(),
   DATABASE_URL: z.string().optional(),
 
+  // SlopAudio Connect
+  SAC_SERVER_NAME: z.string().default("SlopSmith"),
+  SAC_SERVER_IP:   z.string().optional(),
+  SAC_HTTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+
   MINIO_ENDPOINT: z.string().optional(),
   MINIO_PORT: z.coerce.number().int().min(1).max(65535).optional(),
   MINIO_ACCESS_KEY: z.string().optional(),
@@ -93,6 +98,10 @@ export const config = {
   pluginsBuiltinDir: path.resolve(import.meta.dirname, "../plugins"),
   pluginsUserDir: env.SLOPSMITH_PLUGINS_DIR,
   staticDir: path.resolve(import.meta.dirname, "../static"),
+
+  sacServerName: env.SAC_SERVER_NAME,
+  sacServerIp:   env.SAC_SERVER_IP,
+  sacHttpPort:   env.SAC_HTTP_PORT ?? env.PORT!,
 } as const;
 
 export type Config = typeof config;
