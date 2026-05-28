@@ -67,3 +67,15 @@ export function toggleFavorite(trackId: string, profileId: number): Promise<unkn
 export function deleteTrack(trackId: string): Promise<void> {
   return delVoid(`/api/tracks/${encodeURIComponent(trackId)}`)
 }
+
+export interface UpdateTrackPayload {
+  title?:     string
+  artist?:    string
+  album?:     string
+  year?:      string
+  hasLyrics?: boolean
+}
+
+export function updateTrack(trackId: string, payload: UpdateTrackPayload): Promise<unknown> {
+  return post(`/api/tracks/${encodeURIComponent(trackId)}`, payload)
+}

@@ -8,12 +8,14 @@ import FilterChips from '@/features/library/components/FilterChips.vue'
 import FilterDrawer from '@/features/library/components/FilterDrawer.vue'
 import SongGrid from '@/features/library/components/SongGrid.vue'
 import SongTree from '@/features/library/components/SongTree.vue'
+import EditMetadataDialog from '@/features/library/components/EditMetadataDialog.vue'
 
 defineOptions({ name: 'FavoritesView' })
 
 const router     = useRouter()
 const favorites  = useFavoritesStore()
 const drawerOpen = ref(false)
+const editingSong = ref<Song | null>(null)
 
 onMounted(() => {
   favorites.loadPage()
@@ -29,7 +31,14 @@ function openSong(song: Song): void {
 }
 
 function editSong(song: Song): void {
-  router.push({ name: 'plugin', params: { id: 'editor' }, query: { filename: song.filename } })
+  editingSong.value = song
+}
+
+async function saveMetadata(
+  trackId: string,
+  payload: { title: string; artist: string; album: string; year: string; hasLyrics: boolean },
+): Promise<void> {
+  await favorites.updateTrack(trackId, payload)
 }
 </script>
 
@@ -94,6 +103,13 @@ function editSong(song: Song): void {
       @update="f => { favorites.setFilters(f); drawerOpen = false }"
       @clear="favorites.clearFilters"
       @close="drawerOpen = false"
+    />
+
+    <EditMetadataDialog
+      :open="editingSong !== null"
+      :song="editingSong"
+      :save-fn="saveMetadata"
+      @close="editingSong = null"
     />
   </div>
 </template>

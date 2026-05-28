@@ -116,7 +116,13 @@ const hasPostFilters = (q: LibraryQuery) =>
 export class SongRepository implements ISongRepository {
   private async getFavorites(): Promise<Set<string>> {
     const rows = await prisma.favorite.findMany({ select: { trackId: true } });
-    return new Set(rows.map((r) => r.trackId));
+    if (rows.length === 0) return new Set();
+    const trackIds = rows.map((r) => r.trackId);
+    const trackDataRows = await prisma.trackData.findMany({
+      where: { track: { trackId: { in: trackIds } } },
+      select: { originalFilename: true },
+    });
+    return new Set(trackDataRows.map((r) => r.originalFilename));
   }
 
   private async getTrackIdMap(filenames: string[]): Promise<Map<string, string>> {

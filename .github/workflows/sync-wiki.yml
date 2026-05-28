@@ -1,0 +1,47 @@
+name: Sync Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/wiki/**'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-wiki
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Push docs/wiki to GitHub Wiki
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Clone wiki repo
+        run: |
+          git clone "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.wiki.git" wiki-repo
+
+      - name: Sync markdown files
+        run: |
+          # Copy all .md files from docs/wiki/ into the wiki root.
+          # Existing wiki pages not present in docs/wiki/ are left untouched.
+          cp docs/wiki/*.md wiki-repo/
+
+      - name: Commit and push
+        working-directory: wiki-repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to push."
+          else
+            git commit -m "docs: sync wiki from docs/wiki @ ${{ github.sha }}"
+            git push
+          fi

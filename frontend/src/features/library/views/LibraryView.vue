@@ -8,6 +8,7 @@ import FilterDrawer from '@/features/library/components/FilterDrawer.vue'
 import SongGrid from '@/features/library/components/SongGrid.vue'
 import SongTree from '@/features/library/components/SongTree.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import EditMetadataDialog from '@/features/library/components/EditMetadataDialog.vue'
 import type { Song } from '@/types'
 
 defineOptions({ name: 'LibraryView' })
@@ -16,7 +17,8 @@ const router     = useRouter()
 const library    = useLibraryStore()
 const drawerOpen = ref(false)
 
-const pendingDelete = ref<(Song & { trackId?: string }) | null>(null)
+const pendingDelete = ref<Song | null>(null)
+const editingSong   = ref<Song | null>(null)
 
 onMounted(() => {
   library.loadPage()
@@ -32,7 +34,7 @@ function openSong(song: Song): void {
 }
 
 function editSong(song: Song): void {
-  router.push({ name: 'plugin', params: { id: 'editor' }, query: { filename: song.filename } })
+  editingSong.value = song
 }
 
 function deleteSong(song: Song): void {
@@ -44,6 +46,13 @@ async function confirmDelete() {
   if (!song) return
   pendingDelete.value = null
   await library.deleteTrack(song.trackId ?? song.filename)
+}
+
+async function saveMetadata(
+  trackId: string,
+  payload: { title: string; artist: string; album: string; year: string; hasLyrics: boolean },
+): Promise<void> {
+  await library.updateTrack(trackId, payload)
 }
 </script>
 
@@ -119,6 +128,13 @@ async function confirmDelete() {
       variant="danger"
       @confirm="confirmDelete"
       @cancel="pendingDelete = null"
+    />
+
+    <EditMetadataDialog
+      :open="editingSong !== null"
+      :song="editingSong"
+      :save-fn="saveMetadata"
+      @close="editingSong = null"
     />
   </div>
 </template>
