@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/features/player/store'
 import {
   ArrowLeft, SkipBack, Play, Pause, SkipForward,
-  Mic2, Guitar, Gauge, Monitor, SlidersHorizontal, Timer,
+  Mic2, Guitar, Gauge, Monitor, SlidersHorizontal, Timer, Cable,
 } from 'lucide-vue-next'
 import SeekBar from './SeekBar.vue'
 import VizPicker from './VizPicker.vue'
@@ -12,7 +12,9 @@ import RendererPicker from './RendererPicker.vue'
 import LoopControls from './LoopControls.vue'
 import MixerPopover from './MixerPopover.vue'
 import TunerPopover from './TunerPopover.vue'
+import SacPopover from './SacPopover.vue'
 import LatencyTester from './LatencyTester.vue'
+import { useSacStore } from '@/features/player/composables/useSac'
 const emit = defineEmits<{
   back: []
 }>()
@@ -21,6 +23,8 @@ const player = usePlayerStore()
 
 const mixerOpen         = ref<boolean>(false)
 const tunerOpen         = ref<boolean>(false)
+const sacOpen           = ref<boolean>(false)
+const sac               = useSacStore()
 const latencyTesterOpen = ref<boolean>(false)
 const latencyGuided     = ref<boolean>(false)
 const arrangements = computed(() => player.songInfo?.arrangements ?? [])
@@ -164,12 +168,17 @@ function dismissPrompt(): void {
 
       <div class="flex-1" />
 
-      <!-- Play-along pitch detection -->
+      <!-- Play-along pitch detection (disabled while SAC is monitoring) -->
       <button
         class="player-btn"
-        :class="{ active: player.pitchDetectionEnabled }"
-        :title="$t('player.controls.micTitle')"
-        @click="player.togglePitchDetection()"
+        :class="{
+          active:   player.pitchDetectionEnabled || sac.status === 'monitoring',
+          'opacity-40 cursor-not-allowed': sac.status === 'monitoring',
+        }"
+        :title="sac.status === 'monitoring'
+          ? $t('player.controls.micTitleSac')
+          : $t('player.controls.micTitle')"
+        @click="sac.status !== 'monitoring' && player.togglePitchDetection()"
       >
         <Guitar :size="15" />
       </button>
@@ -191,13 +200,46 @@ function dismissPrompt(): void {
         <VizPicker />
       </div>
 
+      <!-- SlopAudio Connect -->
+      <div class="relative">
+        <button
+          class="player-btn"
+          :class="{
+            active: sacOpen || sac.status !== 'idle',
+            'text-green-400': sac.status === 'monitoring',
+            'text-blue-400':  sac.status === 'linked',
+          }"
+          title="SlopAudio Connect"
+          @click="sacOpen = !sacOpen; tunerOpen = false; mixerOpen = false"
+        >
+          <Cable :size="15" />
+        </button>
+        <!-- Monitoring pulse indicator -->
+        <span
+          v-if="sac.status === 'monitoring'"
+          class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse pointer-events-none"
+        />
+        <Transition
+          enter-active-class="transition-all duration-150 origin-bottom-right"
+          enter-from-class="scale-95 opacity-0"
+          enter-to-class="scale-100 opacity-100"
+          leave-active-class="transition-all duration-100 origin-bottom-right"
+          leave-from-class="scale-100 opacity-100"
+          leave-to-class="scale-95 opacity-0"
+        >
+          <div v-if="sacOpen" class="absolute bottom-full mb-2 right-0 z-50">
+            <SacPopover />
+          </div>
+        </Transition>
+      </div>
+
       <!-- Tuner -->
       <div class="relative">
         <button
           class="player-btn"
           :class="{ active: tunerOpen }"
           :title="$t('player.controls.tunerTitle')"
-          @click="tunerOpen = !tunerOpen; mixerOpen = false"
+          @click="tunerOpen = !tunerOpen; mixerOpen = false; sacOpen = false"
         >
           <Gauge :size="15" />
         </button>
@@ -221,7 +263,7 @@ function dismissPrompt(): void {
           class="player-btn"
           :class="{ active: mixerOpen }"
           :title="$t('player.controls.mixerTitle')"
-          @click="mixerOpen = !mixerOpen; tunerOpen = false"
+          @click="mixerOpen = !mixerOpen; tunerOpen = false; sacOpen = false"
         >
           <SlidersHorizontal :size="15" />
         </button>

@@ -9,6 +9,10 @@ services:
       POSTGRES_DB: slopsmith
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    # Bind only to loopback — required so web (network_mode: host) can reach db
+    # at 127.0.0.1:5432 without exposing Postgres to the LAN.
+    ports:
+      - "127.0.0.1:5432:5432"
     restart: unless-stopped
 
   minio:
@@ -28,8 +32,9 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    ports:
-      - "8085:8080"
+    # host networking — required for UDP beacon broadcast to reach the LAN.
+    # Postgres is at 127.0.0.1:5432 (see db.ports above).
+    network_mode: host
     depends_on:
       - db
       - minio
@@ -39,15 +44,19 @@ services:
       # Persistent config, cache
       - slopsmith-config:/config
     environment:
+      - PORT=8085
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config
-      - DATABASE_URL=postgresql://slopsmith:slopsmith@db:5432/slopsmith
-      - MINIO_ENDPOINT=minio
+      - DATABASE_URL=postgresql://slopsmith:slopsmith@127.0.0.1:5432/slopsmith
+      - MINIO_ENDPOINT=127.0.0.1
       - MINIO_PORT=9000
       - MINIO_ACCESS_KEY=slopsmith
       - MINIO_SECRET_KEY=slopsmith123
       - MINIO_BUCKET=slopsmith
       - MINIO_USE_SSL=false
+      # SlopAudio Connect beacon (optional — defaults shown)
+      # - SAC_SERVER_NAME=SlopSmith
+      # - SAC_HTTP_PORT=8085   # override if a reverse proxy exposes a different port
       # Logging (optional — image defaults: LOG_LEVEL=info, LOG_PRETTY=true)
       # - LOG_LEVEL=info
       # - LOG_PRETTY=false
@@ -59,6 +68,8 @@ services:
       - "8006:80"
     depends_on:
       - web
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
 volumes:

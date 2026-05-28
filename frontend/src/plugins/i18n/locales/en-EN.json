@@ -224,6 +224,7 @@
       "seekForwardTitle": "Seek +5s (→)",
       "arrangementTitle": "Arrangement",
       "micTitle": "Toggle play-along mic (M)",
+      "micTitleSac": "Pitch provided by SlopAudio Connect",
       "lyricsTitle": "Toggle lyrics (\\)",
       "tunerTitle": "Tune instrument to song tuning",
       "mixerTitle": "Mixer",

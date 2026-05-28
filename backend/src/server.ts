@@ -12,6 +12,7 @@ import {
   IStorageServiceToken,
   IProfileServiceToken,
   IPermissionsServiceToken,
+  IProfileRepositoryToken,
   ITrackRepositoryToken,
   ITrackDataRepositoryToken,
   IStemsRepositoryToken,
@@ -19,6 +20,12 @@ import {
   ILoopRepositoryToken,
   ITrackScoreRepositoryToken,
 } from "./tokens.js";
+
+import { SacBeaconService }      from "./services/sac/SacBeaconService.js";
+import { SacSessionService }     from "./services/sac/SacSessionService.js";
+import { PitchProcessorService } from "./services/sac/PitchProcessorService.js";
+import { sacRoutes }             from "./api/routes/sac.js";
+import type { IProfileRepository } from "./domain/repositories.js";
 
 import { SongRepository } from "./infrastructure/db/SongRepository.js";
 import { FavoritesRepository } from "./infrastructure/db/FavoritesRepository.js";
@@ -67,9 +74,15 @@ export async function buildServer() {
   const loopRepo = new LoopRepository();
   const pluginRegistry = new PluginRegistry();
 
-  const storageService = container.resolve(IStorageServiceToken) as StorageService;
-  const profileService = container.resolve(IProfileServiceToken) as IProfileService;
+  const storageService     = container.resolve(IStorageServiceToken) as StorageService;
+  const profileService     = container.resolve(IProfileServiceToken) as IProfileService;
   const permissionsService = container.resolve(IPermissionsServiceToken) as IPermissionsService;
+  const profileRepo        = container.resolve(IProfileRepositoryToken) as IProfileRepository;
+
+  // ── SlopAudio-Connect services ─────────────────────────────────────────────
+  const sacBeacon  = new SacBeaconService(config.sacServerName, config.sacHttpPort);
+  const sacSession = new SacSessionService(profileRepo);
+  const sacPitch   = new PitchProcessorService(sacSession);
 
   const libraryService = new LibraryService(songRepo, favRepo);
   const settingsService = new SettingsService(config);
@@ -156,6 +169,7 @@ export async function buildServer() {
   fastify.decorate("providerRegistry", providerRegistry);
   fastify.decorate("permissionRegistry", permissionRegistry);
   fastify.decorate("pluginSvc", pluginSvc);
+  fastify.decorate("sacSessionSvc", sacSession);
 
   await fastify.register(cors, { origin: true });
   await fastify.register(multipart, { limits: { fileSize: 256 * 1024 * 1024 } });
@@ -183,9 +197,20 @@ export async function buildServer() {
   await fastify.register(trackRoutes);
   await fastify.register(highwayRoutes);
   await fastify.register(setupRoutes);
+  await fastify.register(sacRoutes);
 
   await pluginLifecycle.start();
-  fastify.addHook("onClose", async () => { await pluginLifecycle.shutdown(); });
+
+  sacBeacon.start();
+  sacSession.start();
+  sacPitch.start();
+
+  fastify.addHook("onClose", async () => {
+    await pluginLifecycle.shutdown();
+    sacPitch.stop();
+    sacSession.stop();
+    sacBeacon.stop();
+  });
 
   const indexPath = path.join(config.staticDir, "index.html");
   fastify.setNotFoundHandler(async (req, reply) => {
