@@ -2,13 +2,16 @@
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid, Settings, Cable, PlugZap } from 'lucide-vue-next'
+import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid, Settings, Cable, PlugZap, RefreshCw } from 'lucide-vue-next'
 import { useSettingsStore } from '@/features/settings/store'
 import { usePluginsStore } from '@/features/plugins/store'
 import { useAuthStore } from '@/features/auth/store'
 import { useSacStore } from '@/features/player/composables/useSac'
 import SacPopover from '@/features/player/components/SacPopover.vue'
 import PluginChainPanel from '@/features/player/components/PluginChainPanel.vue'
+import AppDialog from '@/components/ui/AppDialog.vue'
+import SettingsDialog from '@/features/settings/components/SettingsDialog.vue'
+import AudioSettingsDialog from '@/features/settings/components/AudioSettingsDialog.vue'
 import MobileMenu from './MobileMenu.vue'
 import ProfileSwitcher from './ProfileSwitcher.vue'
 
@@ -20,8 +23,10 @@ const plugins  = usePluginsStore()
 const auth     = useAuthStore()
 
 const sac              = useSacStore()
-const sacNavOpen       = ref<boolean>(false)
-const pluginsNavOpen   = ref<boolean>(false)
+const sacNavOpen          = ref<boolean>(false)
+const pluginsNavOpen      = ref<boolean>(false)
+const settingsOpen        = ref<boolean>(false)
+const audioSettingsOpen   = ref<boolean>(false)
 const mobileOpen     = ref<boolean>(false)
 const fileInput      = ref<HTMLInputElement | null>(null)
 const uploadStatus   = ref<string>('')
@@ -40,7 +45,6 @@ const navLinks = computed<NavLink[]>(() => [
     icon:   LayoutGrid,
   })),
   { name: 'gear',      label: t('nav.gear'),      icon: Settings  },
-  { name: 'settings',  label: t('nav.settings'),  icon: Settings2 },
 ])
 
 function isActive(link: { name: string; params?: { id: string } }): boolean {
@@ -159,7 +163,7 @@ async function handleUpload(e: Event): Promise<void> {
         </div>
       </div>
 
-      <!-- SAC Connect + Audio Plugins -->
+      <!-- SAC Connect + Audio Plugins + Settings -->
       <div class="hidden sm:flex items-center gap-1">
 
         <!-- Audio Plugins button (visible when SAC connected) -->
@@ -185,6 +189,18 @@ async function handleUpload(e: Event): Promise<void> {
             {{ $t('player.plugins.audioPlugins') }}
           </button>
         </Transition>
+
+        <!-- Settings icon button -->
+        <button
+          class="flex items-center justify-center w-8 h-8 rounded-lg border transition-colors"
+          :class="settingsOpen
+            ? 'text-accent border-accent/30 bg-accent/10'
+            : 'text-gray-400 bg-dark-600 border-white/[.06] hover:bg-dark-500 hover:text-gray-200'"
+          :title="t('nav.settings')"
+          @click="settingsOpen = !settingsOpen"
+        >
+          <Settings2 :size="14" />
+        </button>
 
         <!-- Cable / SAC session button -->
         <div class="relative">
@@ -253,7 +269,7 @@ async function handleUpload(e: Event): Promise<void> {
         <component :is="mobileOpen ? X : Menu" :size="20" />
       </button>
 
-      <ProfileSwitcher />
+      <ProfileSwitcher @open-settings="settingsOpen = true" @open-audio="audioSettingsOpen = true" />
     </div>
   </nav>
 
@@ -264,25 +280,41 @@ async function handleUpload(e: Event): Promise<void> {
     @upload="fileInput?.click()"
   />
 
-  <!-- Plugin chain side panel (accessible from any view) -->
-  <Teleport to="body">
-    <Transition
-      enter-active-class="transition-transform duration-200"
-      enter-from-class="-translate-x-full"
-      enter-to-class="translate-x-0"
-      leave-active-class="transition-transform duration-150"
-      leave-from-class="translate-x-0"
-      leave-to-class="-translate-x-full"
-    >
-      <div
-        v-if="pluginsNavOpen"
-        class="fixed left-0 top-14 bottom-0 z-40 flex flex-col shadow-2xl"
-        style="width: 320px;"
-      >
-        <PluginChainPanel @close="pluginsNavOpen = false" />
+  <!-- Plugin chain dialog (accessible from any view) -->
+  <AppDialog
+    :open="pluginsNavOpen"
+    size="sm"
+    no-pad
+    body-class="flex flex-col min-h-[480px]"
+    @close="pluginsNavOpen = false"
+  >
+    <template #header>
+      <div class="flex items-center justify-between flex-1 min-w-0 mr-3">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-sm font-semibold text-gray-100">Audio Plugins</span>
+          <span
+            v-if="sac.profileName"
+            class="text-[11px] font-medium text-blue-400/80 bg-blue-400/10 px-2 py-0.5 rounded-full shrink-0"
+          >{{ sac.profileName }}</span>
+        </div>
+        <button
+          class="p-1.5 rounded-lg hover:bg-white/[.07] text-gray-500 hover:text-gray-200 transition-colors shrink-0"
+          :title="t('player.plugins.refresh')"
+          @click="sac.requestChainState()"
+        >
+          <RefreshCw :size="14" />
+        </button>
       </div>
-    </Transition>
-  </Teleport>
+    </template>
+
+    <PluginChainPanel />
+  </AppDialog>
+
+  <!-- Settings dialog -->
+  <SettingsDialog :open="settingsOpen" @close="settingsOpen = false" />
+
+  <!-- Audio Settings dialog -->
+  <AudioSettingsDialog :open="audioSettingsOpen" @close="audioSettingsOpen = false" />
 </template>
 
 <style scoped>

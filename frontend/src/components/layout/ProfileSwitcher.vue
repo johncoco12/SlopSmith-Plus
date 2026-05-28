@@ -11,6 +11,8 @@ import PinDialog from '@/features/profiles/components/PinDialog.vue'
 const auth = useAuthStore()
 const router = useRouter()
 const { t } = useI18n()
+
+const emit = defineEmits<{ 'open-settings': []; 'open-audio': [] }>()
 const menuOpen = ref(false)
 const profiles = ref<SafeProfile[]>([])
 const pendingProfile = ref<SafeProfile | null>(null)
@@ -146,7 +148,7 @@ function logout() {
 
         <div class="px-2 py-2">
           <button
-            @click="router.push({ name: 'settings' }); menuOpen = false"
+            @click="emit('open-settings'); menuOpen = false"
             class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-dark-600 transition-colors"
           >
             <Settings :size="15" class="shrink-0" />
@@ -161,7 +163,7 @@ function logout() {
             <span>{{ $t('profileSwitcher.admin') }}</span>
           </button>
           <button
-            @click="router.push({ name: 'audio-settings' }); menuOpen = false"
+            @click="emit('open-audio'); menuOpen = false"
             class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-dark-600 transition-colors"
           >
             <AudioWaveform :size="15" class="shrink-0" />

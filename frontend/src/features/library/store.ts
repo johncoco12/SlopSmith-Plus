@@ -7,6 +7,8 @@ import {
   fetchTuningNames,
   toggleFavorite as apiToggleFavorite,
   deleteTrack as apiDeleteTrack,
+  updateTrack as apiUpdateTrack,
+  type UpdateTrackPayload,
 } from '@/features/library/api'
 import { fetchScoresBatch } from '@/features/player/scoreApi'
 import { useAuthStore } from '@/features/auth/store'
@@ -67,7 +69,7 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
         stemsLacks: f.stems.lacks,
         lyrics:  f.lyrics,
         tunings: f.tunings,
-        page: p,
+        page: p + 1,
         size: PAGE_SIZE,
         favoritesOnly,
       }
@@ -130,9 +132,15 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
     async function toggleFavorite(trackId: string): Promise<void> {
       const profileId = auth.profile?.id
       if (!profileId) return
-      await apiToggleFavorite(trackId, profileId)
+      const result = await apiToggleFavorite(trackId, profileId) as { favorite: boolean }
       const song = songs.value.find(s => s.trackId === trackId || s.filename === trackId)
-      if (song) song.isFavorite = !song.isFavorite
+      if (song) {
+        song.isFavorite = result.favorite
+        if (favoritesOnly && !result.favorite) {
+          songs.value = songs.value.filter(s => s !== song)
+          total.value = Math.max(0, total.value - 1)
+        }
+      }
     }
 
     async function deleteTrack(trackId: string): Promise<void> {
@@ -141,6 +149,18 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
       if (idx !== -1) {
         songs.value.splice(idx, 1)
         total.value = Math.max(0, total.value - 1)
+      }
+    }
+
+    async function updateTrack(trackId: string, payload: UpdateTrackPayload): Promise<void> {
+      await apiUpdateTrack(trackId, payload)
+      const song = songs.value.find(s => s.trackId === trackId || s.filename === trackId)
+      if (song) {
+        if (payload.title     !== undefined) song.title      = payload.title
+        if (payload.artist    !== undefined) song.artist     = payload.artist
+        if (payload.album     !== undefined) song.album      = payload.album
+        if (payload.year      !== undefined) song.year       = payload.year
+        if (payload.hasLyrics !== undefined) song.has_lyrics = payload.hasLyrics
       }
     }
 
@@ -157,7 +177,7 @@ function createLibraryStore(id: string, favoritesOnly: boolean) {
       search, tuningNames, treeStats, treeLetter,
       activeFilterCount,
       loadPage, loadMore, loadTuningNames, loadStats,
-      toggleFavorite, deleteTrack,
+      toggleFavorite, deleteTrack, updateTrack,
       setViewMode, setSort, setFormat, setSearch, setFilters, clearFilters,
     }
   })
