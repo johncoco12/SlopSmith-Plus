@@ -115,6 +115,10 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 ENV LOG_PRETTY=true
 
 EXPOSE 8080
+# SlopAudio Connect UDP ports
+EXPOSE 54920/udp
+EXPOSE 54921/udp
+EXPOSE 54922/udp
 
 # db push creates/updates the schema on every start (idempotent, works with PostgreSQL)
 CMD ["./docker-entrypoint.sh"]

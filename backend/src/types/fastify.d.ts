@@ -15,6 +15,7 @@ import type { ProviderRegistry } from "../infrastructure/plugins/ProviderRegistr
 import type { PermissionRegistry } from "../infrastructure/plugins/PermissionRegistry.js";
 import type { SongService } from "../services/SongService.js";
 import type { LoopService } from "../services/LoopService.js";
+import type { SacSessionService } from "../services/sac/SacSessionService.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -35,6 +36,7 @@ declare module "fastify" {
     permissionRegistry: PermissionRegistry;
     songs: SongService;
     loops: LoopService;
+    sacSessionSvc: SacSessionService;
   }
 
   interface FastifyRequest {

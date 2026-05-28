@@ -2,10 +2,13 @@
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid, Settings } from 'lucide-vue-next'
+import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid, Settings, Cable, PlugZap } from 'lucide-vue-next'
 import { useSettingsStore } from '@/features/settings/store'
 import { usePluginsStore } from '@/features/plugins/store'
 import { useAuthStore } from '@/features/auth/store'
+import { useSacStore } from '@/features/player/composables/useSac'
+import SacPopover from '@/features/player/components/SacPopover.vue'
+import PluginChainPanel from '@/features/player/components/PluginChainPanel.vue'
 import MobileMenu from './MobileMenu.vue'
 import ProfileSwitcher from './ProfileSwitcher.vue'
 
@@ -16,6 +19,9 @@ const settings = useSettingsStore()
 const plugins  = usePluginsStore()
 const auth     = useAuthStore()
 
+const sac              = useSacStore()
+const sacNavOpen       = ref<boolean>(false)
+const pluginsNavOpen   = ref<boolean>(false)
 const mobileOpen     = ref<boolean>(false)
 const fileInput      = ref<HTMLInputElement | null>(null)
 const uploadStatus   = ref<string>('')
@@ -153,6 +159,70 @@ async function handleUpload(e: Event): Promise<void> {
         </div>
       </div>
 
+      <!-- SAC Connect + Audio Plugins -->
+      <div class="hidden sm:flex items-center gap-1">
+
+        <!-- Audio Plugins button (visible when SAC connected) -->
+        <Transition
+          enter-active-class="transition-all duration-150 overflow-hidden"
+          enter-from-class="max-w-0 opacity-0"
+          enter-to-class="max-w-[120px] opacity-100"
+          leave-active-class="transition-all duration-100 overflow-hidden"
+          leave-from-class="max-w-[120px] opacity-100"
+          leave-to-class="max-w-0 opacity-0"
+        >
+          <button
+            v-if="sac.status !== 'idle'"
+            class="flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-[11px] font-medium
+                   border transition-colors whitespace-nowrap"
+            :class="pluginsNavOpen
+              ? 'text-accent border-accent/40 bg-accent/10'
+              : 'text-gray-400 bg-dark-600 border-white/[.06] hover:bg-dark-500 hover:text-gray-200'"
+            :title="$t('player.plugins.title')"
+            @click="pluginsNavOpen = !pluginsNavOpen"
+          >
+            <PlugZap :size="13" />
+            {{ $t('player.plugins.audioPlugins') }}
+          </button>
+        </Transition>
+
+        <!-- Cable / SAC session button -->
+        <div class="relative">
+          <button
+            class="flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium
+                   border transition-colors"
+            :class="sacNavOpen || sac.status !== 'idle'
+              ? sac.status === 'monitoring'
+                ? 'text-green-400 border-green-500/30 bg-green-500/10'
+                : sac.status === 'linked'
+                ? 'text-blue-400 border-blue-500/30 bg-blue-500/10'
+                : 'text-gray-300 border-white/[.08] bg-dark-600'
+              : 'text-gray-400 bg-dark-600 border-white/[.06] hover:bg-dark-500 hover:text-gray-200'"
+            :title="$t('nav.sacConnect')"
+            @click="sacNavOpen = !sacNavOpen"
+          >
+            <Cable :size="14" />
+          </button>
+          <!-- Monitoring pulse -->
+          <span
+            v-if="sac.status === 'monitoring'"
+            class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse pointer-events-none"
+          />
+          <Transition
+            enter-active-class="transition-all duration-150 origin-top-right"
+            enter-from-class="scale-95 opacity-0"
+            enter-to-class="scale-100 opacity-100"
+            leave-active-class="transition-all duration-100 origin-top-right"
+            leave-from-class="scale-100 opacity-100"
+            leave-to-class="scale-95 opacity-0"
+          >
+            <div v-if="sacNavOpen" class="absolute top-full mt-2 right-0 z-50">
+              <SacPopover />
+            </div>
+          </Transition>
+        </div>
+      </div>
+
       <button
         class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
                text-gray-400 bg-dark-600 border border-white/[.06]
@@ -193,6 +263,26 @@ async function handleUpload(e: Event): Promise<void> {
     @close="mobileOpen = false"
     @upload="fileInput?.click()"
   />
+
+  <!-- Plugin chain side panel (accessible from any view) -->
+  <Teleport to="body">
+    <Transition
+      enter-active-class="transition-transform duration-200"
+      enter-from-class="-translate-x-full"
+      enter-to-class="translate-x-0"
+      leave-active-class="transition-transform duration-150"
+      leave-from-class="translate-x-0"
+      leave-to-class="-translate-x-full"
+    >
+      <div
+        v-if="pluginsNavOpen"
+        class="fixed left-0 top-14 bottom-0 z-40 flex flex-col shadow-2xl"
+        style="width: 320px;"
+      >
+        <PluginChainPanel @close="pluginsNavOpen = false" />
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>

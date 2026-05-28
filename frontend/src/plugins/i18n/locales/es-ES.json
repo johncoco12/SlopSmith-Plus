@@ -27,7 +27,8 @@
     "uploadInvalid": "No se subieron archivos válidos",
     "uploadError": "Error",
     "uploadFailed": "Fallo: {message}",
-    "uploadSongs": "Subir canciones"
+    "uploadSongs": "Subir canciones",
+    "sacConnect": "SlopAudio Connect"
   },
   "profiles": {
     "selectTitle": "Seleccionar perfil",
@@ -227,6 +228,36 @@
       "lyricsTitle": "Mostrar/ocultar letra (\\)",
       "tunerTitle": "Afinar instrumento a la tonalidad de la canción",
       "mixerTitle": "Mezclador"
+    },
+    "sac": {
+      "title": "SlopAudio Connect",
+      "statusIdle": "Not connected",
+      "statusConnecting": "Connecting…",
+      "statusLinked": "Linked · {name}",
+      "statusMonitoring": "Monitoring · {name}",
+      "disconnect": "Disconnect",
+      "waitingForTrack": "Monitoring will start automatically when you play a track.",
+      "availableSessions": "Available sessions",
+      "refresh": "Refresh",
+      "scanning": "Scanning…",
+      "noSessions": "No SlopAudio Connect instances found.",
+      "launchHint": "Launch the app on your device.",
+      "inUse": "in use",
+      "connect": "Connect →",
+      "confidence": "confidence"
+    },
+    "plugins": {
+      "title": "Plugins de audio",
+      "audioPlugins": "Plugins de audio",
+      "refresh": "Actualizar cadena",
+      "notConnected": "Conecta SlopAudio Connect para gestionar tu cadena de plugins VST.",
+      "emptyChain": "No hay plugins en la cadena. Añade un plugin o actualiza.",
+      "bypass": "Omitir plugin",
+      "enable": "Activar plugin",
+      "remove": "Eliminar plugin",
+      "addPlugin": "Añadir plugin",
+      "searchPlugins": "Buscar plugins…",
+      "noPluginsFound": "No se encontraron plugins."
     },
     "renderer": {
       "title": "Renderizador (V)"

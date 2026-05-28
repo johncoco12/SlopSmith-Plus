@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U slopsmith"]
@@ -41,8 +41,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
-    ports:
-      - "8085:8080"
+    # host networking lets the UDP beacon broadcast reach the real LAN so that
+    # SlopAudio-Connect instances can auto-discover this server. All SAC UDP
+    # ports (54920-54922) are available on the host interface directly.
+    # Trade-off: Docker service names (db, minio) no longer resolve —
+    # see the 127.0.0.1 overrides in environment below.
+    network_mode: host
     depends_on:
       db:
         condition: service_healthy
@@ -62,12 +66,14 @@ services:
       # This volume persists across image upgrades, so user plugins are never lost.
       - user-plugins:/app/user-plugins
     environment:
+      - PORT=8085
       - DLC_DIR=/dlc
       - CONFIG_DIR=/config
-      - DB_HOST=db
+      # 127.0.0.1 instead of service names — required with network_mode: host
+      - DB_HOST=127.0.0.1
       - DB_PORT=5432
-      - DATABASE_URL=postgresql://slopsmith:slopsmith@db:5432/slopsmith
-      - MINIO_ENDPOINT=minio
+      - DATABASE_URL=postgresql://slopsmith:slopsmith@127.0.0.1:5432/slopsmith
+      - MINIO_ENDPOINT=127.0.0.1
       - MINIO_PORT=9000
       - MINIO_ACCESS_KEY=slopsmith
       - MINIO_SECRET_KEY=slopsmith123
@@ -75,6 +81,9 @@ services:
       - MINIO_USE_SSL=false
       # User plugin directory — plugins placed here are loaded alongside bundled ones.
       - SLOPSMITH_PLUGINS_DIR=/app/user-plugins
+      # SlopAudio Connect beacon (optional — defaults shown)
+      # - SAC_SERVER_NAME=SlopSmith
+      # - SAC_HTTP_PORT=8085   # override if a reverse proxy exposes a different port
       # Logging (optional — image defaults: LOG_LEVEL=info, LOG_PRETTY=true)
       # - LOG_LEVEL=debug
 
@@ -84,6 +93,10 @@ services:
       - "8006:80"
     depends_on:
       - web
+    extra_hosts:
+      # resolves host.docker.internal → Docker host gateway so nginx can proxy
+      # to the web service which now runs with network_mode: host
+      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres-data:
