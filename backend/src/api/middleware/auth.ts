@@ -55,6 +55,13 @@ export const authMiddleware = fp(async function authMiddleware(fastify) {
       token = auth.slice(7).trim();
     }
 
+    // WebSocket upgrade requests cannot carry Authorization headers from the browser.
+    // Accept the token via query string as a fallback (used by /ws/* routes).
+    if (!token) {
+      const q = req.query as Record<string, unknown>;
+      if (typeof q.token === "string" && q.token) token = q.token;
+    }
+
     if (!token) {
       req.session = null;
       return;

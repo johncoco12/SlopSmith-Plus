@@ -21,7 +21,7 @@ export class PitchProcessorService {
       console.error("[PitchProcessor] socket error:", err.message);
     });
 
-    this.socket.on("message", (msg) => this.handleMessage(msg));
+    this.socket.on("message", (msg, rinfo) => this.handleMessage(msg, rinfo));
 
     this.socket.bind(SAC_PITCH_PORT, () => {
       console.info(`[PitchProcessor] listening on UDP :${SAC_PITCH_PORT}`);
@@ -33,13 +33,16 @@ export class PitchProcessorService {
     this.socket = null;
   }
 
-  private handleMessage(msg: Buffer): void {
+  private handleMessage(msg: Buffer, rinfo: dgram.RemoteInfo): void {
     let data: PitchMsg;
     try { data = JSON.parse(msg.toString()) as PitchMsg; }
     catch { return; }
 
     if (data.type !== "PITCH" || !data.sessionId) return;
     if (data.confidence < MIN_CONFIDENCE) return;
+
+    // Reject pitch datagrams whose sender IP does not match the authenticated SAC endpoint
+    if (!this.sessionSvc.validatePitchSource(data.sessionId, rinfo.address)) return;
 
     const event: WsSacPitch = {
       type:       "sac:pitch",

@@ -27,7 +27,8 @@
     "uploadInvalid": "No valid files uploaded",
     "uploadError": "Error",
     "uploadFailed": "Failed: {message}",
-    "uploadSongs": "Upload songs"
+    "uploadSongs": "Upload songs",
+    "sacConnect": "SlopAudio Connect"
   },
   "profiles": {
     "selectTitle": "Select a profile",
@@ -237,6 +238,36 @@
       "speedTitle": "Playback speed",
       "mastery": "Mastery",
       "masteryTitle": "Difficulty filter"
+    },
+    "sac": {
+      "title": "SlopAudio Connect",
+      "statusIdle": "Not connected",
+      "statusConnecting": "Connecting…",
+      "statusLinked": "Linked · {name}",
+      "statusMonitoring": "Monitoring · {name}",
+      "disconnect": "Disconnect",
+      "waitingForTrack": "Monitoring will start automatically when you play a track.",
+      "availableSessions": "Available sessions",
+      "refresh": "Refresh",
+      "scanning": "Scanning…",
+      "noSessions": "No SlopAudio Connect instances found.",
+      "launchHint": "Launch the app on your device.",
+      "inUse": "in use",
+      "connect": "Connect →",
+      "confidence": "confidence"
+    },
+    "plugins": {
+      "title": "Audio Plugins",
+      "audioPlugins": "Audio Plugins",
+      "refresh": "Refresh chain",
+      "notConnected": "Connect SlopAudio Connect to manage your VST plugin chain.",
+      "emptyChain": "No plugins in chain. Add a plugin or refresh.",
+      "bypass": "Bypass plugin",
+      "enable": "Enable plugin",
+      "remove": "Remove plugin",
+      "addPlugin": "Add Plugin",
+      "searchPlugins": "Search plugins…",
+      "noPluginsFound": "No plugins found."
     },
     "renderer": {
       "title": "Renderer (V)"

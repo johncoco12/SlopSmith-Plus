@@ -27,7 +27,8 @@
     "uploadInvalid": "Aucun fichier valide importé",
     "uploadError": "Erreur",
     "uploadFailed": "Échec : {message}",
-    "uploadSongs": "Importer des chansons"
+    "uploadSongs": "Importer des chansons",
+    "sacConnect": "SlopAudio Connect"
   },
   "profiles": {
     "selectTitle": "Sélectionner un profil",
@@ -227,6 +228,36 @@
       "lyricsTitle": "Afficher/masquer les paroles (\\)",
       "tunerTitle": "Accorder l'instrument sur la tonalité du morceau",
       "mixerTitle": "Mixeur"
+    },
+    "sac": {
+      "title": "SlopAudio Connect",
+      "statusIdle": "Not connected",
+      "statusConnecting": "Connecting…",
+      "statusLinked": "Linked · {name}",
+      "statusMonitoring": "Monitoring · {name}",
+      "disconnect": "Disconnect",
+      "waitingForTrack": "Monitoring will start automatically when you play a track.",
+      "availableSessions": "Available sessions",
+      "refresh": "Refresh",
+      "scanning": "Scanning…",
+      "noSessions": "No SlopAudio Connect instances found.",
+      "launchHint": "Launch the app on your device.",
+      "inUse": "in use",
+      "connect": "Connect →",
+      "confidence": "confidence"
+    },
+    "plugins": {
+      "title": "Plugins audio",
+      "audioPlugins": "Plugins audio",
+      "refresh": "Actualiser la chaîne",
+      "notConnected": "Connectez SlopAudio Connect pour gérer votre chaîne de plugins VST.",
+      "emptyChain": "Aucun plugin dans la chaîne. Ajoutez un plugin ou actualisez.",
+      "bypass": "Contourner le plugin",
+      "enable": "Activer le plugin",
+      "remove": "Supprimer le plugin",
+      "addPlugin": "Ajouter un plugin",
+      "searchPlugins": "Rechercher des plugins…",
+      "noPluginsFound": "Aucun plugin trouvé."
     },
     "renderer": {
       "title": "Rendu (V)"

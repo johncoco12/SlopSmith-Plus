@@ -10,9 +10,13 @@ import {
   type WsSacDisconnected,
   type WsSacMonitoringActive,
   type WsSacMonitoringStopped,
+  type WsSacChainState,
+  type WsSacPluginList,
+  type ChainStateMsg,
+  type PluginListMsg,
 } from "./types.js";
 
-const HEARTBEAT_TIMEOUT_MS = 15_000;
+const HEARTBEAT_TIMEOUT_MS = 30_000;
 const EXPIRE_INTERVAL_MS   = 5_000;
 
 function hashPin(pin: string, salt: string): string {
@@ -83,11 +87,41 @@ export class SacSessionService {
     }));
   }
 
+  /** Scoped variant used by the authenticated REST endpoint. */
+  getSessionsForProfile(profileId: number) {
+    return this.getSessions().filter(s => s.profileId === profileId);
+  }
+
+  /**
+   * Returns true if `ip` matches the SAC instance that owns `sessionId`.
+   * Used by PitchProcessorService to reject spoofed pitch datagrams.
+   */
+  validatePitchSource(sessionId: string, ip: string): boolean {
+    const session = this.sessions.get(sessionId);
+    return session !== undefined && session.sacIp === ip;
+  }
+
   // ── WebSocket linkage ─────────────────────────────────────────────────────
 
-  linkWs(sessionId: string, ws: WebSocket): boolean {
+  /**
+   * Returns "ok" on success, or an error discriminant string.
+   * "not_found"  – no session with this id exists yet
+   * "forbidden"  – session belongs to a different profile
+   * "already_linked" – session is already linked to an open WebSocket
+   */
+  linkWs(sessionId: string, callerProfileId: number, ws: WebSocket): "ok" | "not_found" | "forbidden" | "already_linked" {
     const session = this.sessions.get(sessionId);
-    if (!session) return false;
+    if (!session) return "not_found";
+    if (session.profileId !== callerProfileId) return "forbidden";
+
+    // Reject if an open WebSocket is already linked to this session
+    if (
+      session.linkedWs !== null &&
+      session.linkedWs.readyState < WebSocket.CLOSING
+    ) {
+      return "already_linked";
+    }
+
     session.linkedWs = ws;
 
     const event: WsSacConnected = {
@@ -97,7 +131,7 @@ export class SacSessionService {
       profileName: session.profileName,
     };
     ws.send(JSON.stringify(event));
-    return true;
+    return "ok";
   }
 
   unlinkWs(sessionId: string): void {
@@ -112,8 +146,7 @@ export class SacSessionService {
     if (!session) return;
     this.sendToSac(session, { type: "START_MONITORING", trackId, tuning, arrangement });
     session.activeTrackId = trackId;
-
-    session.linkedWs?.send(JSON.stringify({ type: "sac:monitoring_active", trackId } satisfies WsSacMonitoringActive));
+    // sac:monitoring_active is emitted when SAC confirms with MONITORING_STARTED
   }
 
   sendStopMonitoring(sessionId: string): void {
@@ -121,8 +154,45 @@ export class SacSessionService {
     if (!session) return;
     this.sendToSac(session, { type: "STOP_MONITORING" });
     session.activeTrackId = null;
+    // sac:monitoring_stopped is emitted when SAC confirms with MONITORING_STOPPED
+  }
 
-    session.linkedWs?.send(JSON.stringify({ type: "sac:monitoring_stopped" } satisfies WsSacMonitoringStopped));
+  // ── Plugin control commands (frontend → SAC) ──────────────────────────────
+
+  sendSetParameter(sessionId: string, pluginIndex: number, parameterIndex: number, value: number): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    this.sendToSac(session, { type: "SET_PARAMETER", pluginIndex, parameterIndex, value });
+  }
+
+  sendSetBypass(sessionId: string, pluginIndex: number, bypassed: boolean): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    this.sendToSac(session, { type: "SET_BYPASS", pluginIndex, bypassed });
+  }
+
+  sendMovePlugin(sessionId: string, fromIndex: number, toIndex: number): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    this.sendToSac(session, { type: "MOVE_PLUGIN", fromIndex, toIndex });
+  }
+
+  sendRemovePlugin(sessionId: string, pluginIndex: number): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    this.sendToSac(session, { type: "REMOVE_PLUGIN", pluginIndex });
+  }
+
+  sendAddPlugin(sessionId: string, pluginId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    this.sendToSac(session, { type: "ADD_PLUGIN", pluginId });
+  }
+
+  requestChainState(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    this.sendToSac(session, { type: "REQUEST_CHAIN_STATE" });
   }
 
   // ── Inbound pitch forwarding (called by PitchProcessorService) ────────────
@@ -142,7 +212,13 @@ export class SacSessionService {
       case "CONNECT_REQUEST":   return this.handleConnect(data, rinfo);
       case "HEARTBEAT":         return this.handleHeartbeat(data, rinfo);
       case "MONITORING_STARTED":
-      case "MONITORING_STOPPED": return; // acknowledged by the SAC itself, no-op here
+        return this.handleMonitoringStarted(data as Extract<SacInboundMsg, { type: "MONITORING_STARTED" }>);
+      case "MONITORING_STOPPED":
+        return this.handleMonitoringStopped(data as Extract<SacInboundMsg, { type: "MONITORING_STOPPED" }>);
+      case "CHAIN_STATE":
+        return this.handleChainState(data as ChainStateMsg);
+      case "PLUGIN_LIST":
+        return this.handlePluginList(data as PluginListMsg);
     }
   }
 
@@ -185,10 +261,43 @@ export class SacSessionService {
   private handleHeartbeat(data: Extract<SacInboundMsg, { type: "HEARTBEAT" }>, rinfo: dgram.RemoteInfo): void {
     const session = this.sessions.get(data.sessionId);
     if (!session) return;
+    // Reject heartbeats from addresses that don't match the authenticated SAC endpoint
+    if (rinfo.address !== session.sacIp) return;
     session.lastSeen = Date.now();
     this.socket && send(this.socket, rinfo.address, session.sacPort, {
       type: "HEARTBEAT_ACK", ts: Date.now(),
     });
+  }
+
+  private handleMonitoringStarted(data: Extract<SacInboundMsg, { type: "MONITORING_STARTED" }>): void {
+    const session = this.sessions.get(data.sessionId);
+    if (!session || !session.linkedWs) return;
+    const event: WsSacMonitoringActive = {
+      type: "sac:monitoring_active",
+      trackId: session.activeTrackId ?? "",
+    };
+    session.linkedWs.send(JSON.stringify(event));
+  }
+
+  private handleMonitoringStopped(data: Extract<SacInboundMsg, { type: "MONITORING_STOPPED" }>): void {
+    const session = this.sessions.get(data.sessionId);
+    if (!session || !session.linkedWs) return;
+    session.activeTrackId = null;
+    session.linkedWs.send(JSON.stringify({ type: "sac:monitoring_stopped" } satisfies WsSacMonitoringStopped));
+  }
+
+  private handleChainState(data: ChainStateMsg): void {
+    const session = this.sessions.get(data.sessionId);
+    if (!session || !session.linkedWs) return;
+    const event: WsSacChainState = { type: "sac:chain_state", plugins: data.plugins };
+    session.linkedWs.send(JSON.stringify(event));
+  }
+
+  private handlePluginList(data: PluginListMsg): void {
+    const session = this.sessions.get(data.sessionId);
+    if (!session || !session.linkedWs) return;
+    const event: WsSacPluginList = { type: "sac:plugin_list", plugins: data.plugins };
+    session.linkedWs.send(JSON.stringify(event));
   }
 
   private expireStale(): void {

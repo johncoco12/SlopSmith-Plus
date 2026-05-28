@@ -24,6 +24,7 @@ const EnvSchema = z.object({
 
   // SlopAudio Connect
   SAC_SERVER_NAME: z.string().default("SlopSmith"),
+  SAC_SERVER_IP:   z.string().optional(),
   SAC_HTTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
 
   MINIO_ENDPOINT: z.string().optional(),
@@ -99,7 +100,8 @@ export const config = {
   staticDir: path.resolve(import.meta.dirname, "../static"),
 
   sacServerName: env.SAC_SERVER_NAME,
-  sacHttpPort:   env.SAC_HTTP_PORT ?? env.PORT,
+  sacServerIp:   env.SAC_SERVER_IP,
+  sacHttpPort:   env.SAC_HTTP_PORT ?? env.PORT!,
 } as const;
 
 export type Config = typeof config;

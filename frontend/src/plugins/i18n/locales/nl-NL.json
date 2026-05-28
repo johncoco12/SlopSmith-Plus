@@ -27,7 +27,8 @@
     "uploadInvalid": "Geen geldige bestanden geüpload",
     "uploadError": "Fout",
     "uploadFailed": "Mislukt: {message}",
-    "uploadSongs": "Nummers uploaden"
+    "uploadSongs": "Nummers uploaden",
+    "sacConnect": "SlopAudio Connect"
   },
   "profiles": {
     "selectTitle": "Selecteer een profiel",
@@ -227,6 +228,36 @@
       "lyricsTitle": "Songtekst in-/uitschakelen (\\)",
       "tunerTitle": "Instrument stemmen op liedtoonsoort",
       "mixerTitle": "Mixer"
+    },
+    "sac": {
+      "title": "SlopAudio Connect",
+      "statusIdle": "Not connected",
+      "statusConnecting": "Connecting…",
+      "statusLinked": "Linked · {name}",
+      "statusMonitoring": "Monitoring · {name}",
+      "disconnect": "Disconnect",
+      "waitingForTrack": "Monitoring will start automatically when you play a track.",
+      "availableSessions": "Available sessions",
+      "refresh": "Refresh",
+      "scanning": "Scanning…",
+      "noSessions": "No SlopAudio Connect instances found.",
+      "launchHint": "Launch the app on your device.",
+      "inUse": "in use",
+      "connect": "Connect →",
+      "confidence": "confidence"
+    },
+    "plugins": {
+      "title": "Audio-plugins",
+      "audioPlugins": "Audio-plugins",
+      "refresh": "Keten vernieuwen",
+      "notConnected": "Verbind SlopAudio Connect om je VST-pluginketen te beheren.",
+      "emptyChain": "Geen plugins in de keten. Voeg een plugin toe of vernieuw.",
+      "bypass": "Plugin omzeilen",
+      "enable": "Plugin inschakelen",
+      "remove": "Plugin verwijderen",
+      "addPlugin": "Plugin toevoegen",
+      "searchPlugins": "Plugins zoeken…",
+      "noPluginsFound": "Geen plugins gevonden."
     },
     "renderer": {
       "title": "Renderer (V)"

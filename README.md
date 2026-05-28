@@ -154,6 +154,9 @@ Slopsmith Plus includes an experimental plugin architecture. Plugins can extend 
 | `DLC_PATH` | `~/.local/share/Steam/steamapps/common/Rocksmith2014/dlc` | DLC folder on the host |
 | `LOG_LEVEL` | `info` | `trace` · `debug` · `info` · `warn` · `error` |
 | `LOG_PRETTY` | `true` | `false` for structured JSON output (Loki, ELK, Promtail) |
+| `SAC_SERVER_NAME` | `SlopSmith` | Display name broadcast by the SAC LAN beacon |
+| `SAC_SERVER_IP` | *(auto-detected)* | Override the IP advertised in SAC beacons — set this when the auto-detected address is a VPN/Docker bridge instead of your real LAN interface |
+| `SAC_HTTP_PORT` | *(same as `PORT`)* | HTTP port advertised to SAC clients — useful when a reverse proxy exposes a different port than the internal one |
 
 The DLC folder and default arrangement (Lead / Rhythm / Bass) can also be changed at any time in **Settings**.
 

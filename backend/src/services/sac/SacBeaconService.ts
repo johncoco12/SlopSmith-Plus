@@ -18,6 +18,7 @@ export class SacBeaconService {
     private readonly httpPort: number,
     private readonly controlPort: number = 54921,
     private readonly pitchPort: number   = 54922,
+    private readonly serverIpOverride?: string,
   ) {}
 
   start(): void {
@@ -44,6 +45,7 @@ export class SacBeaconService {
   }
 
   private resolvedIp(): string {
+    if (this.serverIpOverride) return this.serverIpOverride;
     for (const ifaces of Object.values(os.networkInterfaces())) {
       for (const iface of ifaces ?? []) {
         if (iface.family === "IPv4" && !iface.internal)

@@ -57,12 +57,52 @@ export interface PitchMsg {
   noteName:   string;
 }
 
+// ── Plugin control — inbound (SAC → backend, port 54921) ─────────────────────
+
+export interface PluginParameter {
+  index:        number;
+  name:         string;
+  label:        string;
+  value:        number;   // normalised 0.0–1.0
+  defaultValue: number;
+  steps:        number;   // 0 = continuous, 2 = toggle, >2 = stepped
+}
+
+export interface PluginEntry {
+  index:      number;
+  name:       string;
+  vendor:     string;
+  pluginId:   string;
+  bypassed:   boolean;
+  parameters: PluginParameter[];
+}
+
+export interface ChainStateMsg {
+  type:      "CHAIN_STATE";
+  sessionId: string;
+  plugins:   PluginEntry[];
+}
+
+export interface PluginListEntry {
+  pluginId: string;
+  name:     string;
+  vendor:   string;
+}
+
+export interface PluginListMsg {
+  type:      "PLUGIN_LIST";
+  sessionId: string;
+  plugins:   PluginListEntry[];
+}
+
 export type SacInboundMsg =
   | ConnectRequest
   | HeartbeatMsg
   | MonitoringStartedMsg
   | MonitoringStoppedMsg
-  | PitchMsg;
+  | PitchMsg
+  | ChainStateMsg
+  | PluginListMsg;
 
 // ── Outbound UDP messages (backend → SAC) ────────────────────────────────────
 
@@ -92,6 +132,39 @@ export interface StopMonitoringCmd {
 export interface DisconnectCmd {
   type:   "DISCONNECT";
   reason: string;
+}
+
+export interface RequestChainStateCmd {
+  type: "REQUEST_CHAIN_STATE";
+}
+
+export interface SetParameterCmd {
+  type:           "SET_PARAMETER";
+  pluginIndex:    number;
+  parameterIndex: number;
+  value:          number;
+}
+
+export interface SetBypassCmd {
+  type:        "SET_BYPASS";
+  pluginIndex: number;
+  bypassed:    boolean;
+}
+
+export interface MovePluginCmd {
+  type:      "MOVE_PLUGIN";
+  fromIndex: number;
+  toIndex:   number;
+}
+
+export interface RemovePluginCmd {
+  type:        "REMOVE_PLUGIN";
+  pluginIndex: number;
+}
+
+export interface AddPluginCmd {
+  type:     "ADD_PLUGIN";
+  pluginId: string;
 }
 
 // ── WebSocket events (backend → frontend) ────────────────────────────────────
@@ -126,6 +199,16 @@ export interface WsSacPitch {
   noteName:   string;
 }
 
+export interface WsSacChainState {
+  type:    "sac:chain_state";
+  plugins: PluginEntry[];
+}
+
+export interface WsSacPluginList {
+  type:    "sac:plugin_list";
+  plugins: PluginListEntry[];
+}
+
 // ── WebSocket events (frontend → backend) ────────────────────────────────────
 
 export interface WsLinkSac {
@@ -144,4 +227,37 @@ export interface WsTrackPlay {
 export interface WsTrackStop {
   type:      "track:stop";
   sessionId: string;
+}
+
+export interface WsSetParameter {
+  type:           "sac:set_parameter";
+  pluginIndex:    number;
+  parameterIndex: number;
+  value:          number;
+}
+
+export interface WsSetBypass {
+  type:        "sac:set_bypass";
+  pluginIndex: number;
+  bypassed:    boolean;
+}
+
+export interface WsMovePlugin {
+  type:      "sac:move_plugin";
+  fromIndex: number;
+  toIndex:   number;
+}
+
+export interface WsRemovePlugin {
+  type:        "sac:remove_plugin";
+  pluginIndex: number;
+}
+
+export interface WsAddPlugin {
+  type:     "sac:add_plugin";
+  pluginId: string;
+}
+
+export interface WsRequestChainState {
+  type: "sac:request_chain_state";
 }

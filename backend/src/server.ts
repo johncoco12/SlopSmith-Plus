@@ -80,7 +80,7 @@ export async function buildServer() {
   const profileRepo        = container.resolve(IProfileRepositoryToken) as IProfileRepository;
 
   // ── SlopAudio-Connect services ─────────────────────────────────────────────
-  const sacBeacon  = new SacBeaconService(config.sacServerName, config.sacHttpPort);
+  const sacBeacon  = new SacBeaconService(config.sacServerName, config.sacHttpPort, undefined, undefined, config.sacServerIp);
   const sacSession = new SacSessionService(profileRepo);
   const sacPitch   = new PitchProcessorService(sacSession);
 

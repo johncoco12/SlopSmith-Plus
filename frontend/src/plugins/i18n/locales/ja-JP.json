@@ -27,7 +27,8 @@
     "uploadInvalid": "有効なファイルがアップロードされていません",
     "uploadError": "エラー",
     "uploadFailed": "失敗: {message}",
-    "uploadSongs": "曲をアップロード"
+    "uploadSongs": "曲をアップロード",
+    "sacConnect": "SlopAudio Connect"
   },
   "profiles": {
     "selectTitle": "プロフィールを選択",
@@ -227,6 +228,36 @@
       "lyricsTitle": "歌詞の表示切り替え (\\)",
       "tunerTitle": "曲のチューニングに合わせる",
       "mixerTitle": "ミキサー"
+    },
+    "sac": {
+      "title": "SlopAudio Connect",
+      "statusIdle": "Not connected",
+      "statusConnecting": "Connecting…",
+      "statusLinked": "Linked · {name}",
+      "statusMonitoring": "Monitoring · {name}",
+      "disconnect": "Disconnect",
+      "waitingForTrack": "Monitoring will start automatically when you play a track.",
+      "availableSessions": "Available sessions",
+      "refresh": "Refresh",
+      "scanning": "Scanning…",
+      "noSessions": "No SlopAudio Connect instances found.",
+      "launchHint": "Launch the app on your device.",
+      "inUse": "in use",
+      "connect": "Connect →",
+      "confidence": "confidence"
+    },
+    "plugins": {
+      "title": "オーディオプラグイン",
+      "audioPlugins": "オーディオプラグイン",
+      "refresh": "チェーンを更新",
+      "notConnected": "SlopAudio ConnectでVSTプラグインチェーンを管理できます。",
+      "emptyChain": "チェーンにプラグインがありません。プラグインを追加するか更新してください。",
+      "bypass": "プラグインをバイパス",
+      "enable": "プラグインを有効化",
+      "remove": "プラグインを削除",
+      "addPlugin": "プラグインを追加",
+      "searchPlugins": "プラグインを検索…",
+      "noPluginsFound": "プラグインが見つかりません。"
     },
     "renderer": {
       "title": "レンダラー (V)"
