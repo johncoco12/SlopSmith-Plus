@@ -12,7 +12,7 @@ const auth = useAuthStore()
 const router = useRouter()
 const { t } = useI18n()
 
-const emit = defineEmits<{ 'open-settings': []; 'open-audio': [] }>()
+const emit = defineEmits<{ 'open-settings': []; 'open-audio': []; 'open-admin': [] }>()
 const menuOpen = ref(false)
 const profiles = ref<SafeProfile[]>([])
 const pendingProfile = ref<SafeProfile | null>(null)
@@ -156,7 +156,7 @@ function logout() {
           </button>
           <button
             v-if="auth.isAdmin"
-            @click="router.push({ name: 'admin' }); menuOpen = false"
+            @click="emit('open-admin'); menuOpen = false"
             class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-dark-600 transition-colors"
           >
             <Shield :size="15" class="shrink-0" />
