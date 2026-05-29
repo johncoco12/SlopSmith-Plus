@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Upload, Menu, X, Library, Heart, Settings2, LayoutGrid, Settings, Cable, PlugZap, RefreshCw } from 'lucide-vue-next'
@@ -7,11 +7,14 @@ import { useSettingsStore } from '@/features/settings/store'
 import { usePluginsStore } from '@/features/plugins/store'
 import { useAuthStore } from '@/features/auth/store'
 import { useSacStore } from '@/features/player/composables/useSac'
+import { useImportJobs } from '@/features/library/composables/useImportJobs'
 import SacPopover from '@/features/player/components/SacPopover.vue'
 import PluginChainPanel from '@/features/player/components/PluginChainPanel.vue'
 import AppDialog from '@/components/ui/AppDialog.vue'
 import SettingsDialog from '@/features/settings/components/SettingsDialog.vue'
 import AudioSettingsDialog from '@/features/settings/components/AudioSettingsDialog.vue'
+import AdminDialog from '@/features/admin/components/AdminDialog.vue'
+import UploadDialog from '@/features/library/components/UploadDialog.vue'
 import MobileMenu from './MobileMenu.vue'
 import ProfileSwitcher from './ProfileSwitcher.vue'
 
@@ -23,15 +26,14 @@ const plugins  = usePluginsStore()
 const auth     = useAuthStore()
 
 const sac              = useSacStore()
+const { activeCount: uploadActiveCount, startPolling: startUploadPoll, stopPolling: stopUploadPoll } = useImportJobs()
 const sacNavOpen          = ref<boolean>(false)
 const pluginsNavOpen      = ref<boolean>(false)
 const settingsOpen        = ref<boolean>(false)
 const audioSettingsOpen   = ref<boolean>(false)
-const mobileOpen     = ref<boolean>(false)
-const fileInput      = ref<HTMLInputElement | null>(null)
-const uploadStatus   = ref<string>('')
-const uploading      = ref(false)
-const uploadProgress = ref(0)
+const adminOpen           = ref<boolean>(false)
+const uploadOpen          = ref<boolean>(false)
+const mobileOpen          = ref<boolean>(false)
 
 type NavLink = { name: string; params?: { id: string }; label: string; icon: unknown }
 
@@ -52,74 +54,8 @@ function isActive(link: { name: string; params?: { id: string } }): boolean {
   return route.name === link.name
 }
 
-function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {}
-  if (auth.token) headers['Authorization'] = `Bearer ${auth.token}`
-  return headers
-}
-
-async function pollJob(jobId: string): Promise<void> {
-  for (let i = 0; i < 120; i++) {
-    await new Promise(r => setTimeout(r, 500))
-    try {
-      const res = await fetch(`/api/import/status/${jobId}`, { headers: authHeaders() })
-      if (!res.ok) break
-      const job = await res.json()
-      uploadProgress.value = job.progress ?? 0
-      uploadStatus.value = `Processing… ${job.progress ?? 0}%`
-      if (job.status === 'completed') {
-        uploadStatus.value = 'Done'
-        return
-      }
-      if (job.status === 'failed') {
-        uploadStatus.value = `Failed: ${job.error || 'Unknown error'}`
-        return
-      }
-    } catch {
-      break
-    }
-  }
-}
-
-async function handleUpload(e: Event): Promise<void> {
-  const files = (e.target as HTMLInputElement).files
-  if (!files?.length) return
-  uploading.value = true
-  uploadProgress.value = 0
-  uploadStatus.value = t('nav.uploading')
-  const form = new FormData()
-  for (const f of files) form.append('files', f)
-  try {
-    const res = await fetch('/api/import/upload', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: form,
-    })
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      uploadStatus.value = `Failed: ${body.error || res.statusText}`
-      return
-    }
-    const data = await res.json()
-    const jobs: { jobId: string }[] = data.jobs ?? (data.jobId ? [{ jobId: data.jobId }] : [])
-    if (jobs.length === 0) {
-      uploadStatus.value = t('nav.uploadInvalid')
-      return
-    }
-    uploadStatus.value = t('nav.processing')
-    const polls = jobs.map(j => pollJob(j.jobId))
-    await Promise.all(polls)
-    if (uploadStatus.value.startsWith(t('nav.processing')) || uploadStatus.value === t('nav.uploadDone')) {
-      uploadStatus.value = t('nav.uploadDone')
-    }
-  } catch {
-    uploadStatus.value = t('nav.uploadError')
-  } finally {
-    uploading.value = false
-    setTimeout(() => { uploadStatus.value = ''; uploadProgress.value = 0 }, 3000)
-    ;(e.target as HTMLInputElement).value = ''
-  }
-}
+onMounted(startUploadPoll)
+onUnmounted(stopUploadPoll)
 </script>
 
 <template>
@@ -154,14 +90,6 @@ async function handleUpload(e: Event): Promise<void> {
 
     <!-- Right side -->
     <div class="ml-auto flex items-center gap-2">
-      <div v-if="uploadStatus" class="flex items-center gap-2 t-caption">
-        <span>{{ uploadStatus }}</span>
-        <div v-if="uploading && uploadProgress > 0 && uploadProgress < 100"
-          class="w-20 h-1.5 bg-dark-600 rounded-full overflow-hidden">
-          <div class="h-full bg-accent rounded-full transition-all duration-300"
-            :style="{ width: uploadProgress + '%' }" />
-        </div>
-      </div>
 
       <!-- SAC Connect + Audio Plugins + Settings -->
       <div class="hidden sm:flex items-center gap-1">
@@ -239,25 +167,23 @@ async function handleUpload(e: Event): Promise<void> {
         </div>
       </div>
 
+      <!-- Upload button with active-jobs badge -->
       <button
         class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-               text-gray-400 bg-dark-600 border border-white/[.06]
-               hover:bg-dark-500 hover:text-gray-200 transition"
-        :disabled="uploading"
-        @click="fileInput?.click()"
+               border transition-colors relative"
+        :class="uploadOpen
+          ? 'text-accent border-accent/30 bg-accent/10'
+          : 'text-gray-400 bg-dark-600 border-white/[.06] hover:bg-dark-500 hover:text-gray-200'"
+        @click="uploadOpen = true"
       >
         <Upload :size="13" />
         {{ $t('nav.upload') }}
+        <span
+          v-if="uploadActiveCount > 0"
+          class="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold
+                 leading-4 text-center bg-accent text-white"
+        >{{ uploadActiveCount }}</span>
       </button>
-      <input
-        ref="fileInput"
-        type="file"
-        multiple
-        accept=".psarc,.sloppak"
-        class="hidden"
-        :disabled="uploading"
-        @change="handleUpload"
-      />
 
       <!-- Mobile hamburger -->
       <button
@@ -269,7 +195,7 @@ async function handleUpload(e: Event): Promise<void> {
         <component :is="mobileOpen ? X : Menu" :size="20" />
       </button>
 
-      <ProfileSwitcher @open-settings="settingsOpen = true" @open-audio="audioSettingsOpen = true" />
+      <ProfileSwitcher @open-settings="settingsOpen = true" @open-audio="audioSettingsOpen = true" @open-admin="adminOpen = true" />
     </div>
   </nav>
 
@@ -277,7 +203,7 @@ async function handleUpload(e: Event): Promise<void> {
     :open="mobileOpen"
     :links="navLinks"
     @close="mobileOpen = false"
-    @upload="fileInput?.click()"
+    @upload="uploadOpen = true"
   />
 
   <!-- Plugin chain dialog (accessible from any view) -->
@@ -315,6 +241,12 @@ async function handleUpload(e: Event): Promise<void> {
 
   <!-- Audio Settings dialog -->
   <AudioSettingsDialog :open="audioSettingsOpen" @close="audioSettingsOpen = false" />
+
+  <!-- Upload dialog -->
+  <UploadDialog :open="uploadOpen" @close="uploadOpen = false" />
+
+  <!-- Admin dialog -->
+  <AdminDialog :open="adminOpen" @close="adminOpen = false" />
 </template>
 
 <style scoped>
